@@ -1,5 +1,7 @@
+import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { DatePicker } from "antd";
 import { getDashboardMe, type DashboardMeData } from "../../shared/api/dashboard";
 import { getGrowthAnalytics } from "../../shared/api/growth";
 import { useAuthStore } from "../../store/auth";
@@ -27,6 +29,7 @@ export function DataOverviewPage() {
   const [data, setData] = useState<DashboardMeData | null>(null);
   const [growth, setGrowth] = useState<Awaited<ReturnType<typeof getGrowthAnalytics>> | null>(null);
   const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(null);
 
   useEffect(() => {
     fetchMe().catch(() => undefined);
@@ -37,7 +40,8 @@ export function DataOverviewPage() {
       setLoading(true);
       setError("");
       try {
-        const [d, g] = await Promise.all([getDashboardMe(), getGrowthAnalytics()]);
+        const dateStr = selectedDate ? selectedDate.format("YYYY-MM-DD") : undefined;
+        const [d, g] = await Promise.all([getDashboardMe(dateStr), getGrowthAnalytics()]);
         setData(d);
         setGrowth(g);
       } catch (e: any) {
@@ -47,7 +51,7 @@ export function DataOverviewPage() {
       }
     }
     load();
-  }, []);
+  }, [selectedDate]);
 
   const latestMetrics = data?.growth_analytics.metrics_latest ?? null;
   const latestWorkout = data?.growth_analytics.workout_latest ?? null;
@@ -71,7 +75,10 @@ export function DataOverviewPage() {
 
   return (
     <section>
-      <h1>数据总览</h1>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <h1>数据总览</h1>
+        <DatePicker value={selectedDate} onChange={setSelectedDate} allowClear placeholder="选择日期" />
+      </div>
       <p className="muted-text">用户：{user?.name ?? "-"} / 联系方式：{user?.email || user?.phone || "-"}</p>
       {loading && <p className="muted-text">加载中...</p>}
       {error && <p className="error-text">{error}</p>}

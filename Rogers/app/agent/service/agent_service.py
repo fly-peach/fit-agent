@@ -39,9 +39,6 @@ from app.agent.tools import (
     get_user_profile,
     get_workout_history,
     summarize_text,
-    update_daily_metrics,
-    update_nutrition,
-    update_workout_plan,
     view_image,
     view_image_base64,
 )

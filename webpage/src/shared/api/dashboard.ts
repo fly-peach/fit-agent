@@ -65,8 +65,9 @@ export interface DashboardMeData {
   };
 }
 
-export async function getDashboardMe(): Promise<DashboardMeData> {
-  const response = await fetchWithAuth("/dashboard/me");
+export async function getDashboardMe(targetDate?: string): Promise<DashboardMeData> {
+  const url = targetDate ? `/dashboard/me?target_date=${targetDate}` : "/dashboard/me";
+  const response = await fetchWithAuth(url);
   const result = await response.json();
   return result.data as DashboardMeData;
 }

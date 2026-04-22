@@ -17,6 +17,7 @@ from .read_tools import (
     get_workout_history,
 )
 from .write_tools import (
+    current_user_id,
     update_daily_metrics,
     update_nutrition,
     update_workout_plan,
@@ -29,6 +30,7 @@ __all__ = [
     "get_nutrition_history",
     "get_dashboard_summary",
     "analyze_body_composition",
+    "current_user_id",
     "update_daily_metrics",
     "update_workout_plan",
     "update_nutrition",

@@ -5,8 +5,10 @@
 - 所有写入工具默认 approved=false，AI 调用时不得主动设为 true
 - approved=false 时，工具创建待审批记录并返回审批 ID，挂起执行
 - 用户审批通过后，由 ApprovalService 执行实际操作
+- user_id 可自动从登录上下文获取，无需手动传入
 """
 
+from contextvars import ContextVar
 from datetime import date
 
 from agentscope.message import TextBlock
@@ -19,12 +21,19 @@ from app.schemas.daily_metrics import DailyMetricsUpsert
 from app.schemas.daily_nutrition import DailyNutritionUpsert
 from app.schemas.daily_workout_plan import DailyWorkoutPlanUpsert, WorkoutItem
 
+# 当前登录用户 ID，由调用方在请求上下文中设置
+current_user_id: ContextVar[int | None] = ContextVar("current_user_id", default=None)
+
+
+def _resolve_user_id(user_id: int | None) -> int | None:
+    return user_id or current_user_id.get()
+
 
 async def update_daily_metrics(
     repo: DailyMetricsRepository,
-    user_id: int,
     record_date: str,
     data: dict,
+    user_id: int | None = None,
     approved: bool = False,
     approval_id: str | None = None,
 ) -> ToolResponse:
@@ -33,12 +42,12 @@ async def update_daily_metrics(
     Args:
         repo (`DailyMetricsRepository`):
             Daily metrics repository instance.
-        user_id (`int`):
-            User ID.
         record_date (`str`):
             Date string in ISO format (YYYY-MM-DD).
         data (`dict`):
             Metrics data including weight, body_fat_rate, bmi.
+        user_id (`int | None`):
+            User ID. Auto-detected from login context if omitted.
         approved (`bool`):
             Whether the operation has been approved by human. Default False.
         approval_id (`str | None`):
@@ -58,6 +67,10 @@ async def update_daily_metrics(
             ],
         )
 
+    uid = _resolve_user_id(user_id)
+    if uid is None:
+        return ToolResponse(content=[TextBlock(type="text", text="Error: 无法获取当前用户ID")])
+
     try:
         date_obj = date.fromisoformat(record_date)
     except ValueError:
@@ -71,7 +84,7 @@ async def update_daily_metrics(
         body_fat_rate=data.get("body_fat_rate"),
         bmi=data.get("bmi"),
     )
-    repo.upsert(user_id=user_id, record_date=date_obj, payload=payload)
+    repo.upsert(user_id=uid, record_date=date_obj, payload=payload)
     return ToolResponse(
         content=[
             TextBlock(type="text", text=f"已更新 {record_date} 的身体数据"),
@@ -81,9 +94,9 @@ async def update_daily_metrics(
 
 async def update_workout_plan(
     repo: DailyWorkoutPlanRepository,
-    user_id: int,
     record_date: str,
     plan: dict,
+    user_id: int | None = None,
     approved: bool = False,
     approval_id: str | None = None,
 ) -> ToolResponse:
@@ -92,12 +105,12 @@ async def update_workout_plan(
     Args:
         repo (`DailyWorkoutPlanRepository`):
             Workout plan repository instance.
-        user_id (`int`):
-            User ID.
         record_date (`str`):
             Date string in ISO format (YYYY-MM-DD).
         plan (`dict`):
             Workout plan data including plan_title, items, duration_minutes.
+        user_id (`int | None`):
+            User ID. Auto-detected from login context if omitted.
         approved (`bool`):
             Whether the operation has been approved by human. Default False.
         approval_id (`str | None`):
@@ -117,6 +130,10 @@ async def update_workout_plan(
             ],
         )
 
+    uid = _resolve_user_id(user_id)
+    if uid is None:
+        return ToolResponse(content=[TextBlock(type="text", text="Error: 无法获取当前用户ID")])
+
     try:
         date_obj = date.fromisoformat(record_date)
     except ValueError:
@@ -133,7 +150,7 @@ async def update_workout_plan(
         is_completed=plan.get("is_completed", False),
         notes=plan.get("notes"),
     )
-    repo.upsert(user_id=user_id, record_date=date_obj, payload=payload)
+    repo.upsert(user_id=uid, record_date=date_obj, payload=payload)
     return ToolResponse(
         content=[
             TextBlock(type="text", text=f"已更新 {record_date} 的训练计划"),
@@ -155,9 +172,9 @@ def _parse_meal(data: dict, key: str) -> dict | None:
 
 async def update_nutrition(
     repo: DailyNutritionRepository,
-    user_id: int,
     record_date: str,
     data: dict,
+    user_id: int | None = None,
     approved: bool = False,
     approval_id: str | None = None,
 ) -> ToolResponse:
@@ -166,13 +183,13 @@ async def update_nutrition(
     Args:
         repo (`DailyNutritionRepository`):
             Nutrition repository instance.
-        user_id (`int`):
-            User ID.
         record_date (`str`):
             Date string in ISO format (YYYY-MM-DD).
         data (`dict`):
             Nutrition data including calories_kcal, protein_g, carb_g, fat_g,
             and optional meal breakdowns (breakfast, lunch, dinner).
+        user_id (`int | None`):
+            User ID. Auto-detected from login context if omitted.
         approved (`bool`):
             Whether the operation has been approved by human. Default False.
         approval_id (`str | None`):
@@ -212,7 +229,11 @@ async def update_nutrition(
         "dinner": _parse_meal(data, "dinner"),
     }
     payload = DailyNutritionUpsert(**{k: v for k, v in payload_data.items() if v is not None})
-    repo.upsert(user_id=user_id, record_date=date_obj, payload=payload)
+
+    uid = _resolve_user_id(user_id)
+    if uid is None:
+        return ToolResponse(content=[TextBlock(type="text", text="Error: 无法获取当前用户ID")])
+    repo.upsert(user_id=uid, record_date=date_obj, payload=payload)
     return ToolResponse(
         content=[
             TextBlock(type="text", text=f"已更新 {record_date} 的营养摄入数据"),

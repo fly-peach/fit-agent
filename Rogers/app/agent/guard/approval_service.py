@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import asyncio
 from datetime import date, datetime, timezone
 
 from app.agent.schemas.agent import AgentApproveData, AgentApproveRequest
@@ -11,8 +10,7 @@ from app.repositories.agent_repository import AgentRepository
 from app.repositories.daily_metrics_repository import DailyMetricsRepository
 from app.repositories.daily_nutrition_repository import DailyNutritionRepository
 from app.repositories.daily_workout_plan_repository import DailyWorkoutPlanRepository
-from app.agent.tools.write_tools import update_daily_metrics, update_nutrition, update_workout_plan
-from agentscope.message import TextBlock
+from app.agent.tools.write_tools import current_user_id, update_daily_metrics, update_nutrition, update_workout_plan
 from agentscope.tool import ToolResponse
 
 
@@ -46,6 +44,9 @@ class ApprovalService:
             self.repo.save_pending_action(action)
             return AgentApproveData(action_id=action.id, status=action.status, result=action.result_message)
 
+        # 设置用户上下文，使 write_tools 能自动获取 user_id
+        current_user_id.set(current_user.id)
+
         data = payload.edited_data if payload.decision == "edit" and payload.edited_data else action.payload
         record_date = data["record_date"]
         result = "未执行"
@@ -53,35 +54,32 @@ class ApprovalService:
             resp = asyncio.run(
                 update_daily_metrics(
                     repo=self.daily_metrics_repo,
-                    user_id=current_user.id,
                     record_date=record_date,
                     data=data["data"],
                     approved=True,
                 )
             )
-            result = "\n".join([b.text for b in (resp.content or []) if isinstance(b, TextBlock) and getattr(b, "text", None)]) or "???"
+            result = "\n".join([b["text"] for b in (resp.content or []) if isinstance(b, dict) and b.get("text")]) or "???"
         elif action.tool_name == "update_workout_plan":
             resp = asyncio.run(
                 update_workout_plan(
                     repo=self.daily_workout_repo,
-                    user_id=current_user.id,
                     record_date=record_date,
                     plan=data["data"],
                     approved=True,
                 )
             )
-            result = "\n".join([b.text for b in (resp.content or []) if isinstance(b, TextBlock) and getattr(b, "text", None)]) or "???"
+            result = "\n".join([b["text"] for b in (resp.content or []) if isinstance(b, dict) and b.get("text")]) or "???"
         elif action.tool_name == "update_nutrition":
             resp = asyncio.run(
                 update_nutrition(
                     repo=self.daily_nutrition_repo,
-                    user_id=current_user.id,
                     record_date=record_date,
                     data=data["data"],
                     approved=True,
                 )
             )
-            result = "\n".join([b.text for b in (resp.content or []) if isinstance(b, TextBlock) and getattr(b, "text", None)]) or "???"
+            result = "\n".join([b["text"] for b in (resp.content or []) if isinstance(b, dict) and b.get("text")]) or "???"
 
         action.status = "executed"
         action.result_message = result

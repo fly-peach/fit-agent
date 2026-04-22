@@ -215,33 +215,36 @@ class DashboardService:
 
         return alerts
 
-    def me(self, current_user: User) -> DashboardMeData:
+    def me(self, current_user: User, *, target_date: date | None = None) -> DashboardMeData:
+        ref_date = target_date or datetime.now(timezone.utc).date()
+        to_dt = datetime(ref_date.year, ref_date.month, ref_date.day, 23, 59, 59)
+        from_dt_range = datetime(ref_date.year, ref_date.month, ref_date.day, 0, 0, 0)
         latest_assessment = self.assessment_repo.latest_by_user(current_user.id)
 
-        latest_body = self.body_repo.latest(member_id=current_user.id)
-        latest_two = self.body_repo.latest_two(member_id=current_user.id)
+        body_all = self.body_repo.get_multi(member_id=current_user.id, to_dt=to_dt, limit=2)
+        latest_body = body_all[0] if body_all else None
         compare: BodyCompositionCompareResponse | None = None
-        if len(latest_two) == 2:
-            b = latest_two[0]
-            a = latest_two[1]
+        if len(body_all) == 2:
+            b = body_all[0]
+            a = body_all[1]
             compare = self.body_service.compare(current_user=current_user, a_id=a.id, b_id=b.id)
 
         trend: dict[str, list[BodyCompositionTrendPoint]] = {
-            "weight": self.body_service.trend(current_user=current_user, metric="weight", from_dt=None, to_dt=None, limit=60),
+            "weight": self.body_service.trend(current_user=current_user, metric="weight", from_dt=None, to_dt=to_dt, limit=60),
             "body_fat_rate": self.body_service.trend(
-                current_user=current_user, metric="body_fat_rate", from_dt=None, to_dt=None, limit=60
+                current_user=current_user, metric="body_fat_rate", from_dt=None, to_dt=to_dt, limit=60
             ),
         }
 
-        from_date = self._last_days_start(30)
+        from_date = ref_date - timedelta(days=29)
         daily_metrics = self.daily_metrics_repo.list_by_user(
-            user_id=current_user.id, from_date=from_date, to_date=None, skip=0, limit=60
+            user_id=current_user.id, from_date=from_date, to_date=ref_date, skip=0, limit=60
         )
         daily_workouts = self.daily_workout_repo.list_by_user(
-            user_id=current_user.id, from_date=from_date, to_date=None, skip=0, limit=60
+            user_id=current_user.id, from_date=from_date, to_date=ref_date, skip=0, limit=60
         )
         daily_nutritions = self.daily_nutrition_repo.list_by_user(
-            user_id=current_user.id, from_date=from_date, to_date=None, skip=0, limit=60
+            user_id=current_user.id, from_date=from_date, to_date=ref_date, skip=0, limit=60
         )
 
         metrics_latest = daily_metrics[0] if daily_metrics else None
