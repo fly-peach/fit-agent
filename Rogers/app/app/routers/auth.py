@@ -7,9 +7,21 @@ import sys
 sys.path.insert(0, "E:/fitagent/rogers/src")
 from fitme.utils.database import get_db
 from fitme.services.auth_service import AuthService
-from fitme.schemas.auth import LoginRequest, LoginResponse, LogoutResponse
+from fitme.schemas.auth import LoginRequest, LoginResponse, LogoutResponse, RegisterRequest, RegisterResponse
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
+
+
+@router.post("/register", response_model=RegisterResponse)
+def register(
+    data: RegisterRequest,
+    db: Session = Depends(get_db)
+):
+    """用户注册"""
+    result = AuthService.register(db, data)
+    if not result:
+        raise HTTPException(status_code=400, detail="邮箱已被注册")
+    return RegisterResponse(data=result)
 
 
 @router.post("/login", response_model=LoginResponse)

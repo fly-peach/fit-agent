@@ -14,6 +14,7 @@ export interface HealthMeasurement {
   weight: number
   bodyFat: number
   bmi: number
+  bmiStatus: string
   measureDate: string
   createdAt: string
 }
@@ -33,7 +34,7 @@ export const healthApi = {
   getMetrics: (): Promise<HealthMetrics> =>
     api.get('/health/metrics'),
 
-  createMetric: (data: { weight?: number; bodyFat?: number; measureDate: string }): Promise<{ recordId: number }> =>
+  createMetric: (data: { weight?: number; height?: number; bodyFat?: number; measureDate: string }): Promise<{ recordId: number }> =>
     api.post('/health/metrics', data),
 
   getMeasurements: (limit: number = 10): Promise<HealthMeasurement[]> =>

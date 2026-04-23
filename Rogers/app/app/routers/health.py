@@ -107,8 +107,8 @@ def get_measurements(
 
 @router.get("/report", response_model=HealthReportResponse)
 def get_report(
-    period: str = Query(default="week", regex="^(week|month|year)$"),
-    status: str = Query(default="all", regex="^(all|pass|low|high)$"),
+    period: str = Query(default="week", pattern="^(week|month|year)$"),
+    status: str = Query(default="all", pattern="^(all|pass|low|high)$"),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -120,7 +120,7 @@ def get_report(
 @router.get("/export")
 def export_health(
     period: str = Query(default="week"),
-    format: str = Query(default="csv", regex="^(csv|excel)$"),
+    format: str = Query(default="csv", pattern="^(csv|excel)$"),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

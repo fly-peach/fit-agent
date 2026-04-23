@@ -1,36 +1,36 @@
 import React, { useEffect, useState } from 'react'
 import {
+  Box,
   Card,
-  Row,
-  Col,
-  Statistic,
-  Progress,
-  List,
-  Tag,
-  Avatar,
-  Button,
-  Modal,
-  Form,
-  Input,
-  InputNumber,
-  DatePicker,
-  Select,
-  message,
+  CardContent,
   Typography,
-  Space,
-} from 'antd'
-import {
-  FireOutlined,
-  TrophyOutlined,
-  PlusOutlined,
-  CheckOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons'
+  Grid,
+  LinearProgress,
+  Chip,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Snackbar,
+  Alert,
+  Skeleton,
+} from '@mui/material'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import dayjs from 'dayjs'
-import { trainingApi, type WeeklyStats, TrainingSchedule, RecommendedTraining, TrainingPlan } from '../../services/training'
-import styles from './Training.module.css'
-
-const { Title, Text } = Typography
+import { trainingApi, type WeeklyStats, TrainingSchedule, RecommendedTraining } from '../../services/training'
 
 const planTypes = [
   { value: 'strength', label: '力量训练' },
@@ -44,16 +44,29 @@ const intensities = [
   { value: 'high', label: '高强度' },
 ]
 
+const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+
 const Training: React.FC = () => {
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null)
   const [schedule, setSchedule] = useState<TrainingSchedule[]>([])
   const [recommendations, setRecommendations] = useState<RecommendedTraining[]>([])
   const [loading, setLoading] = useState(true)
-  const [createModalVisible, setCreateModalVisible] = useState(false)
-  const [completeModalVisible, setCompleteModalVisible] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [completeOpen, setCompleteOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [createForm] = Form.useForm()
-  const [completeForm] = Form.useForm()
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false, message: '', severity: 'success'
+  })
+
+  const [planName, setPlanName] = useState('')
+  const [planType, setPlanType] = useState('strength')
+  const [targetIntensity, setTargetIntensity] = useState('medium')
+  const [estimatedDuration, setEstimatedDuration] = useState('60')
+  const [scheduledDate, setScheduledDate] = useState<dayjs.Dayjs | null>(dayjs())
+
+  const [actualDuration, setActualDuration] = useState('60')
+  const [actualIntensity, setActualIntensity] = useState('medium')
+  const [caloriesBurned, setCaloriesBurned] = useState('0')
 
   useEffect(() => {
     fetchData()
@@ -75,304 +88,237 @@ const Training: React.FC = () => {
     }
   }
 
-  const handleCreatePlan = async (values: TrainingPlan) => {
+  const handleCreatePlan = async () => {
+    if (!planName || !scheduledDate) {
+      setSnackbar({ open: true, message: '请填写所有字段', severity: 'error' })
+      return
+    }
+
     try {
       await trainingApi.createPlan({
-        ...values,
-        scheduledDate: dayjs(values.scheduledDate).format('YYYY-MM-DD'),
+        planName,
+        planType,
+        targetIntensity,
+        estimatedDuration: parseInt(estimatedDuration),
+        scheduledDate: scheduledDate.format('YYYY-MM-DD'),
       })
-      message.success('创建成功')
-      setCreateModalVisible(false)
-      createForm.resetFields()
+      setSnackbar({ open: true, message: '创建成功', severity: 'success' })
+      setCreateOpen(false)
       fetchData()
     } catch {
-      message.error('创建失败')
+      setSnackbar({ open: true, message: '创建失败', severity: 'error' })
     }
   }
 
-  const handleCompletePlan = async (values: { actualDuration: number; actualIntensity: string; caloriesBurned: number }) => {
+  const handleCompletePlan = async () => {
     if (!selectedPlanId) return
+
     try {
-      await trainingApi.completePlan(selectedPlanId, values)
-      message.success('完成记录成功')
-      setCompleteModalVisible(false)
-      completeForm.resetFields()
+      await trainingApi.completePlan(selectedPlanId, {
+        actualDuration: parseInt(actualDuration),
+        actualIntensity,
+        caloriesBurned: parseInt(caloriesBurned),
+      })
+      setSnackbar({ open: true, message: '完成记录成功', severity: 'success' })
+      setCompleteOpen(false)
       fetchData()
     } catch {
-      message.error('记录失败')
+      setSnackbar({ open: true, message: '记录失败', severity: 'error' })
     }
   }
 
   const handleDeletePlan = async (planId: number) => {
     try {
       await trainingApi.deletePlan(planId)
-      message.success('删除成功')
+      setSnackbar({ open: true, message: '删除成功', severity: 'success' })
       fetchData()
     } catch {
-      message.error('删除失败')
+      setSnackbar({ open: true, message: '删除失败', severity: 'error' })
     }
   }
 
-  const getPlanTypeTag = (type: string) => {
-    switch (type) {
-      case 'strength':
-        return <Tag color="orange">力量</Tag>
-      case 'cardio':
-        return <Tag color="green">有氧</Tag>
-      case 'flexibility':
-        return <Tag color="purple">柔韧</Tag>
-      default:
-        return <Tag>{type}</Tag>
-    }
+  const getProgressPercent = () => {
+    if (!weeklyStats || weeklyStats.weeklyCount === 0) return 0
+    return Math.round((weeklyStats.completedCount / weeklyStats.weeklyCount) * 100)
   }
 
-  const getIntensityTag = (intensity: string) => {
-    switch (intensity) {
-      case 'low':
-        return <Tag color="blue">低</Tag>
-      case 'medium':
-        return <Tag color="orange">中</Tag>
-      case 'high':
-        return <Tag color="red">高</Tag>
-      default:
-        return <Tag>{intensity}</Tag>
+  const getTypeChip = (type: string) => {
+    const colors: Record<string, 'warning' | 'success' | 'info'> = {
+      strength: 'warning', cardio: 'success', flexibility: 'info',
     }
+    const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
+    return <Chip label={labels[type] || type} color={colors[type] || 'default'} size="small" />
   }
 
-  const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const getIntensityChip = (intensity: string) => {
+    const colors: Record<string, 'info' | 'warning' | 'error'> = {
+      low: 'info', medium: 'warning', high: 'error',
+    }
+    return <Chip label={intensity} color={colors[intensity] || 'default'} size="small" />
+  }
 
   return (
-    <div className={styles.container}>
-      <Title level={3}>
-        <FireOutlined /> 训练计划
-      </Title>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box>
+        <Typography variant="h4" gutterBottom>🔥 训练计划</Typography>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="本周训练"
-              value={weeklyStats?.weeklyCount || 0}
-              suffix="次"
-              prefix={<FireOutlined />}
-              valueStyle={{ color: '#3f8600' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="本周时长"
-              value={weeklyStats?.weeklyHours || 0}
-              suffix="小时"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="消耗热量"
-              value={weeklyStats?.weeklyCalories || 0}
-              suffix="kcal"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card loading={loading}>
-            <Statistic
-              title="连续训练"
-              value={weeklyStats?.streakDays || 0}
-              suffix="天"
-              prefix={<TrophyOutlined />}
-              valueStyle={{ color: '#722ed1' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card><CardContent>
+              {loading ? <Skeleton /> : <>
+                <Typography color="text.secondary">本周训练</Typography>
+                <Typography variant="h4" color="success.main">{weeklyStats?.weeklyCount || 0} 次</Typography>
+              </>}
+            </CardContent></Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card><CardContent>
+              {loading ? <Skeleton /> : <>
+                <Typography color="text.secondary">本周时长</Typography>
+                <Typography variant="h4">{weeklyStats?.weeklyHours || 0} 小时</Typography>
+              </>}
+            </CardContent></Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card><CardContent>
+              {loading ? <Skeleton /> : <>
+                <Typography color="text.secondary">消耗热量</Typography>
+                <Typography variant="h4">{weeklyStats?.weeklyCalories || 0} kcal</Typography>
+              </>}
+            </CardContent></Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card><CardContent>
+              {loading ? <Skeleton /> : <>
+                <Typography color="text.secondary">连续训练</Typography>
+                <Typography variant="h4" color="secondary.main">{weeklyStats?.streakDays || 0} 天</Typography>
+              </>}
+            </CardContent></Card>
+          </Grid>
+        </Grid>
 
-      <Card
-        title="本周进度"
-        loading={loading}
-        style={{ marginTop: 16 }}
-      >
-        <Progress
-          percent={
-            weeklyStats && weeklyStats.weeklyCount > 0
-              ? Math.round((weeklyStats.completedCount / weeklyStats.weeklyCount) * 100)
-              : 0
-          }
-          format={(percent) => `已完成 ${percent}%`}
-        />
-        <Row gutter={8} style={{ marginTop: 16 }}>
-          {weekDays.map((day, idx) => {
-            const daySchedule = schedule.filter((s) => s.dayOfWeek === idx + 1)
-            const completed = daySchedule.some((s) => s.status === 'completed')
-            return (
-              <Col key={day} span={3}>
-                <div className={styles.dayBox}>
-                  <Text>{day}</Text>
-                  <Avatar
-                    size={32}
-                    style={{ backgroundColor: completed ? '#52c41a' : '#f0f0f0' }}
-                  >
-                    {completed ? <CheckOutlined /> : idx + 1}
+        <Card sx={{ mt: 3 }}><CardContent>
+          <Typography variant="h6" gutterBottom>本周进度</Typography>
+          <LinearProgress variant="determinate" value={getProgressPercent()} color="success" />
+          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+            {weekDays.map((day, idx) => {
+              const daySchedule = schedule.filter(s => s.dayOfWeek === idx + 1)
+              const completed = daySchedule.some(s => s.status === 'completed')
+              return <Box key={day} sx={{ textAlign: 'center' }}>
+                <Typography variant="caption">{day}</Typography>
+                <Avatar sx={{ bgcolor: completed ? 'success.main' : 'grey.300', width: 32, height: 32 }}>
+                  {completed ? '✓' : idx + 1}
+                </Avatar>
+              </Box>
+            })}
+          </Box>
+        </CardContent></Card>
+
+        <Card sx={{ mt: 3 }}><CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">本周训练安排</Typography>
+            <Button variant="contained" onClick={() => setCreateOpen(true)}>新建计划</Button>
+          </Box>
+          <List>
+            {schedule.map(item => (
+              <ListItem key={item.planId}>
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: item.status === 'completed' ? 'success.main' : 'primary.main' }}>
+                    {item.status === 'completed' ? '✓' : item.dayOfWeek}
                   </Avatar>
-                </div>
-              </Col>
-            )
-          })}
-        </Row>
-      </Card>
+                </ListItemAvatar>
+                <ListItemText primary={item.planName} secondary={`${item.duration}分钟 · ${item.intensity}强度`} />
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {getTypeChip(item.planType)}
+                  {getIntensityChip(item.intensity)}
+                  <Chip label={item.status === 'completed' ? '已完成' : '待完成'} color={item.status === 'completed' ? 'success' : 'primary'} size="small" />
+                  {item.status === 'pending' && <>
+                    <Button size="small" variant="contained" color="success" onClick={() => { setSelectedPlanId(item.planId || 0); setCompleteOpen(true) }}>完成</Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleDeletePlan(item.planId || 0)}>删除</Button>
+                  </>}
+                </Box>
+              </ListItem>
+            ))}
+          </List>
+        </CardContent></Card>
 
-      <Card
-        title="本周训练安排"
-        loading={loading}
-        style={{ marginTop: 16 }}
-        extra={
-          <Button icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
-            新建计划
-          </Button>
-        }
-      >
-        <List
-          dataSource={schedule}
-          renderItem={(item) => (
-            <List.Item
-              actions={
-                item.status === 'pending'
-                  ? [
-                      <Button
-                        type="primary"
-                        size="small"
-                        onClick={() => {
-                          setSelectedPlanId(item.planId || 0)
-                          setCompleteModalVisible(true)
-                        }}
-                      >
-                        完成
-                      </Button>,
-                      <Button
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDeletePlan(item.planId || 0)}
-                      />,
-                    ]
-                  : undefined
-              }
-            >
-              <List.Item.Meta
-                avatar={
-                  <Avatar
-                    style={{
-                      backgroundColor: item.status === 'completed' ? '#52c41a' : '#1890ff',
-                    }}
-                  >
-                    {item.dayOfWeek}
-                  </Avatar>
-                }
-                title={`${item.planName} - ${dayjs(item.date).format('MM-DD')}`}
-                description={
-                  <Space>
-                    {getPlanTypeTag(item.planType)}
-                    {getIntensityTag(item.intensity)}
-                    <Text type="secondary">{item.duration}分钟</Text>
-                  </Space>
-                }
-              />
-              <Tag color={item.status === 'completed' ? 'green' : 'blue'}>
-                {item.status === 'completed' ? '已完成' : '待完成'}
-              </Tag>
-            </List.Item>
-          )}
-        />
-      </Card>
+        <Card sx={{ mt: 3 }}><CardContent>
+          <Typography variant="h6" gutterBottom>推荐训练</Typography>
+          <Grid container spacing={2}>
+            {recommendations.map(item => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={item.recommendId}>
+                <Card variant="outlined"><CardContent>
+                  <Typography variant="subtitle1">{item.planName}</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    {getTypeChip(item.planType)}
+                    {getIntensityChip(item.intensity)}
+                  </Box>
+                  <Typography variant="body2" color="text.secondary">{item.duration}分钟</Typography>
+                  {item.caloriesBurn && <Typography variant="body2" color="text.secondary">消耗 {item.caloriesBurn} kcal</Typography>}
+                </CardContent></Card>
+              </Grid>
+            ))}
+          </Grid>
+        </CardContent></Card>
 
-      <Card title="推荐训练" loading={loading} style={{ marginTop: 16 }}>
-        <List
-          grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 4 }}
-          dataSource={recommendations}
-          renderItem={(item) => (
-            <List.Item>
-              <Card hoverable>
-                <Title level={5}>{item.planName}</Title>
-                <Space direction="vertical" size="small">
-                  {getPlanTypeTag(item.planType)}
-                  {getIntensityTag(item.intensity)}
-                  <Text type="secondary">{item.duration}分钟</Text>
-                  {item.caloriesBurn && (
-                    <Text type="secondary">消耗 {item.caloriesBurn} kcal</Text>
-                  )}
-                </Space>
-              </Card>
-            </List.Item>
-          )}
-        />
-      </Card>
+        <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
+          <DialogTitle>创建训练计划</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <TextField label="计划名称" value={planName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlanName(e.target.value)} />
+              <FormControl fullWidth>
+                <InputLabel>训练类型</InputLabel>
+                <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
+                  {planTypes.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>目标强度</InputLabel>
+                    <Select value={targetIntensity} onChange={(e) => setTargetIntensity(e.target.value)}>
+                      {intensities.map(i => <MenuItem key={i.value} value={i.value}>{i.label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField label="预计时长" type="number" value={estimatedDuration} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEstimatedDuration(e.target.value)} />
+                </Grid>
+              </Grid>
+              <DatePicker label="计划日期" value={scheduledDate} onChange={(val: dayjs.Dayjs | null) => setScheduledDate(val)} />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCreateOpen(false)}>取消</Button>
+            <Button variant="contained" onClick={handleCreatePlan}>创建</Button>
+          </DialogActions>
+        </Dialog>
 
-      <Modal
-        title="创建训练计划"
-        open={createModalVisible}
-        onCancel={() => setCreateModalVisible(false)}
-        footer={null}
-      >
-        <Form form={createForm} onFinish={handleCreatePlan} layout="vertical">
-          <Form.Item name="planName" label="计划名称" rules={[{ required: true }]}>
-            <Input placeholder="如：力量训练-上肢" />
-          </Form.Item>
-          <Form.Item name="planType" label="训练类型" rules={[{ required: true }]}>
-            <Select options={planTypes} />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item name="targetIntensity" label="目标强度" initialValue="medium">
-                <Select options={intensities} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="estimatedDuration" label="预计时长" initialValue={60}>
-                <InputNumber min={10} max={180} addonAfter="分钟" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Form.Item name="scheduledDate" label="计划日期" rules={[{ required: true }]}>
-            <DatePicker />
-          </Form.Item>
-          <Form.Item name="note" label="备注">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              创建
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
+        <Dialog open={completeOpen} onClose={() => setCompleteOpen(false)}>
+          <DialogTitle>完成训练</DialogTitle>
+          <DialogContent>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+              <TextField label="实际时长" type="number" value={actualDuration} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActualDuration(e.target.value)} />
+              <FormControl fullWidth>
+                <InputLabel>实际强度</InputLabel>
+                <Select value={actualIntensity} onChange={(e) => setActualIntensity(e.target.value)}>
+                  {intensities.map(i => <MenuItem key={i.value} value={i.value}>{i.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField label="消耗热量" type="number" value={caloriesBurned} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCaloriesBurned(e.target.value)} />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCompleteOpen(false)}>取消</Button>
+            <Button variant="contained" onClick={handleCompletePlan}>提交</Button>
+          </DialogActions>
+        </Dialog>
 
-      <Modal
-        title="完成训练"
-        open={completeModalVisible}
-        onCancel={() => setCompleteModalVisible(false)}
-        footer={null}
-      >
-        <Form form={completeForm} onFinish={handleCompletePlan} layout="vertical">
-          <Form.Item name="actualDuration" label="实际时长" rules={[{ required: true }]}>
-            <InputNumber min={10} max={180} addonAfter="分钟" />
-          </Form.Item>
-          <Form.Item name="actualIntensity" label="实际强度" initialValue="medium">
-            <Select options={intensities} />
-          </Form.Item>
-          <Form.Item name="caloriesBurned" label="消耗热量">
-            <InputNumber min={0} max={1000} addonAfter="kcal" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>
-              提交
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+        <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+        </Snackbar>
+      </Box>
+    </LocalizationProvider>
   )
 }
 

@@ -24,22 +24,19 @@ class HealthService:
         metric = HealthMetric(
             user_id=user_id,
             weight=data.weight,
+            height=data.height,
             body_fat=data.bodyFat,
             measure_date=data.measureDate,
         )
-        if data.weight:
-            user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
-            height = user_settings and 175  # 默认身高，可从设置获取
-            if height:
-                bmi = float(data.weight) / ((height / 100) ** 2)
-                metric.height = Decimal(str(height))
-                metric.bmi = Decimal(str(round(bmi, 2)))
-                if bmi < 18.5:
-                    metric.bmi_status = "under"
-                elif bmi > 25:
-                    metric.bmi_status = "over"
-                else:
-                    metric.bmi_status = "normal"
+        if data.weight and data.height:
+            bmi = float(data.weight) / ((float(data.height) / 100) ** 2)
+            metric.bmi = Decimal(str(round(bmi, 2)))
+            if bmi < 18.5:
+                metric.bmi_status = "under"
+            elif bmi > 25:
+                metric.bmi_status = "over"
+            else:
+                metric.bmi_status = "normal"
         db.add(metric)
         db.commit()
         db.refresh(metric)

@@ -1,5 +1,5 @@
 """Diet Router"""
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -73,8 +73,8 @@ def create_meal(
 
 @router.put("/meals/{mealId}", response_model=BaseResponse)
 def update_meal(
-    mealId: int = Path(...),
-    data: UpdateMealRequest,
+    mealId: int,
+    data: UpdateMealRequest = Body(...),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

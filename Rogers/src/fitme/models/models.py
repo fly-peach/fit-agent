@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, Time, B
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import time
 
 Base = declarative_base()
 
@@ -43,7 +44,7 @@ class UserSettings(Base):
     weight_goal = Column(DECIMAL(5, 2), default=None)
     weekly_training_goal = Column(Integer, default=5)
     notification_enabled = Column(Boolean, default=True)
-    reminder_time = Column(Time, default="07:00:00")
+    reminder_time = Column(Time, default=time(7, 0))
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -54,7 +55,7 @@ class HealthMetric(Base):
     """健康指标记录表"""
     __tablename__ = "health_metrics"
     __table_args__ = (
-        Index("idx_user_date", "user_id", "measure_date"),
+        Index("idx_health_user_date", "user_id", "measure_date"),
     )
 
     record_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -74,8 +75,8 @@ class TrainingPlan(Base):
     """训练计划表"""
     __tablename__ = "training_plans"
     __table_args__ = (
-        Index("idx_user_date", "user_id", "scheduled_date"),
-        Index("idx_user_status", "user_id", "status"),
+        Index("idx_training_plan_user_date", "user_id", "scheduled_date"),
+        Index("idx_training_plan_user_status", "user_id", "status"),
     )
 
     plan_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -99,7 +100,7 @@ class TrainingRecord(Base):
     """训练完成记录表"""
     __tablename__ = "training_records"
     __table_args__ = (
-        Index("idx_user_date", "user_id", "completed_at"),
+        Index("idx_training_record_user_date", "user_id", "completed_at"),
     )
 
     record_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -120,8 +121,8 @@ class DietMeal(Base):
     """饮食记录表"""
     __tablename__ = "diet_meals"
     __table_args__ = (
-        Index("idx_user_date", "user_id", "meal_date"),
-        Index("idx_user_type", "user_id", "meal_type"),
+        Index("idx_diet_user_date", "user_id", "meal_date"),
+        Index("idx_diet_user_type", "user_id", "meal_type"),
     )
 
     meal_id = Column(Integer, primary_key=True, autoincrement=True)

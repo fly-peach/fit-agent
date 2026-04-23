@@ -5,6 +5,12 @@ export interface LoginParams {
   password: string
 }
 
+export interface RegisterParams {
+  name: string
+  email: string
+  password: string
+}
+
 export interface LoginResult {
   token: string
   user: {
@@ -18,6 +24,9 @@ export interface LoginResult {
 export const authApi = {
   login: (params: LoginParams): Promise<LoginResult> =>
     api.post('/auth/login', params),
+
+  register: (params: RegisterParams): Promise<LoginResult> =>
+    api.post('/auth/register', params),
 
   logout: () =>
     api.post('/auth/logout'),

@@ -23,6 +23,7 @@ class HealthMetricsResponse(BaseModel):
 class CreateHealthMetricRequest(BaseModel):
     """创建健康指标请求"""
     weight: Optional[float] = None
+    height: Optional[float] = None
     bodyFat: Optional[float] = None
     measureDate: date
 

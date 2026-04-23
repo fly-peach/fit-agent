@@ -1,5 +1,5 @@
 """Training Router"""
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -105,8 +105,8 @@ def create_plan(
 
 @router.put("/plans/{planId}", response_model=BaseResponse)
 def update_plan(
-    planId: int = Path(...),
-    data: UpdateTrainingPlanRequest,
+    planId: int,
+    data: UpdateTrainingPlanRequest = Body(...),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -119,8 +119,8 @@ def update_plan(
 
 @router.post("/complete/{planId}", response_model=BaseResponse)
 def complete_plan(
-    planId: int = Path(...),
-    data: CompleteTrainingRequest,
+    planId: int,
+    data: CompleteTrainingRequest = Body(...),
     current_user = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

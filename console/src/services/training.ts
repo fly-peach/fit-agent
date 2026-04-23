@@ -10,6 +10,7 @@ export interface WeeklyStats {
 }
 
 export interface TrainingSchedule {
+  planId?: number
   dayOfWeek: number
   date: string
   planName: string

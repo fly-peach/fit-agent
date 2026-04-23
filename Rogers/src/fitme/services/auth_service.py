@@ -4,8 +4,8 @@ from typing import Optional
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta
-from ..models import User
-from ..schemas.auth import LoginRequest
+from ..models import User, UserSettings
+from ..schemas.auth import LoginRequest, RegisterRequest
 from ..core.config import settings
 
 
@@ -65,6 +65,42 @@ class AuthService:
                 }
             }
         return None
+
+    @staticmethod
+    def register(db: Session, data: RegisterRequest) -> Optional[dict]:
+        """用户注册"""
+        # 检查邮箱是否已存在
+        existing = db.query(User).filter(User.email == data.email).first()
+        if existing:
+            return None
+
+        # 创建用户
+        user = User(
+            name=data.name,
+            email=data.email,
+            password_hash=AuthService.hash_password(data.password),
+            role="user"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        # 创建用户设置
+        settings = UserSettings(user_id=user.user_id)
+        db.add(settings)
+        db.commit()
+
+        # 返回 token 和用户信息
+        token = AuthService.create_token(user.user_id, user.email)
+        return {
+            "token": token,
+            "user": {
+                "userId": user.user_id,
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+            }
+        }
 
     @staticmethod
     def get_user_from_token(db: Session, token: str) -> Optional[User]:

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import sys
 sys.path.insert(0, "E:/fitagent/rogers/src")
 from fitme.core.config import settings
+from fitme.models import Base
+from fitme.utils.database import engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router
 
@@ -14,6 +16,12 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="FitAgent 健身管理平台 API",
 )
+
+
+@app.on_event("startup")
+def startup():
+    """启动时创建数据库表"""
+    Base.metadata.create_all(bind=engine)
 
 
 app.add_middleware(
