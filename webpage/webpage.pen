@@ -1,0 +1,883 @@
+{
+  "version": "2.11",
+  "children": [
+    {
+      "type": "frame",
+      "id": "Y8GWL",
+      "x": 0,
+      "y": 0,
+      "name": "landing",
+      "width": 1200,
+      "layout": "vertical",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "t4I2t",
+          "name": "nav",
+          "width": "fill_container",
+          "height": 72,
+          "fill": "#FFFFFF",
+          "padding": [
+            0,
+            64
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "RLXVM",
+              "name": "navLogo",
+              "fill": "#3B82F6",
+              "content": "FitAgent",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "07zkY",
+              "name": "navLinks",
+              "gap": 32,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "152tN",
+                  "name": "navLink1",
+                  "fill": "#64748B",
+                  "content": "功能",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "9XekN",
+                  "name": "navLink2",
+                  "fill": "#64748B",
+                  "content": "方案",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "zXkuk",
+                  "name": "navLink3",
+                  "fill": "#64748B",
+                  "content": "关于",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KRdCn",
+              "name": "navBtn",
+              "fill": "#3B82F6",
+              "cornerRadius": 8,
+              "gap": 6,
+              "padding": [
+                10,
+                24
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QynFA",
+                  "name": "navBtnText",
+                  "fill": "#FFFFFF",
+                  "content": "开始使用",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "6JosP",
+          "name": "hero",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            80,
+            64
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "sA3PS",
+              "name": "heroBadge",
+              "fill": "#EFF6FF",
+              "cornerRadius": 20,
+              "gap": 6,
+              "padding": [
+                6,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pzgIj",
+                  "name": "heroBadgeText",
+                  "fill": "#3B82F6",
+                  "content": "AI 驱动的健身智能体",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "G5Bvg",
+              "name": "heroTitle",
+              "fill": "#1E293B",
+              "textGrowth": "fixed-width",
+              "width": 700,
+              "content": "你的健身，由 AI 守护",
+              "lineHeight": 1.2,
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 48,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "NHfb4",
+              "name": "heroDesc",
+              "fill": "#64748B",
+              "textGrowth": "fixed-width",
+              "width": 600,
+              "content": "FitAgent 基于 AI 智能体技术，为你提供个性化的健身方案、实时运动指导、饮食管理和身体数据追踪，让每一次训练都更高效、更安全。",
+              "lineHeight": 1.6,
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "pkzID",
+              "name": "heroBtns",
+              "gap": 16,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "zKVg0",
+                  "name": "heroBtnPrimary",
+                  "fill": "#3B82F6",
+                  "cornerRadius": 8,
+                  "gap": 8,
+                  "padding": [
+                    14,
+                    32
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PBanv",
+                      "name": "heroBtnPrimaryText",
+                      "fill": "#FFFFFF",
+                      "content": "免费开始",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "f7TIh",
+                  "name": "heroBtnSecondary",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E2E8F0"
+                  },
+                  "gap": 8,
+                  "padding": [
+                    14,
+                    32
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NRoyM",
+                      "name": "heroBtnSecondaryText",
+                      "fill": "#3B82F6",
+                      "content": "了解更多",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "500"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hCJ0u",
+          "name": "features",
+          "width": "fill_container",
+          "fill": "#F0F7FF",
+          "layout": "vertical",
+          "gap": 64,
+          "padding": [
+            80,
+            64
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "dn2PQ",
+              "name": "featuresHeader",
+              "layout": "vertical",
+              "gap": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "z8hhC",
+                  "name": "featuresTitle",
+                  "fill": "#1E293B",
+                  "content": "核心功能",
+                  "textAlign": "center",
+                  "fontFamily": "Inter",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "whIZK",
+                  "name": "featuresDesc",
+                  "fill": "#64748B",
+                  "content": "FitAgent 提供全方位的健身服务，帮助你科学训练、高效达成目标",
+                  "textAlign": "center",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IrlcF",
+              "name": "featuresGrid",
+              "gap": 24,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cpcgs",
+                  "name": "feature1",
+                  "width": 280,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zHddd",
+                      "name": "feature1Icon",
+                      "width": 48,
+                      "height": 48,
+                      "fill": "#EFF6FF",
+                      "cornerRadius": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "Bsy3k",
+                          "name": "feature1IconInner",
+                          "width": 24,
+                          "height": 24,
+                          "iconFontName": "activity",
+                          "iconFontFamily": "lucide",
+                          "fill": "#3B82F6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "0LgvN",
+                      "name": "feature1Title",
+                      "fill": "#1E293B",
+                      "content": "个性化训练计划",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "9KFdY",
+                      "name": "feature1Desc",
+                      "fill": "#64748B",
+                      "textGrowth": "fixed-width",
+                      "width": 216,
+                      "content": "根据你的身体状况、目标和偏好，AI 智能生成专属训练方案",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zxmsj",
+                  "name": "feature2",
+                  "width": 280,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kuXTN",
+                      "name": "feature2Icon",
+                      "width": 48,
+                      "height": 48,
+                      "fill": "#DBEAFE",
+                      "cornerRadius": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "ENSEG",
+                          "name": "feature2IconInner",
+                          "width": 24,
+                          "height": 24,
+                          "iconFontName": "chart-bar",
+                          "iconFontFamily": "lucide",
+                          "fill": "#3B82F6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "FCXHu",
+                      "name": "feature2Title",
+                      "fill": "#1E293B",
+                      "content": "智能数据分析",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Pykp5",
+                      "name": "feature2Desc",
+                      "fill": "#64748B",
+                      "textGrowth": "fixed-width",
+                      "width": 216,
+                      "content": "全面追踪你的训练数据，AI 深度分析提供科学建议",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VjbUe",
+                  "name": "feature3",
+                  "width": 280,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": 32,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "bsQLR",
+                      "name": "feature3Icon",
+                      "width": 48,
+                      "height": 48,
+                      "fill": "#EFF6FF",
+                      "cornerRadius": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "qAgSd",
+                          "name": "feature3IconInner",
+                          "width": 24,
+                          "height": 24,
+                          "iconFontName": "apple",
+                          "iconFontFamily": "lucide",
+                          "fill": "#3B82F6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "wjbnR",
+                      "name": "feature3Title",
+                      "fill": "#1E293B",
+                      "content": "智能饮食管理",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hlVYT",
+                      "name": "feature3Desc",
+                      "fill": "#64748B",
+                      "textGrowth": "fixed-width",
+                      "width": 216,
+                      "content": "根据你的训练强度和营养需求，推荐科学合理的饮食计划",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SyzvR",
+          "name": "howItWorks",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "layout": "vertical",
+          "gap": 64,
+          "padding": [
+            80,
+            64
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Kd0VQ",
+              "name": "howItWorksHeader",
+              "layout": "vertical",
+              "gap": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "r1z0G",
+                  "name": "howItWorksTitle",
+                  "fill": "#1E293B",
+                  "content": "如何使用",
+                  "textAlign": "center",
+                  "fontFamily": "Inter",
+                  "fontSize": 36,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "9H3TE",
+                  "name": "howItWorksDesc",
+                  "fill": "#64748B",
+                  "content": "简单的三步，开启你的智能健身之旅",
+                  "textAlign": "center",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mERW1",
+              "name": "stepsContainer",
+              "gap": 48,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XSlo5",
+                  "name": "step1",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pEmCS",
+                      "name": "step1Num",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "#3B82F6",
+                      "cornerRadius": 28,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JdlwN",
+                          "name": "step1NumText",
+                          "fill": "#FFFFFF",
+                          "content": "1",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "HNMX3",
+                      "name": "step1Title",
+                      "fill": "#1E293B",
+                      "content": "创建个人资料",
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Qda8d",
+                      "name": "step1Desc",
+                      "fill": "#64748B",
+                      "content": "填写你的身体数据、健身目标和可用时间",
+                      "lineHeight": 1.6,
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "B1jG1",
+                  "name": "step2",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "pJ7Fw",
+                      "name": "step2Num",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "#3B82F6",
+                      "cornerRadius": 28,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "OlT6t",
+                          "name": "step2NumText",
+                          "fill": "#FFFFFF",
+                          "content": "2",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "D3J0F",
+                      "name": "step2Title",
+                      "fill": "#1E293B",
+                      "content": "获取专属方案",
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "9n5Lu",
+                      "name": "step2Desc",
+                      "fill": "#64748B",
+                      "content": "AI 智能体为你生成个性化的训练和饮食计划",
+                      "lineHeight": 1.6,
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "3SRE8",
+                  "name": "step3",
+                  "width": 280,
+                  "layout": "vertical",
+                  "gap": 16,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n762N",
+                      "name": "step3Num",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "#3B82F6",
+                      "cornerRadius": 28,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "FM40c",
+                          "name": "step3NumText",
+                          "fill": "#FFFFFF",
+                          "content": "3",
+                          "fontFamily": "Inter",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "iYUCi",
+                      "name": "step3Title",
+                      "fill": "#1E293B",
+                      "content": "开始训练追踪",
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 18,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "0Ks5s",
+                      "name": "step3Desc",
+                      "fill": "#64748B",
+                      "content": "跟随计划训练，AI 实时指导并追踪你的进度",
+                      "lineHeight": 1.6,
+                      "textAlign": "center",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p8pct",
+          "name": "cta",
+          "width": "fill_container",
+          "fill": "#EFF6FF",
+          "layout": "vertical",
+          "gap": 32,
+          "padding": [
+            80,
+            64
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jTuGB",
+              "name": "ctaTitle",
+              "fill": "#1E293B",
+              "content": "准备好开始你的健身之旅了吗？",
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 32,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "nc9bC",
+              "name": "ctaDesc",
+              "fill": "#64748B",
+              "content": "加入超过 10,000 名用户，体验 AI 驱动的科学健身",
+              "textAlign": "center",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "wJ7KQ",
+              "name": "ctaBtn",
+              "fill": "#3B82F6",
+              "cornerRadius": 8,
+              "gap": 8,
+              "padding": [
+                16,
+                48
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "qaGCH",
+                  "name": "ctaBtnText",
+                  "fill": "#FFFFFF",
+                  "content": "立即免费开始",
+                  "fontFamily": "Inter",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "appeo",
+          "name": "footer",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": [
+            48,
+            64
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "Jquce",
+              "name": "footerLogo",
+              "fill": "#1E293B",
+              "content": "FitAgent",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "kBi69",
+              "name": "footerLinks",
+              "gap": 32,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "p7alL",
+                  "name": "footerLink1",
+                  "fill": "#64748B",
+                  "content": "隐私政策",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Yp4o7",
+                  "name": "footerLink2",
+                  "fill": "#64748B",
+                  "content": "服务条款",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "p14H7",
+                  "name": "footerLink3",
+                  "fill": "#64748B",
+                  "content": "联系我们",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "i8EtD",
+              "name": "footerCopyright",
+              "fill": "#64748B",
+              "content": "© 2026 FitAgent. All rights reserved.",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "primary": {
+      "type": "color",
+      "value": "#3B82F6"
+    },
+    "primary-bg": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "primary-dark": {
+      "type": "color",
+      "value": "#2563EB"
+    },
+    "primary-light": {
+      "type": "color",
+      "value": "#EFF6FF"
+    },
+    "primary-lighter": {
+      "type": "color",
+      "value": "#F0F7FF"
+    },
+    "text-muted": {
+      "type": "color",
+      "value": "#94A3B8"
+    },
+    "text-primary": {
+      "type": "color",
+      "value": "#1E293B"
+    },
+    "text-secondary": {
+      "type": "color",
+      "value": "#64748B"
+    }
+  },
+  "imports": {
+    "y": "pencil:nitro.lib.pen"
+  }
+}

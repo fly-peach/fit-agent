@@ -1,0 +1,3655 @@
+{
+  "version": "2.11",
+  "children": [
+    {
+      "type": "frame",
+      "id": "obtdf",
+      "x": 0,
+      "y": 0,
+      "name": "Mobile Dashboard",
+      "clip": true,
+      "width": 375,
+      "height": 1000,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "Vk0ZJ",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "TUZHJ",
+              "name": "Back Button",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "xZ0Rw",
+                  "name": "backIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "arrow-left",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "CEIqH",
+              "name": "Title",
+              "fill": "#333333",
+              "content": "健康数据",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "6dqMj",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "s3KT7",
+              "name": "Notification Button",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "veflA",
+                  "name": "notifIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "bell",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xQEsI",
+              "name": "Avatar",
+              "width": 36,
+              "height": 36,
+              "fill": "#DBEAFE",
+              "cornerRadius": 18,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "87dAG",
+                  "name": "avatarIcon",
+                  "width": 18,
+                  "height": 18,
+                  "iconFontName": "user",
+                  "iconFontFamily": "lucide",
+                  "fill": "#3B82F6"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QFTai",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "UTIjp",
+              "name": "Profile Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BiNra",
+                  "name": "Profile Header",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "wNW1D",
+                      "name": "Avatar Circle",
+                      "width": 56,
+                      "height": 56,
+                      "fill": "#DBEAFE",
+                      "cornerRadius": 28,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "cDs7a",
+                          "name": "profileAvatarIcon",
+                          "width": 28,
+                          "height": 28,
+                          "iconFontName": "user",
+                          "iconFontFamily": "lucide",
+                          "fill": "#3B82F6"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "5Hn5h",
+                      "name": "Profile Info",
+                      "layout": "vertical",
+                      "gap": 4,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "3HJMk",
+                          "name": "Name",
+                          "fill": "#333333",
+                          "content": "Admin",
+                          "fontFamily": "Roboto",
+                          "fontSize": 18,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "YEsQf",
+                          "name": "Detail",
+                          "fill": "#5B5F66",
+                          "content": "22岁 | 男 | 178cm",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v5VBW",
+                  "name": "Metrics Grid",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    16,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "AqSKv",
+                      "name": "Metrics Row 1",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "RoDDD",
+                          "name": "Metric - Weight",
+                          "width": "fill_container",
+                          "fill": "#F5F5F5",
+                          "cornerRadius": 10,
+                          "layout": "vertical",
+                          "gap": 6,
+                          "padding": 12,
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "kRjxN",
+                              "name": "weightIcon",
+                              "width": 20,
+                              "height": 20,
+                              "iconFontName": "scale",
+                              "iconFontFamily": "lucide",
+                              "fill": "#EF4444"
+                            },
+                            {
+                              "type": "text",
+                              "id": "MePlA",
+                              "name": "Label",
+                              "fill": "#5B5F66",
+                              "content": "体重",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "UCHWY",
+                              "name": "Value",
+                              "fill": "#333333",
+                              "content": "88.65kg",
+                              "fontFamily": "Roboto",
+                              "fontSize": 20,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "2KEGN",
+                              "name": "Badge",
+                              "fill": "#FEE2E2",
+                              "cornerRadius": 4,
+                              "padding": [
+                                2,
+                                6
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "hlulD",
+                                  "name": "Badge Text",
+                                  "fill": "#991B1B",
+                                  "content": "过重",
+                                  "fontFamily": "Roboto",
+                                  "fontSize": 10,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kFMzb",
+                          "name": "Metric - Height",
+                          "width": "fill_container",
+                          "fill": "#F5F5F5",
+                          "cornerRadius": 10,
+                          "layout": "vertical",
+                          "gap": 6,
+                          "padding": 12,
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "r9lxT",
+                              "name": "heightIcon",
+                              "width": 20,
+                              "height": 20,
+                              "iconFontName": "ruler",
+                              "iconFontFamily": "lucide",
+                              "fill": "#3B82F6"
+                            },
+                            {
+                              "type": "text",
+                              "id": "dZTE4",
+                              "name": "Label",
+                              "fill": "#5B5F66",
+                              "content": "身高",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "daVmw",
+                              "name": "Value",
+                              "fill": "#333333",
+                              "content": "178cm",
+                              "fontFamily": "Roboto",
+                              "fontSize": 20,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "TW1M7",
+                              "name": "Badge",
+                              "fill": "#D1FAE5",
+                              "cornerRadius": 4,
+                              "padding": [
+                                2,
+                                6
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "SJawC",
+                                  "name": "Badge Text",
+                                  "fill": "#065F46",
+                                  "content": "标准",
+                                  "fontFamily": "Roboto",
+                                  "fontSize": 10,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mQaVR",
+                      "name": "Metrics Row 2",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "A89Zh",
+                          "name": "Metric - Body Fat",
+                          "width": "fill_container",
+                          "fill": "#F5F5F5",
+                          "cornerRadius": 10,
+                          "layout": "vertical",
+                          "gap": 6,
+                          "padding": 12,
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "uMoY2",
+                              "name": "fatIcon",
+                              "width": 20,
+                              "height": 20,
+                              "iconFontName": "droplets",
+                              "iconFontFamily": "lucide",
+                              "fill": "#F59E0B"
+                            },
+                            {
+                              "type": "text",
+                              "id": "giOXn",
+                              "name": "Label",
+                              "fill": "#5B5F66",
+                              "content": "体脂率",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "B3zcR",
+                              "name": "Value",
+                              "fill": "#333333",
+                              "content": "22.44%",
+                              "fontFamily": "Roboto",
+                              "fontSize": 20,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "lof1F",
+                              "name": "Badge",
+                              "fill": "#FEF3C7",
+                              "cornerRadius": 4,
+                              "padding": [
+                                2,
+                                6
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "byyXe",
+                                  "name": "Badge Text",
+                                  "fill": "#92400E",
+                                  "content": "轻度肥胖",
+                                  "fontFamily": "Roboto",
+                                  "fontSize": 10,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "3Bkpu",
+                          "name": "Metric - BMI",
+                          "width": "fill_container",
+                          "fill": "#F5F5F5",
+                          "cornerRadius": 10,
+                          "layout": "vertical",
+                          "gap": 6,
+                          "padding": 12,
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "7rW4H",
+                              "name": "bmiIcon",
+                              "width": 20,
+                              "height": 20,
+                              "iconFontName": "calculator",
+                              "iconFontFamily": "lucide",
+                              "fill": "#8B5CF6"
+                            },
+                            {
+                              "type": "text",
+                              "id": "Xq6eY",
+                              "name": "Label",
+                              "fill": "#5B5F66",
+                              "content": "BMI",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "sCIWm",
+                              "name": "Value",
+                              "fill": "#333333",
+                              "content": "27.98",
+                              "fontFamily": "Roboto",
+                              "fontSize": 20,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "9n2HJ",
+                              "name": "Badge",
+                              "fill": "#FEF3C7",
+                              "cornerRadius": 4,
+                              "padding": [
+                                2,
+                                6
+                              ],
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "NCW5U",
+                                  "name": "Badge Text",
+                                  "fill": "#92400E",
+                                  "content": "偏胖",
+                                  "fontFamily": "Roboto",
+                                  "fontSize": 10,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sDCcE",
+              "name": "Filter Section",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XAQ93",
+                  "name": "Filter Tabs",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "lkzNy",
+                      "name": "Tab All",
+                      "fill": "#0F5FFE",
+                      "cornerRadius": 8,
+                      "gap": 4,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "rNwor",
+                          "name": "Label",
+                          "fill": "#FFFFFF",
+                          "content": "全部",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "RmBXX",
+                      "name": "Tab Pass",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 4,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h3Jv0",
+                          "name": "Label",
+                          "fill": "#5B5F66",
+                          "content": "16项达标",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "DBnQj",
+                          "name": "tabPassIcon",
+                          "width": 12,
+                          "height": 12,
+                          "iconFontName": "check",
+                          "iconFontFamily": "lucide",
+                          "fill": "#10B981"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tkoz2",
+                      "name": "Tab Low",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 4,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "e4nz5",
+                          "name": "Label",
+                          "fill": "#5B5F66",
+                          "content": "1项偏低",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "pkdKU",
+                          "name": "tabLowIcon",
+                          "width": 12,
+                          "height": 12,
+                          "iconFontName": "arrow-down",
+                          "iconFontFamily": "lucide",
+                          "fill": "#EF4444"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zpuA2",
+                      "name": "Tab High",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 4,
+                      "padding": [
+                        6,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "R4O4M",
+                          "name": "Label",
+                          "fill": "#5B5F66",
+                          "content": "8项偏高",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "kHBGR",
+                          "name": "tabHighIcon",
+                          "width": 12,
+                          "height": 12,
+                          "iconFontName": "arrow-up",
+                          "iconFontFamily": "lucide",
+                          "fill": "#F59E0B"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DX3i2",
+              "name": "Data Report",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "izXdZ",
+                  "name": "Report Header",
+                  "width": "fill_container",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": {
+                      "bottom": 1
+                    },
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 16,
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zTaAQ",
+                      "name": "Title",
+                      "fill": "#333333",
+                      "content": "健康数据报表",
+                      "fontFamily": "Roboto",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FrDAa",
+                      "name": "Spacer",
+                      "width": "fill_container",
+                      "height": "fit_content(0)"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zbDry",
+                      "name": "Period",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 6,
+                      "gap": 6,
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "Rs09G",
+                          "name": "reportPeriodIcon",
+                          "width": 14,
+                          "height": 14,
+                          "iconFontName": "calendar",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "W6HGW",
+                          "name": "Text",
+                          "fill": "#5B5F66",
+                          "content": "近30天",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FwIxg",
+                  "name": "Weight Trend",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "40Sge",
+                      "name": "Chart Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "OzWug",
+                          "name": "Title Area",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "LrpOr",
+                              "name": "Label",
+                              "fill": "#333333",
+                              "content": "体重趋势",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "mbbkc",
+                              "name": "Subtitle",
+                              "fill": "#10B981",
+                              "content": "-0.45kg",
+                              "fontFamily": "Roboto",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "oWkLy",
+                          "name": "Badge",
+                          "fill": "#FEE2E2",
+                          "cornerRadius": 4,
+                          "padding": [
+                            3,
+                            8
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "afb86",
+                              "name": "Badge Text",
+                              "fill": "#991B1B",
+                              "content": "过重",
+                              "fontFamily": "Roboto",
+                              "fontSize": 10,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "7DiW0",
+                      "name": "Chart Area",
+                      "width": "fill_container",
+                      "height": 100,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 6,
+                      "padding": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "rnvRp",
+                          "name": "Bars Container",
+                          "width": "fill_container",
+                          "gap": 4,
+                          "padding": [
+                            0,
+                            0,
+                            8,
+                            0
+                          ],
+                          "alignItems": "end",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "yVQQV",
+                              "name": "Bar 1",
+                              "opacity": 0.3,
+                              "width": "fill_container",
+                              "height": 50,
+                              "fill": "#3B82F6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "eKxfi",
+                              "name": "Bar 2",
+                              "opacity": 0.35,
+                              "width": "fill_container",
+                              "height": 55,
+                              "fill": "#3B82F6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "bSyu5",
+                              "name": "Bar 3",
+                              "opacity": 0.4,
+                              "width": "fill_container",
+                              "height": 60,
+                              "fill": "#3B82F6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "5FtlR",
+                              "name": "Bar 4",
+                              "opacity": 0.45,
+                              "width": "fill_container",
+                              "height": 58,
+                              "fill": "#3B82F6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "PKPKZ",
+                              "name": "Bar 5",
+                              "opacity": 0.5,
+                              "width": "fill_container",
+                              "height": 62,
+                              "fill": "#3B82F6",
+                              "cornerRadius": 3
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zvIVr",
+                  "name": "BMI Trend",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 10,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 10,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "3YbPr",
+                      "name": "Chart Header",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Uodgm",
+                          "name": "Title Area",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "FjbJk",
+                              "name": "Label",
+                              "fill": "#333333",
+                              "content": "BMI 趋势",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "LEm9g",
+                              "name": "Subtitle",
+                              "fill": "#10B981",
+                              "content": "-0.14",
+                              "fontFamily": "Roboto",
+                              "fontSize": 11,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "erCSx",
+                          "name": "Badge",
+                          "fill": "#FEF3C7",
+                          "cornerRadius": 4,
+                          "padding": [
+                            3,
+                            8
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "goBuD",
+                              "name": "Badge Text",
+                              "fill": "#92400E",
+                              "content": "偏胖",
+                              "fontFamily": "Roboto",
+                              "fontSize": 10,
+                              "fontWeight": "500"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "soj9L",
+                      "name": "Chart Area",
+                      "width": "fill_container",
+                      "height": 80,
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 6,
+                      "padding": 8,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "5GJpC",
+                          "name": "Bars Container",
+                          "width": "fill_container",
+                          "gap": 4,
+                          "padding": [
+                            0,
+                            0,
+                            8,
+                            0
+                          ],
+                          "alignItems": "end",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "QFvcS",
+                              "name": "Bar 1",
+                              "opacity": 0.3,
+                              "width": "fill_container",
+                              "height": 40,
+                              "fill": "#8B5CF6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "xxLru",
+                              "name": "Bar 2",
+                              "opacity": 0.35,
+                              "width": "fill_container",
+                              "height": 45,
+                              "fill": "#8B5CF6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MPr1I",
+                              "name": "Bar 3",
+                              "opacity": 0.4,
+                              "width": "fill_container",
+                              "height": 50,
+                              "fill": "#8B5CF6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "MhAMH",
+                              "name": "Bar 4",
+                              "opacity": 0.45,
+                              "width": "fill_container",
+                              "height": 48,
+                              "fill": "#8B5CF6",
+                              "cornerRadius": 3
+                            },
+                            {
+                              "type": "frame",
+                              "id": "simPp",
+                              "name": "Bar 5",
+                              "opacity": 0.5,
+                              "width": "fill_container",
+                              "height": 52,
+                              "fill": "#8B5CF6",
+                              "cornerRadius": 3
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DuB7J",
+          "name": "Bottom Navigation",
+          "width": "fill_container",
+          "height": 60,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "top": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "eiW2I",
+              "name": "Nav Items",
+              "width": "fill_container",
+              "padding": [
+                8,
+                16
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "InsFp",
+                  "name": "Nav Health",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "oxSTE",
+                      "name": "navHealthIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "heart-pulse",
+                      "iconFontFamily": "lucide",
+                      "fill": "#0F5FFE"
+                    },
+                    {
+                      "type": "text",
+                      "id": "PqveA",
+                      "name": "Label",
+                      "fill": "#0F5FFE",
+                      "content": "健康",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "2GO0n",
+                  "name": "Nav Diet",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "1z1DH",
+                      "name": "navDietIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "apple",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "q2Gl1",
+                      "name": "Label",
+                      "fill": "#5B5F66",
+                      "content": "饮食",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "1aUyv",
+                  "name": "Nav Plan",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "ZIZhu",
+                      "name": "navPlanIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "clipboard-list",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Q7ASC",
+                      "name": "Label",
+                      "fill": "#5B5F66",
+                      "content": "训练",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "UQF1b",
+                  "name": "Nav Profile",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "kDSV4",
+                      "name": "navProfileIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "user",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "0CFrQ",
+                      "name": "Label",
+                      "fill": "#5B5F66",
+                      "content": "我的",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "wH16o",
+      "x": 500,
+      "y": 0,
+      "name": "Mobile Fitness",
+      "clip": true,
+      "width": 375,
+      "height": 667,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "94Ac9",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "mdLAS",
+              "name": "fitBack",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "FFuXf",
+                  "name": "fitBackIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "arrow-left",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "8sAfG",
+              "name": "fitTitle",
+              "fill": "#333333",
+              "content": "训练计划",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "iDddQ",
+              "name": "fitSpacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "MkbIr",
+              "name": "fitAddBtn",
+              "fill": "#0F5FFE",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "KIE5Z",
+                  "name": "fitAddIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "oJ2ml",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "NH5go",
+              "name": "Date Picker",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "padding": 16,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eXuFB",
+                  "name": "fitDateLeft",
+                  "fill": "#F2F3F0",
+                  "cornerRadius": 8,
+                  "padding": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "TxzsD",
+                      "name": "fitDateLeftIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron-left",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mgGtW",
+                  "name": "Date Info",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "I4hR2",
+                      "name": "fitDateText",
+                      "fill": "#333333",
+                      "content": "2026年4月23日",
+                      "fontFamily": "Roboto",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "lUiG3",
+                      "name": "fitDateWeek",
+                      "fill": "#5B5F66",
+                      "content": "星期三",
+                      "fontFamily": "Roboto",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FWrga",
+                  "name": "fitDateRight",
+                  "fill": "#F2F3F0",
+                  "cornerRadius": 8,
+                  "padding": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "9PbwN",
+                      "name": "fitDateRightIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron-right",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Bvk0q",
+              "name": "Plan Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Esevp",
+                  "name": "Plan Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MovC4",
+                      "name": "fitPlanTitle",
+                      "fill": "#333333",
+                      "content": "今日训练计划",
+                      "fontFamily": "Roboto",
+                      "fontSize": 16,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SEuo0",
+                      "name": "fitPlanStatus",
+                      "fill": "#D1FAE5",
+                      "cornerRadius": 4,
+                      "padding": [
+                        4,
+                        8
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "0KNAO",
+                          "name": "fitPlanStatusText",
+                          "fill": "#065F46",
+                          "content": "进行中",
+                          "fontFamily": "Roboto",
+                          "fontSize": 11,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "k2O9l",
+                  "name": "Plan List",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "wpP7I",
+                      "name": "Plan Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 8,
+                      "padding": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "InuEn",
+                          "name": "fitPlan1Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "dumbbell",
+                          "iconFontFamily": "lucide",
+                          "fill": "#0F5FFE"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "wohSf",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "jeYKA",
+                              "name": "fitPlan1Name",
+                              "fill": "#333333",
+                              "content": "力量训练 - 上肢",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "rwTq3",
+                              "name": "fitPlan1Time",
+                              "fill": "#5B5F66",
+                              "content": "30分钟 | 8组动作",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "O2dIT",
+                          "name": "fitPlan1Badge",
+                          "fill": "#DBEAFE",
+                          "cornerRadius": 4,
+                          "padding": [
+                            4,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "X4VhZ",
+                              "name": "fitPlan1BadgeText",
+                              "fill": "#0F5FFE",
+                              "content": "待完成",
+                              "fontFamily": "Roboto",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hV2cm",
+                      "name": "Plan Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 8,
+                      "padding": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "xDX5Z",
+                          "name": "fitPlan2Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "bike",
+                          "iconFontFamily": "lucide",
+                          "fill": "#10B981"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "yol1u",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zZtML",
+                              "name": "fitPlan2Name",
+                              "fill": "#333333",
+                              "content": "有氧运动 - 跑步",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "U93gx",
+                              "name": "fitPlan2Time",
+                              "fill": "#5B5F66",
+                              "content": "20分钟 | 热身+慢跑",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "hthZc",
+                          "name": "fitPlan2Badge",
+                          "fill": "#D1FAE5",
+                          "cornerRadius": 4,
+                          "padding": [
+                            4,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "t749w",
+                              "name": "fitPlan2BadgeText",
+                              "fill": "#065F46",
+                              "content": "已完成",
+                              "fontFamily": "Roboto",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E7XfL",
+                      "name": "Plan Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 8,
+                      "padding": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "tk9bA",
+                          "name": "fitPlan3Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "stretch-horizontal",
+                          "iconFontFamily": "lucide",
+                          "fill": "#F59E0B"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "op5j0",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "vLhNK",
+                              "name": "fitPlan3Name",
+                              "fill": "#333333",
+                              "content": "拉伸放松",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "1gyZe",
+                              "name": "fitPlan3Time",
+                              "fill": "#5B5F66",
+                              "content": "10分钟 | 全身拉伸",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ojWsd",
+                          "name": "fitPlan3Badge",
+                          "fill": "#DBEAFE",
+                          "cornerRadius": 4,
+                          "padding": [
+                            4,
+                            8
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "ELoQc",
+                              "name": "fitPlan3BadgeText",
+                              "fill": "#0F5FFE",
+                              "content": "待完成",
+                              "fontFamily": "Roboto",
+                              "fontSize": 10,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "X92SK",
+              "name": "Stats Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xDfiP",
+                  "name": "fitStatsTitle",
+                  "fill": "#333333",
+                  "content": "本周训练统计",
+                  "fontFamily": "Roboto",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "x10ER",
+                  "name": "Stats Grid",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "JNMjX",
+                      "name": "Stat Card",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "b3X1D",
+                          "name": "fitStatIconBg1",
+                          "width": 48,
+                          "height": 48,
+                          "fill": "#FEE2E2",
+                          "cornerRadius": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "f4mKw",
+                              "name": "fitStatNewIcon1",
+                              "width": 24,
+                              "height": 24,
+                              "iconFontName": "flame",
+                              "iconFontFamily": "lucide",
+                              "fill": "#EF4444"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "a4k23",
+                          "name": "fitStatNewValue1",
+                          "fill": "#333333",
+                          "content": "1,280",
+                          "fontFamily": "Roboto",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yHmGM",
+                          "name": "fitStatNewLabel1",
+                          "fill": "#5B5F66",
+                          "content": "消耗卡路里",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YbNcf",
+                      "name": "Stat Card",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "YVs37",
+                          "name": "fitStatIconBg2",
+                          "width": 48,
+                          "height": 48,
+                          "fill": "#DBEAFE",
+                          "cornerRadius": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "LijPC",
+                              "name": "fitStatNewIcon2",
+                              "width": 24,
+                              "height": 24,
+                              "iconFontName": "timer",
+                              "iconFontFamily": "lucide",
+                              "fill": "#3B82F6"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "jKANK",
+                          "name": "fitStatNewValue2",
+                          "fill": "#333333",
+                          "content": "4.5h",
+                          "fontFamily": "Roboto",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "9AMTk",
+                          "name": "fitStatNewLabel2",
+                          "fill": "#5B5F66",
+                          "content": "训练时长",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "g9DJK",
+                      "name": "Stat Card",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "layout": "vertical",
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "hMW6x",
+                          "name": "fitStatIconBg3",
+                          "width": 48,
+                          "height": 48,
+                          "fill": "#FEF3C7",
+                          "cornerRadius": 12,
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "LRfJk",
+                              "name": "fitStatNewIcon3",
+                              "width": 24,
+                              "height": 24,
+                              "iconFontName": "trophy",
+                              "iconFontFamily": "lucide",
+                              "fill": "#F59E0B"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "QNvOP",
+                          "name": "fitStatNewValue3",
+                          "fill": "#333333",
+                          "content": "5",
+                          "fontFamily": "Roboto",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kzA0J",
+                          "name": "fitStatNewLabel3",
+                          "fill": "#5B5F66",
+                          "content": "完成次数",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FE1Gd",
+          "name": "Bottom Navigation",
+          "width": "fill_container",
+          "height": 60,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "top": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "kWVly",
+              "name": "Nav Items",
+              "width": "fill_container",
+              "padding": [
+                8,
+                16
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pCuRs",
+                  "name": "fitNavHealth",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "ThHp5",
+                      "name": "fitNavHealthIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "heart-pulse",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "9i6Mu",
+                      "name": "fitNavHealthText",
+                      "fill": "#5B5F66",
+                      "content": "健康",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HZL7O",
+                  "name": "fitNavDiet",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "Xxksz",
+                      "name": "fitNavDietIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "apple",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "2V6Xx",
+                      "name": "fitNavDietText",
+                      "fill": "#5B5F66",
+                      "content": "饮食",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "A3Kuc",
+                  "name": "fitNavPlan",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "RgLTt",
+                      "name": "fitNavPlanIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "clipboard-list",
+                      "iconFontFamily": "lucide",
+                      "fill": "#0F5FFE"
+                    },
+                    {
+                      "type": "text",
+                      "id": "0KNx0",
+                      "name": "fitNavPlanText",
+                      "fill": "#0F5FFE",
+                      "content": "训练",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rxQe3",
+                  "name": "fitNavProfile",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "67Qcs",
+                      "name": "fitNavProfileIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "user",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rEPUD",
+                      "name": "fitNavProfileText",
+                      "fill": "#5B5F66",
+                      "content": "我的",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "701Td",
+      "x": 1000,
+      "y": 0,
+      "name": "Mobile Diet",
+      "clip": true,
+      "width": 375,
+      "height": 667,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "SNzCp",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "YjJZJ",
+              "name": "dietBack",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "JgriF",
+                  "name": "dietBackIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "arrow-left",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "A1tff",
+              "name": "dietTitle",
+              "fill": "#333333",
+              "content": "饮食管理",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "GI368",
+              "name": "dietSpacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "9y4Fn",
+              "name": "dietAddBtn",
+              "fill": "#0F5FFE",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "FuKnz",
+                  "name": "dietAddIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "plus",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "d5k5U",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ipgdg",
+              "name": "Date Picker",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "padding": 16,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "1TPa7",
+                  "name": "dietDateLeft",
+                  "fill": "#F2F3F0",
+                  "cornerRadius": 8,
+                  "padding": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "RoglE",
+                      "name": "dietDateLeftIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron-left",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mNnHc",
+                  "name": "Date Info",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "O6ka4",
+                      "name": "dietDateText",
+                      "fill": "#333333",
+                      "content": "2026年4月23日",
+                      "fontFamily": "Roboto",
+                      "fontSize": 15,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ytzS5",
+                      "name": "dietDateWeek",
+                      "fill": "#5B5F66",
+                      "content": "星期三",
+                      "fontFamily": "Roboto",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "TqAwo",
+                  "name": "dietDateRight",
+                  "fill": "#F2F3F0",
+                  "cornerRadius": 8,
+                  "padding": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "yLvTr",
+                      "name": "dietDateRightIcon",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "chevron-right",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qjUH4",
+              "name": "Calorie Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VAPVz",
+                  "name": "dietCalorieTitle",
+                  "fill": "#333333",
+                  "content": "今日热量摄入",
+                  "fontFamily": "Roboto",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "U54AI",
+                  "name": "Calorie Row",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    16,
+                    0,
+                    0,
+                    0
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "M3z7G",
+                      "name": "dietCalorieHeader",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "b9hbR",
+                          "name": "dietCalorieValueNew",
+                          "fill": "#333333",
+                          "content": "1,850 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 20,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "UWFFo",
+                          "name": "dietCalorieGoalNew",
+                          "fill": "#5B5F66",
+                          "content": "目标 2,000 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "IiXpm",
+                      "name": "Progress Bar",
+                      "width": "fill_container",
+                      "height": 12,
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 6,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "hycGn",
+                          "name": "Progress Fill",
+                          "width": "fill_container",
+                          "height": 12,
+                          "fill": "#10B981",
+                          "cornerRadius": 6
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "hrXwG",
+                      "name": "dietProgressLabel",
+                      "width": "fill_container",
+                      "justifyContent": "space_between",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "3iJYq",
+                          "name": "dietProgressLeft",
+                          "fill": "#10B981",
+                          "content": "已摄入 92%",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ER1yz",
+                          "name": "dietProgressRight",
+                          "fill": "#5B5F66",
+                          "content": "剩余 150 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Q7S0y",
+              "name": "Meals Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "PL8Vl",
+                  "name": "dietMealsTitle",
+                  "fill": "#333333",
+                  "content": "今日餐食记录",
+                  "fontFamily": "Roboto",
+                  "fontSize": 16,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "pmGng",
+                  "name": "Meals List",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": [
+                    12,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ABTRp",
+                      "name": "Meal Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E1E2E5"
+                      },
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "57GzR",
+                          "name": "meal1Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "sunrise",
+                          "iconFontFamily": "lucide",
+                          "fill": "#F59E0B"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "lVXan",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "GNAK3",
+                              "name": "meal1Name",
+                              "fill": "#333333",
+                              "content": "早餐",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "TxWXy",
+                              "name": "meal1Desc",
+                              "fill": "#5B5F66",
+                              "content": "燕麦粥 + 鸡蛋 + 牛奶",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Tvk13",
+                          "name": "meal1Cal",
+                          "fill": "#333333",
+                          "content": "450 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rviG7",
+                      "name": "Meal Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E1E2E5"
+                      },
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "3z6vc",
+                          "name": "meal2Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "sun",
+                          "iconFontFamily": "lucide",
+                          "fill": "#EF4444"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "k5Nqm",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "5lpHi",
+                              "name": "meal2Name",
+                              "fill": "#333333",
+                              "content": "午餐",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "snBgK",
+                              "name": "meal2Desc",
+                              "fill": "#5B5F66",
+                              "content": "糙米饭 + 烤鸡胸 + 蔬菜",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "yTXFD",
+                          "name": "meal2Cal",
+                          "fill": "#333333",
+                          "content": "650 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AzL2i",
+                      "name": "Meal Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E1E2E5"
+                      },
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "yTfPS",
+                          "name": "meal3Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "moon",
+                          "iconFontFamily": "lucide",
+                          "fill": "#8B5CF6"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "IblaI",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "HhAzJ",
+                              "name": "meal3Name",
+                              "fill": "#333333",
+                              "content": "晚餐",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "zisqK",
+                              "name": "meal3Desc",
+                              "fill": "#5B5F66",
+                              "content": "沙拉 + 三文鱼 + 全麦面包",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "wflaL",
+                          "name": "meal3Cal",
+                          "fill": "#333333",
+                          "content": "550 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "zWRUB",
+                      "name": "Meal Item",
+                      "width": "fill_container",
+                      "fill": "#F5F5F5",
+                      "cornerRadius": 10,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#E1E2E5"
+                      },
+                      "padding": 16,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "Ycuzg",
+                          "name": "meal4Icon",
+                          "width": 20,
+                          "height": 20,
+                          "iconFontName": "cookie",
+                          "iconFontFamily": "lucide",
+                          "fill": "#10B981"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "XzGEO",
+                          "name": "Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            12
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "z1dG5",
+                              "name": "meal4Name",
+                              "fill": "#333333",
+                              "content": "加餐",
+                              "fontFamily": "Roboto",
+                              "fontSize": 14,
+                              "fontWeight": "500"
+                            },
+                            {
+                              "type": "text",
+                              "id": "1zuSn",
+                              "name": "meal4Desc",
+                              "fill": "#5B5F66",
+                              "content": "坚果 + 酸奶",
+                              "fontFamily": "Roboto",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "V4hHB",
+                          "name": "meal4Cal",
+                          "fill": "#333333",
+                          "content": "200 kcal",
+                          "fontFamily": "Roboto",
+                          "fontSize": 14,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Wf5ik",
+          "name": "Bottom Navigation",
+          "width": "fill_container",
+          "height": 60,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "top": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "xc3sR",
+              "name": "Nav Items",
+              "width": "fill_container",
+              "padding": [
+                8,
+                16
+              ],
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "BtQSF",
+                  "name": "dietNavHealth",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "how98",
+                      "name": "dietNavHealthIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "heart-pulse",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aP8Vx",
+                      "name": "dietNavHealthText",
+                      "fill": "#5B5F66",
+                      "content": "健康",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GE1Bj",
+                  "name": "dietNavDiet",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "3jBD2",
+                      "name": "dietNavDietIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "apple",
+                      "iconFontFamily": "lucide",
+                      "fill": "#0F5FFE"
+                    },
+                    {
+                      "type": "text",
+                      "id": "LLCQ2",
+                      "name": "dietNavDietText",
+                      "fill": "#0F5FFE",
+                      "content": "饮食",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "7xsAe",
+                  "name": "dietNavPlan",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "Y77xc",
+                      "name": "dietNavPlanIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "clipboard-list",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZzpCq",
+                      "name": "dietNavPlanText",
+                      "fill": "#5B5F66",
+                      "content": "训练",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XHUhn",
+                  "name": "dietNavProfile",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "2hl3O",
+                      "name": "dietNavProfileIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "user",
+                      "iconFontFamily": "lucide",
+                      "fill": "#5B5F66"
+                    },
+                    {
+                      "type": "text",
+                      "id": "XNhbf",
+                      "name": "dietNavProfileText",
+                      "fill": "#5B5F66",
+                      "content": "我的",
+                      "fontFamily": "Roboto",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "a8GX1",
+      "x": 485,
+      "y": 796,
+      "name": "Add Fitness Plan",
+      "clip": true,
+      "width": 375,
+      "height": 667,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "pxgN1",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "vrKCJ",
+              "name": "addFitBack",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "MpHCV",
+                  "name": "addFitBackIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "x",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "jvSGd",
+              "name": "addFitTitle",
+              "fill": "#333333",
+              "content": "添加训练计划",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "Rdwe9",
+              "name": "addFitSpacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "G13M3",
+              "name": "addFitSave",
+              "fill": "#0F5FFE",
+              "cornerRadius": 8,
+              "padding": [
+                8,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cDoZu",
+                  "name": "addFitSaveText",
+                  "fill": "#FFFFFF",
+                  "content": "保存",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MUGvi",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CXpLw",
+              "name": "Form Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "9TVEN",
+                  "name": "addFitTypeLabel",
+                  "fill": "#333333",
+                  "content": "训练类型",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "hX3tu",
+                  "name": "Type Options",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "8YxQI",
+                      "name": "addFitType1",
+                      "fill": "#0F5FFE",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "lsfYS",
+                          "name": "addFitType1Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "dumbbell",
+                          "iconFontFamily": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "OfRLC",
+                          "name": "addFitType1Text",
+                          "fill": "#FFFFFF",
+                          "content": "力量训练",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "3nIxj",
+                      "name": "addFitType2",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "eLesQ",
+                          "name": "addFitType2Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "bike",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "dFu9R",
+                          "name": "addFitType2Text",
+                          "fill": "#5B5F66",
+                          "content": "有氧运动",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jOtEK",
+                      "name": "addFitType3",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "E3IAe",
+                          "name": "addFitType3Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "stretch-horizontal",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "FnlFO",
+                          "name": "addFitType3Text",
+                          "fill": "#5B5F66",
+                          "content": "拉伸放松",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "UxXiu",
+                  "name": "addFitNameLabel",
+                  "fill": "#333333",
+                  "content": "训练名称",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "DWyPX",
+                  "name": "Input",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "i0YQc",
+                      "name": "addFitNamePlaceholder",
+                      "fill": "#999999",
+                      "content": "输入训练名称...",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Zjh7d",
+                  "name": "addFitTimeLabel",
+                  "fill": "#333333",
+                  "content": "训练时长（分钟）",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "les3d",
+                  "name": "Input",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jGoJt",
+                      "name": "addFitTimeValue",
+                      "fill": "#333333",
+                      "content": "30",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "IXUsq",
+                  "name": "addFitNoteLabel",
+                  "fill": "#333333",
+                  "content": "备注",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "2utsg",
+                  "name": "Textarea",
+                  "width": "fill_container",
+                  "height": 80,
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "miFfZ",
+                      "name": "addFitNotePlaceholder",
+                      "fill": "#999999",
+                      "content": "添加训练备注...",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "GJ0WF",
+      "x": 1000,
+      "y": 796,
+      "name": "Add Diet Record",
+      "clip": true,
+      "width": 375,
+      "height": 667,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "93Hsn",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "EY1B5",
+              "name": "addDietBack",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "yIE8y",
+                  "name": "addDietBackIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "x",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "s1PNB",
+              "name": "addDietTitle",
+              "fill": "#333333",
+              "content": "添加饮食记录",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "q9cWx",
+              "name": "addDietSpacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "vGhHO",
+              "name": "addDietSave",
+              "fill": "#0F5FFE",
+              "cornerRadius": 8,
+              "padding": [
+                8,
+                16
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "C0Jd4",
+                  "name": "addDietSaveText",
+                  "fill": "#FFFFFF",
+                  "content": "保存",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "2fnzr",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "9Xlha",
+              "name": "Form Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "f93JC",
+                  "name": "addDietMealLabel",
+                  "fill": "#333333",
+                  "content": "餐食类型",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "10A24",
+                  "name": "Meal Options",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "R5cYi",
+                      "name": "addDietMeal1",
+                      "fill": "#F59E0B",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "9FtLi",
+                          "name": "addDietMeal1Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "sunrise",
+                          "iconFontFamily": "lucide",
+                          "fill": "#FFFFFF"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Umq6X",
+                          "name": "addDietMeal1Text",
+                          "fill": "#FFFFFF",
+                          "content": "早餐",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Mgjbr",
+                      "name": "addDietMeal2",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "4jRvL",
+                          "name": "addDietMeal2Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "sun",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "C395z",
+                          "name": "addDietMeal2Text",
+                          "fill": "#5B5F66",
+                          "content": "午餐",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vSIVj",
+                      "name": "addDietMeal3",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "ywWKM",
+                          "name": "addDietMeal3Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "moon",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "WKfEl",
+                          "name": "addDietMeal3Text",
+                          "fill": "#5B5F66",
+                          "content": "晚餐",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ODvwU",
+                      "name": "addDietMeal4",
+                      "fill": "#F2F3F0",
+                      "cornerRadius": 8,
+                      "gap": 6,
+                      "padding": [
+                        8,
+                        12
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon_font",
+                          "id": "GswAv",
+                          "name": "addDietMeal4Icon",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "cookie",
+                          "iconFontFamily": "lucide",
+                          "fill": "#5B5F66"
+                        },
+                        {
+                          "type": "text",
+                          "id": "WeSiP",
+                          "name": "addDietMeal4Text",
+                          "fill": "#5B5F66",
+                          "content": "加餐",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Y23iQ",
+                  "name": "addDietFoodLabel",
+                  "fill": "#333333",
+                  "content": "食物内容",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "wQKW8",
+                  "name": "Input",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DRjoy",
+                      "name": "addDietFoodPlaceholder",
+                      "fill": "#999999",
+                      "content": "输入食物内容...",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "4qlp7",
+                  "name": "addDietCalLabel",
+                  "fill": "#333333",
+                  "content": "热量（kcal）",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "13Xnf",
+                  "name": "Input",
+                  "width": "fill_container",
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "3Qld4",
+                      "name": "addDietCalValue",
+                      "fill": "#333333",
+                      "content": "0",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "inU7N",
+                  "name": "addDietNoteLabel",
+                  "fill": "#333333",
+                  "content": "备注",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "vbfIR",
+                  "name": "Textarea",
+                  "width": "fill_container",
+                  "height": 60,
+                  "fill": "#F5F5F5",
+                  "cornerRadius": 8,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W8avD",
+                      "name": "addDietNotePlaceholder",
+                      "fill": "#999999",
+                      "content": "添加备注...",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "imports": {
+    "e": "pencil:halo.lib.pen"
+  }
+}
