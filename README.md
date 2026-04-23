@@ -15,24 +15,9 @@
 ### 后端启动
 
 ```bash
-# 安装依赖
+# 安装依赖并启动（自动创建 SQLite 数据库）
 cd rogers/app
 pip install -r requirements.txt
-
-# 配置数据库 (修改 src/fitme/core/config.py 中的 DATABASE_URL)
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE fitagent CHARACTER SET utf8mb4;"
-
-# 初始化表结构
-python -c "
-import sys
-sys.path.insert(0, '../src')
-from fitme.models import Base
-from fitme.utils.database import engine
-Base.metadata.create_all(engine)
-"
-
-# 启动服务
 python run.py
 ```
 

@@ -5,8 +5,8 @@ from typing import Optional
 
 class Settings(BaseSettings):
     """Application settings"""
-    # Database
-    DATABASE_URL: str = "mysql+pymysql://root:password@localhost:3306/fitagent"
+    # Database (SQLite for development)
+    DATABASE_URL: str = "sqlite:///./fitagent.db"
 
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
