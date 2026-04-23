@@ -1,0 +1,10 @@
+.container {
+  padding: 24px;
+}
+
+.profileHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}

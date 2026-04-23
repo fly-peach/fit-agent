@@ -1,0 +1,19 @@
+.container {
+  padding: 24px;
+}
+
+.nutrition {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.nutrientItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nutrientItem > span:first-child {
+  width: 60px;
+}

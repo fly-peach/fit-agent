@@ -1,0 +1,6 @@
+export { default as Login } from './Login'
+export { default as Dashboard } from './Dashboard'
+export { default as Health } from './Health'
+export { default as Training } from './Training'
+export { default as Diet } from './Diet'
+export { default as User } from './User'

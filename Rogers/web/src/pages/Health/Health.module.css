@@ -1,0 +1,26 @@
+.container {
+  padding: 24px;
+}
+
+.trendData {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.trendItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.summary {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  color: #1890ff;
+  font-weight: 500;
+}
