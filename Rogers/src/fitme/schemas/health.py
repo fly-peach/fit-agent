@@ -58,7 +58,7 @@ class TrendPoint(BaseModel):
 
 class StatusSummary(BaseModel):
     """状态统计"""
-    pass: int
+    normal: int
     low: int
     high: int
 

@@ -76,10 +76,10 @@ class HealthService:
         avg_weight = sum(float(m.weight) for m in metrics if m.weight) / len(weight_trend) if weight_trend else 0
         avg_bmi = sum(float(m.bmi) for m in metrics if m.bmi) / len(bmi_trend) if bmi_trend else 0
 
-        status_counts = {"pass": 0, "low": 0, "high": 0}
+        status_counts = {"normal": 0, "low": 0, "high": 0}
         for m in metrics:
             if m.bmi_status == "normal":
-                status_counts["pass"] += 1
+                status_counts["normal"] += 1
             elif m.bmi_status == "under":
                 status_counts["low"] += 1
             elif m.bmi_status == "over":
