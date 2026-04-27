@@ -3,20 +3,18 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-import sys
-sys.path.insert(0, "E:/fitagent/rogers/src")
-from fitme.utils.database import get_db
-from fitme.services.health_service import HealthService
-from fitme.services.user_service import UserService
-from fitme.schemas.health import (
+from src.fitme.utils.database import get_db
+from src.fitme.services.health_service import HealthService
+from src.fitme.services.user_service import UserService
+from src.fitme.schemas.health import (
     HealthMetricsResponse,
     CreateHealthMetricRequest,
     CreateHealthMetricResponse,
     HealthMeasurementsResponse,
     HealthReportResponse,
 )
-from fitme.schemas.common import BaseResponse
-from fitme.services.auth_service import AuthService
+from src.fitme.schemas.common import BaseResponse
+from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/health", tags=["Health"])
 

@@ -23,10 +23,15 @@ import {
   Restaurant as DietIcon,
   Person as UserIcon,
   Logout as LogoutIcon,
+  Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 
 const drawerWidth = 240
+const drawerClosedWidth = 0
+const rightDrawerWidth = '30vw'
 
 const menuItems = [
   { path: '/', label: '概览', icon: <DashboardIcon /> },
@@ -41,6 +46,16 @@ const MainLayout: React.FC = () => {
   const location = useLocation()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
+  const [sidebarOpen, setSidebarOpen] = React.useState(true)
+  const [rightDrawerOpen, setRightDrawerOpen] = React.useState(false)
+
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev)
+  }
+
+  const toggleRightDrawer = () => {
+    setRightDrawerOpen((prev) => !prev)
+  }
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget)
@@ -60,9 +75,27 @@ const MainLayout: React.FC = () => {
     <Box sx={{ display: 'flex' }}>
       <AppBar
         position="fixed"
-        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
+        sx={{
+          left: sidebarOpen ? `${drawerWidth}px` : 0,
+          right: rightDrawerOpen ? rightDrawerWidth : 0,
+          width: 'auto',
+          transition: theme =>
+            theme.transitions.create(['left', 'right'], {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+        }}
       >
         <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="toggle sidebar"
+            onClick={toggleSidebar}
+            sx={{ mr: 2 }}
+          >
+            {sidebarOpen ? <ChevronLeftIcon /> : <MenuIcon />}
+          </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {menuItems.find((m) => m.path === location.pathname)?.label || '概览'}
           </Typography>
@@ -77,6 +110,14 @@ const MainLayout: React.FC = () => {
             <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
               {user.name?.charAt(0) || 'U'}
             </Avatar>
+          </IconButton>
+          <IconButton
+            color="inherit"
+            aria-label="toggle right sidebar"
+            onClick={toggleRightDrawer}
+            sx={{ ml: 1, px: 1.5, py: 0.5, borderRadius: 2, border: '1px solid rgba(255,255,255,0.3)', textTransform: 'none', fontSize: '0.875rem' }}
+          >
+            AI助手
           </IconButton>
           <Menu
             id="menu-appbar"
@@ -109,16 +150,27 @@ const MainLayout: React.FC = () => {
         </Toolbar>
       </AppBar>
       <Drawer
+        variant="persistent"
+        anchor="left"
+        open={sidebarOpen}
         sx={{
-          width: drawerWidth,
+          width: sidebarOpen ? drawerWidth : drawerClosedWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            transition: theme =>
+              theme.transitions.create(['width', 'transform'], {
+                easing: theme.transitions.easing.easeInOut,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            overflowX: 'hidden',
+            ...(sidebarOpen ? {} : {
+              transform: `translateX(-${drawerWidth}px)`,
+              width: 0,
+            }),
           },
         }}
-        variant="permanent"
-        anchor="left"
       >
         <Toolbar>
           <Typography variant="h6" noWrap component="div" color="primary">
@@ -142,11 +194,55 @@ const MainLayout: React.FC = () => {
       </Drawer>
       <Box
         component="main"
-        sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}
+        sx={{
+          flexGrow: 1,
+          bgcolor: 'background.default',
+          p: 3,
+          minWidth: 0,
+        }}
       >
         <Toolbar />
         <Outlet />
       </Box>
+      <Drawer
+        variant="persistent"
+        anchor="right"
+        open={rightDrawerOpen}
+        sx={{
+          width: rightDrawerOpen ? rightDrawerWidth : drawerClosedWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: rightDrawerWidth,
+            minWidth: rightDrawerWidth,
+            boxSizing: 'border-box',
+            transition: theme =>
+              theme.transitions.create(['width', 'transform'], {
+                easing: theme.transitions.easing.easeInOut,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+            overflowX: 'hidden',
+            ...(rightDrawerOpen ? {} : {
+              transform: `translateX(${rightDrawerWidth})`,
+              width: 0,
+            }),
+          },
+        }}
+      >
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <Typography variant="h6" noWrap component="div" color="primary">
+            AI助手
+          </Typography>
+          <IconButton onClick={toggleRightDrawer} size="small">
+            <ChevronRightIcon />
+          </IconButton>
+        </Toolbar>
+        <Divider />
+        <Box sx={{ p: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            AI 助手面板
+          </Typography>
+        </Box>
+      </Drawer>
     </Box>
   )
 }

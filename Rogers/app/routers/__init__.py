@@ -4,6 +4,7 @@ from .user import router as user_router
 from .health import router as health_router
 from .training import router as training_router
 from .diet import router as diet_router
+from .agent import router as agent_router
 
 __all__ = [
     "auth_router",
@@ -11,4 +12,5 @@ __all__ = [
     "health_router",
     "training_router",
     "diet_router",
+    "agent_router",
 ]

@@ -3,11 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 
-import sys
-sys.path.insert(0, "E:/fitagent/rogers/src")
-from fitme.utils.database import get_db
-from fitme.services.training_service import TrainingService
-from fitme.schemas.training import (
+from src.fitme.utils.database import get_db
+from src.fitme.services.training_service import TrainingService
+from src.fitme.schemas.training import (
     WeeklyStatsResponse,
     WeeklyScheduleResponse,
     WeeklyProgressResponse,
@@ -17,8 +15,8 @@ from fitme.schemas.training import (
     UpdateTrainingPlanRequest,
     CompleteTrainingRequest,
 )
-from fitme.schemas.common import BaseResponse
-from fitme.services.auth_service import AuthService
+from src.fitme.schemas.common import BaseResponse
+from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/training", tags=["Training"])
 

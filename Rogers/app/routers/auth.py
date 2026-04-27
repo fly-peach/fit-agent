@@ -3,11 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from typing import Optional
 
-import sys
-sys.path.insert(0, "E:/fitagent/rogers/src")
-from fitme.utils.database import get_db
-from fitme.services.auth_service import AuthService
-from fitme.schemas.auth import LoginRequest, LoginResponse, LogoutResponse, RegisterRequest, RegisterResponse
+from src.fitme.utils.database import get_db
+from src.fitme.services.auth_service import AuthService
+from src.fitme.schemas.auth import LoginRequest, LoginResponse, LogoutResponse, RegisterRequest, RegisterResponse
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 

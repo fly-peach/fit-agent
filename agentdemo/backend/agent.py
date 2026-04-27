@@ -16,9 +16,9 @@ from dotenv import load_dotenv
 from agentscope_runtime.tools.searches import ModelstudioSearch
 import asyncio
 
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
-if os.environ.get("DASHSCOPE_API_KEY") is None:
-    raise ValueError("DASHSCOPE_API_KEY is not set")
+# load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+# if os.environ.get("DASHSCOPE_API_KEY") is None:
+#     raise ValueError("DASHSCOPE_API_KEY is not set")
 
 
 

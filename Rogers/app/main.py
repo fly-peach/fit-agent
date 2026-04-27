@@ -8,7 +8,7 @@ from fitme.core.config import settings
 from fitme.models import Base
 from fitme.utils.database import engine
 
-from .routers import auth_router, user_router, health_router, training_router, diet_router
+from .routers import auth_router, user_router, health_router, training_router, diet_router, agent_router
 
 
 app = FastAPI(
@@ -38,6 +38,7 @@ app.include_router(user_router)
 app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
+app.include_router(agent_router)
 
 
 @app.get("/")

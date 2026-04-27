@@ -18,8 +18,12 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
 
-    class Config:
-        env_file = ".env"
+    # AI (these are for the agent module, ignored here)
+    deepseek_api_key: Optional[str] = None
+    deepseek_base_url: Optional[str] = None
+    model: Optional[str] = None
+
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

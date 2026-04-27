@@ -3,11 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 
-import sys
-sys.path.insert(0, "E:/fitagent/rogers/src")
-from fitme.utils.database import get_db
-from fitme.services.diet_service import DietService
-from fitme.schemas.diet import (
+
+from src.fitme.utils.database import get_db
+from src.fitme.services.diet_service import DietService
+from src.fitme.schemas.diet import (
     DietStatsResponse,
     DietMealsResponse,
     CreateMealRequest,
@@ -17,8 +16,8 @@ from fitme.schemas.diet import (
     RecommendedFoodResponse,
     WeeklyDietTrendResponse,
 )
-from fitme.schemas.common import BaseResponse
-from fitme.services.auth_service import AuthService
+from src.fitme.schemas.common import BaseResponse
+from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/diet", tags=["Diet"])
 
