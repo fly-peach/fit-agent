@@ -59,10 +59,11 @@ agent_app = AgentApp(
 async def query_func(
     self,
     msgs,
-    request: AgentRequest = None,
+    request: AgentRequest | None = None,
     **kwargs,
 ):
     """处理用户查询。"""
+    assert request is not None, "request is required"
     session_id = request.session_id
     user_id = request.user_id
 
@@ -76,7 +77,7 @@ async def query_func(
         name="MyAssistant",
         model=DashScopeChatModel(
             "qwen-turbo",
-            api_key=os.getenv("DASHSCOPE_API_KEY"),
+            api_key=os.environ["DASHSCOPE_API_KEY"],
             enable_thinking=True,
             stream=True,
         ),
@@ -93,7 +94,7 @@ async def query_func(
         agent=agent,
     )
 
-    async for msg, last in stream_printing_messages(
+    async for msg, last, *_ in stream_printing_messages(
         agents=[agent],
         coroutine_task=agent(msgs),
     ):
