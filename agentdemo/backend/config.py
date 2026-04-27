@@ -4,15 +4,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# DeepSeek API configuration (OpenAI-compatible)
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-1a5c1d5fd43fbb7562e979b968671")
-DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-MODEL_NAME = os.getenv("MODEL", "deepseek-chat")
+# DashScope API configuration (primary)
+DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
+DASHSCOPE_MODEL = os.getenv("DASHSCOPE_MODEL", "qwen-turbo")
 
-# Use DeepSeek as default
-API_KEY = DEEPSEEK_API_KEY
-BASE_URL = DEEPSEEK_BASE_URL
+# OpenAI-compatible API configuration (optional fallback)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
 # Server configuration
 SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
+SERVER_PORT = int(os.getenv("SERVER_PORT", "8080"))
+
+# Redis configuration (None = use fakeredis for dev)
+REDIS_URL = os.getenv("REDIS_URL", None)
