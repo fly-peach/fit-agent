@@ -19,11 +19,11 @@ import asyncio
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 if os.environ.get("DASHSCOPE_API_KEY") is None:
     raise ValueError("DASHSCOPE_API_KEY is not set")
-print("APIkey设置没有：=================",os.environ.get("DASHSCOPE_API_KEY"),"===============")
+
 
 
 def get_weather(location: str, date: str) -> ToolResponse:
-    """Get the weather for a location and date."""
+    """获取天气数据函数工具."""
     print(f"Getting weather for {location} on {date}...")
     return ToolResponse(content=[{"type": "text", "text": f"The weather in {location} is sunny with a temperature of 25°C."}])
 
