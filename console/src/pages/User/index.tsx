@@ -1,45 +1,14 @@
 import React, { useEffect, useState } from 'react'
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Avatar,
-  Grid,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel,
-  Snackbar,
-  Alert,
-  Skeleton,
-  Divider,
-} from '@mui/material'
-import { TimePicker } from '@mui/x-date-pickers/TimePicker'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { Card, Typography, Row, Col, Avatar, Form, Input, InputNumber, Switch, TimePicker, Button, Divider, message, Descriptions } from 'antd'
+import { LogoutOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { userApi, type UserProfile } from '../../services/user'
 
 const User: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false, message: '', severity: 'success'
-  })
-
-  const [name, setName] = useState('')
-  const [avatar, setAvatar] = useState('')
-
-  const [calorieGoal, setCalorieGoal] = useState('2000')
-  const [proteinGoal, setProteinGoal] = useState('150')
-  const [carbsGoal, setCarbsGoal] = useState('250')
-  const [fatGoal, setFatGoal] = useState('65')
-  const [waterGoal, setWaterGoal] = useState('2000')
-  const [weightGoal, setWeightGoal] = useState('')
-  const [weeklyTrainingGoal, setWeeklyTrainingGoal] = useState('5')
-  const [notificationEnabled, setNotificationEnabled] = useState(true)
-  const [reminderTime, setReminderTime] = useState<dayjs.Dayjs | null>(dayjs())
+  const [profileForm] = Form.useForm()
+  const [settingsForm] = Form.useForm()
 
   useEffect(() => {
     fetchData()
@@ -50,19 +19,20 @@ const User: React.FC = () => {
     try {
       const profileData = await userApi.getProfile()
       setProfile(profileData)
-      setName(profileData.name)
-      setAvatar(profileData.avatar || '')
+      profileForm.setFieldsValue({ name: profileData.name, avatar: profileData.avatar || '' })
 
       const settingsData = await userApi.getSettings()
-      setCalorieGoal(String(settingsData.calorieGoal))
-      setProteinGoal(String(settingsData.proteinGoal))
-      setCarbsGoal(String(settingsData.carbsGoal))
-      setFatGoal(String(settingsData.fatGoal))
-      setWaterGoal(String(settingsData.waterGoal))
-      setWeightGoal(settingsData.weightGoal ? String(settingsData.weightGoal) : '')
-      setWeeklyTrainingGoal(String(settingsData.weeklyTrainingGoal))
-      setNotificationEnabled(settingsData.notificationEnabled)
-      setReminderTime(dayjs(settingsData.reminderTime, 'HH:mm:ss'))
+      settingsForm.setFieldsValue({
+        calorieGoal: settingsData.calorieGoal,
+        proteinGoal: settingsData.proteinGoal,
+        carbsGoal: settingsData.carbsGoal,
+        fatGoal: settingsData.fatGoal,
+        waterGoal: settingsData.waterGoal,
+        weightGoal: settingsData.weightGoal,
+        weeklyTrainingGoal: settingsData.weeklyTrainingGoal,
+        notificationEnabled: settingsData.notificationEnabled,
+        reminderTime: dayjs(settingsData.reminderTime, 'HH:mm:ss'),
+      })
     } finally {
       setLoading(false)
     }
@@ -70,31 +40,26 @@ const User: React.FC = () => {
 
   const handleUpdateProfile = async () => {
     try {
-      await userApi.updateProfile({ name, avatar })
-      setSnackbar({ open: true, message: '更新成功', severity: 'success' })
+      const values = await profileForm.validateFields()
+      await userApi.updateProfile(values)
+      message.success('更新成功')
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '更新失败', severity: 'error' })
+      message.error('更新失败')
     }
   }
 
   const handleUpdateSettings = async () => {
     try {
+      const values = await settingsForm.validateFields()
       await userApi.updateSettings({
-        calorieGoal: parseInt(calorieGoal),
-        proteinGoal: parseInt(proteinGoal),
-        carbsGoal: parseInt(carbsGoal),
-        fatGoal: parseInt(fatGoal),
-        waterGoal: parseInt(waterGoal),
-        weightGoal: weightGoal ? parseFloat(weightGoal) : undefined,
-        weeklyTrainingGoal: parseInt(weeklyTrainingGoal),
-        notificationEnabled,
-        reminderTime: reminderTime?.format('HH:mm') || '07:00',
+        ...values,
+        reminderTime: values.reminderTime?.format('HH:mm') || '07:00',
       })
-      setSnackbar({ open: true, message: '设置已保存', severity: 'success' })
+      message.success('设置已保存')
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '保存失败', severity: 'error' })
+      message.error('保存失败')
     }
   }
 
@@ -105,97 +70,94 @@ const User: React.FC = () => {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box>
-        <Typography variant="h4" gutterBottom>👤 个人中心</Typography>
+    <div style={{ padding: 24 }}>
+      <Typography.Title level={4} style={{ marginBottom: 24 }}>👤 个人中心</Typography.Title>
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={4}>
-            <Card>
-              <CardContent sx={{ textAlign: 'center' }}>
-                {loading ? <Skeleton variant="circular" width={64} height={64} /> : <>
-                  <Avatar sx={{ width: 64, height: 64, bgcolor: 'primary.main', mb: 2 }}>
-                    {avatar || profile?.name?.charAt(0) || 'U'}
-                  </Avatar>
-                  <Typography variant="h6">{profile?.name}</Typography>
-                  <Typography color="text.secondary">{profile?.email}</Typography>
-                </>}
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ textAlign: 'left' }}>
-                  <Typography color="text.secondary">用户ID: {profile?.userId}</Typography>
-                  <Typography color="text.secondary">角色: {profile?.role}</Typography>
-                  <Typography color="text.secondary">注册时间: {dayjs(profile?.createdAt).format('YYYY-MM-DD')}</Typography>
-                </Box>
-                <Divider sx={{ my: 2 }} />
-                <Button variant="contained" color="error" fullWidth onClick={handleLogout}>退出登录</Button>
-              </CardContent>
-            </Card>
-          </Grid>
+      <Row gutter={[24, 24]}>
+        <Col xs={24} md={8}>
+          <Card>
+            <div style={{ textAlign: 'center' }}>
+              {loading ? (
+                <Avatar size={64} icon={<LogoutOutlined />} />
+              ) : (
+                <Avatar size={64} style={{ backgroundColor: '#1890ff', marginBottom: 16 }}>
+                  {profile?.avatar || profile?.name?.charAt(0) || 'U'}
+                </Avatar>
+              )}
+              <Typography.Title level={4} style={{ margin: '0 0 4px' }}>{loading ? '-' : profile?.name}</Typography.Title>
+              <Typography.Text type="secondary">{loading ? '-' : profile?.email}</Typography.Text>
+            </div>
+            <Divider />
+            {profile && !loading && (
+              <Descriptions column={1} size="small">
+                <Descriptions.Item label="用户ID">{profile.userId}</Descriptions.Item>
+                <Descriptions.Item label="角色">{profile.role}</Descriptions.Item>
+                <Descriptions.Item label="注册时间">{dayjs(profile.createdAt).format('YYYY-MM-DD')}</Descriptions.Item>
+              </Descriptions>
+            )}
+            <Divider />
+            <Button danger icon={<LogoutOutlined />} block onClick={handleLogout}>退出登录</Button>
+          </Card>
+        </Col>
 
-          <Grid item xs={12} md={8}>
-            <Card><CardContent>
-              <Typography variant="h6" gutterBottom>编辑个人信息</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField label="姓名" fullWidth value={name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)} />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField label="头像字母" fullWidth inputProps={{ maxLength: 2 }} value={avatar} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAvatar(e.target.value)} />
-                </Grid>
-              </Grid>
-              <Button variant="contained" sx={{ mt: 2 }} onClick={handleUpdateProfile}>保存</Button>
-            </CardContent></Card>
+        <Col xs={24} md={16}>
+          <Card title="编辑个人信息">
+            <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
+                    <Input />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="avatar" label="头像字母">
+                    <Input maxLength={2} />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Button type="primary" htmlType="submit">保存</Button>
+            </Form>
+          </Card>
 
-            <Card sx={{ mt: 3 }}><CardContent>
-              <Typography variant="h6" gutterBottom>⚙️ 健身目标设置</Typography>
+          <Card title="⚙️ 健身目标设置" style={{ marginTop: 24 }}>
+            <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
+              <Typography.Text type="secondary">饮食目标</Typography.Text>
+              <Row gutter={16} style={{ marginTop: 8 }}>
+                <Col span={8}><Form.Item name="calorieGoal" label="每日热量"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col span={8}><Form.Item name="proteinGoal" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col span={8}><Form.Item name="carbsGoal" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+              </Row>
+              <Row gutter={16}>
+                <Col span={8}><Form.Item name="fatGoal" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col span={8}><Form.Item name="waterGoal" label="饮水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col span={8}><Form.Item name="weightGoal" label="目标体重"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+              </Row>
 
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>饮食目标</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={4}>
-                  <TextField label="每日热量" type="number" fullWidth value={calorieGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCalorieGoal(e.target.value)} />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField label="蛋白质" type="number" fullWidth value={proteinGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProteinGoal(e.target.value)} />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField label="碳水" type="number" fullWidth value={carbsGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCarbsGoal(e.target.value)} />
-                </Grid>
-              </Grid>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid item xs={4}>
-                  <TextField label="脂肪" type="number" fullWidth value={fatGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFatGoal(e.target.value)} />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField label="饮水" type="number" fullWidth value={waterGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWaterGoal(e.target.value)} />
-                </Grid>
-                <Grid item xs={4}>
-                  <TextField label="目标体重" type="number" fullWidth value={weightGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeightGoal(e.target.value)} />
-                </Grid>
-              </Grid>
+              <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>训练目标</Typography.Text>
+              <Form.Item name="weeklyTrainingGoal" label="每周训练目标">
+                <InputNumber style={{ width: '100%' }} />
+              </Form.Item>
 
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 3 }}>训练目标</Typography>
-              <TextField label="每周训练目标" type="number" fullWidth value={weeklyTrainingGoal} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeeklyTrainingGoal(e.target.value)} />
+              <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>提醒设置</Typography.Text>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item name="notificationEnabled" label="开启通知" valuePropName="checked">
+                    <Switch />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item name="reminderTime" label="提醒时间">
+                    <TimePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 3 }}>提醒设置</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <FormControlLabel control={<Switch checked={notificationEnabled} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotificationEnabled(e.target.checked)} />} label="开启通知" />
-                </Grid>
-                <Grid item xs={6}>
-                  <TimePicker label="提醒时间" value={reminderTime} onChange={(val: dayjs.Dayjs | null) => setReminderTime(val)} />
-                </Grid>
-              </Grid>
-
-              <Button variant="contained" sx={{ mt: 3 }} onClick={handleUpdateSettings}>保存设置</Button>
-            </CardContent></Card>
-          </Grid>
-        </Grid>
-
-        <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-        </Snackbar>
-      </Box>
-    </LocalizationProvider>
+              <Button type="primary" htmlType="submit">保存设置</Button>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   )
 }
 

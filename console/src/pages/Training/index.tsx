@@ -1,34 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  LinearProgress,
-  Chip,
-  Avatar,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Snackbar,
-  Alert,
-  Skeleton,
-} from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Progress, Avatar, List, Tag, Space, message } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { trainingApi, type WeeklyStats, TrainingSchedule, RecommendedTraining } from '../../services/training'
 
@@ -54,19 +26,8 @@ const Training: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false)
   const [completeOpen, setCompleteOpen] = useState(false)
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false, message: '', severity: 'success'
-  })
-
-  const [planName, setPlanName] = useState('')
-  const [planType, setPlanType] = useState('strength')
-  const [targetIntensity, setTargetIntensity] = useState('medium')
-  const [estimatedDuration, setEstimatedDuration] = useState('60')
-  const [scheduledDate, setScheduledDate] = useState<dayjs.Dayjs | null>(dayjs())
-
-  const [actualDuration, setActualDuration] = useState('60')
-  const [actualIntensity, setActualIntensity] = useState('medium')
-  const [caloriesBurned, setCaloriesBurned] = useState('0')
+  const [createForm] = Form.useForm()
+  const [completeForm] = Form.useForm()
 
   useEffect(() => {
     fetchData()
@@ -89,51 +50,43 @@ const Training: React.FC = () => {
   }
 
   const handleCreatePlan = async () => {
-    if (!planName || !scheduledDate) {
-      setSnackbar({ open: true, message: '请填写所有字段', severity: 'error' })
-      return
-    }
-
     try {
+      const values = await createForm.validateFields()
       await trainingApi.createPlan({
-        planName,
-        planType,
-        targetIntensity,
-        estimatedDuration: parseInt(estimatedDuration),
-        scheduledDate: scheduledDate.format('YYYY-MM-DD'),
+        ...values,
+        estimatedDuration: values.estimatedDuration,
+        scheduledDate: values.scheduledDate.format('YYYY-MM-DD'),
       })
-      setSnackbar({ open: true, message: '创建成功', severity: 'success' })
+      message.success('创建成功')
       setCreateOpen(false)
+      createForm.resetFields()
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '创建失败', severity: 'error' })
+      message.error('创建失败')
     }
   }
 
   const handleCompletePlan = async () => {
     if (!selectedPlanId) return
-
     try {
-      await trainingApi.completePlan(selectedPlanId, {
-        actualDuration: parseInt(actualDuration),
-        actualIntensity,
-        caloriesBurned: parseInt(caloriesBurned),
-      })
-      setSnackbar({ open: true, message: '完成记录成功', severity: 'success' })
+      const values = await completeForm.validateFields()
+      await trainingApi.completePlan(selectedPlanId, values)
+      message.success('完成记录成功')
       setCompleteOpen(false)
+      completeForm.resetFields()
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '记录失败', severity: 'error' })
+      message.error('记录失败')
     }
   }
 
   const handleDeletePlan = async (planId: number) => {
     try {
       await trainingApi.deletePlan(planId)
-      setSnackbar({ open: true, message: '删除成功', severity: 'success' })
+      message.success('删除成功')
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '删除失败', severity: 'error' })
+      message.error('删除失败')
     }
   }
 
@@ -142,183 +95,183 @@ const Training: React.FC = () => {
     return Math.round((weeklyStats.completedCount / weeklyStats.weeklyCount) * 100)
   }
 
-  const getTypeChip = (type: string) => {
-    const colors: Record<string, 'warning' | 'success' | 'info'> = {
-      strength: 'warning', cardio: 'success', flexibility: 'info',
-    }
+  const getTypeTag = (type: string) => {
+    const colors: Record<string, string> = { strength: 'orange', cardio: 'green', flexibility: 'blue' }
     const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
-    return <Chip label={labels[type] || type} color={colors[type] || 'default'} size="small" />
+    return <Tag color={colors[type] || 'default'}>{labels[type] || type}</Tag>
   }
 
-  const getIntensityChip = (intensity: string) => {
-    const colors: Record<string, 'info' | 'warning' | 'error'> = {
-      low: 'info', medium: 'warning', high: 'error',
-    }
-    return <Chip label={intensity} color={colors[intensity] || 'default'} size="small" />
+  const getIntensityTag = (intensity: string) => {
+    const colors: Record<string, string> = { low: 'blue', medium: 'orange', high: 'red' }
+    return <Tag color={colors[intensity] || 'default'}>{intensity}</Tag>
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box>
-        <Typography variant="h4" gutterBottom>🔥 训练计划</Typography>
+    <div style={{ padding: 24 }}>
+      <Typography.Title level={4} style={{ marginBottom: 24 }}>🔥 训练计划</Typography.Title>
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              {loading ? <Skeleton /> : <>
-                <Typography color="text.secondary">本周训练</Typography>
-                <Typography variant="h4" color="success.main">{weeklyStats?.weeklyCount || 0} 次</Typography>
-              </>}
-            </CardContent></Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              {loading ? <Skeleton /> : <>
-                <Typography color="text.secondary">本周时长</Typography>
-                <Typography variant="h4">{weeklyStats?.weeklyHours || 0} 小时</Typography>
-              </>}
-            </CardContent></Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              {loading ? <Skeleton /> : <>
-                <Typography color="text.secondary">消耗热量</Typography>
-                <Typography variant="h4">{weeklyStats?.weeklyCalories || 0} kcal</Typography>
-              </>}
-            </CardContent></Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card><CardContent>
-              {loading ? <Skeleton /> : <>
-                <Typography color="text.secondary">连续训练</Typography>
-                <Typography variant="h4" color="secondary.main">{weeklyStats?.streakDays || 0} 天</Typography>
-              </>}
-            </CardContent></Card>
-          </Grid>
-        </Grid>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Typography.Text type="secondary">本周训练</Typography.Text>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#52c41a' }}>{loading ? '-' : `${weeklyStats?.weeklyCount || 0} 次`}</Typography.Title>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Typography.Text type="secondary">本周时长</Typography.Text>
+            <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{loading ? '-' : `${weeklyStats?.weeklyHours || 0} 小时`}</Typography.Title>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Typography.Text type="secondary">消耗热量</Typography.Text>
+            <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{loading ? '-' : `${weeklyStats?.weeklyCalories || 0} kcal`}</Typography.Title>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Typography.Text type="secondary">连续训练</Typography.Text>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#722ed1' }}>{loading ? '-' : `${weeklyStats?.streakDays || 0} 天`}</Typography.Title>
+          </Card>
+        </Col>
+      </Row>
 
-        <Card sx={{ mt: 3 }}><CardContent>
-          <Typography variant="h6" gutterBottom>本周进度</Typography>
-          <LinearProgress variant="determinate" value={getProgressPercent()} color="success" />
-          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-            {weekDays.map((day, idx) => {
-              const daySchedule = schedule.filter(s => s.dayOfWeek === idx + 1)
-              const completed = daySchedule.some(s => s.status === 'completed')
-              return <Box key={day} sx={{ textAlign: 'center' }}>
-                <Typography variant="caption">{day}</Typography>
-                <Avatar sx={{ bgcolor: completed ? 'success.main' : 'grey.300', width: 32, height: 32 }}>
+      <Card style={{ marginTop: 24 }}>
+        <Typography.Title level={5}>本周进度</Typography.Title>
+        <Progress percent={getProgressPercent()} strokeColor="#52c41a" />
+        <Space style={{ marginTop: 16 }}>
+          {weekDays.map((day, idx) => {
+            const daySchedule = schedule.filter(s => s.dayOfWeek === idx + 1)
+            const completed = daySchedule.some(s => s.status === 'completed')
+            return (
+              <div key={day} style={{ textAlign: 'center' }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{day}</Typography.Text>
+                <br />
+                <Avatar style={{ backgroundColor: completed ? '#52c41a' : '#d9d9d9', marginTop: 8 }}>
                   {completed ? '✓' : idx + 1}
                 </Avatar>
-              </Box>
-            })}
-          </Box>
-        </CardContent></Card>
+              </div>
+            )
+          })}
+        </Space>
+      </Card>
 
-        <Card sx={{ mt: 3 }}><CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6">本周训练安排</Typography>
-            <Button variant="contained" onClick={() => setCreateOpen(true)}>新建计划</Button>
-          </Box>
-          <List>
-            {schedule.map(item => (
-              <ListItem key={item.planId}>
-                <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: item.status === 'completed' ? 'success.main' : 'primary.main' }}>
+      <Card style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>本周训练安排</Typography.Title>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建计划</Button>
+        </div>
+        <List
+          itemLayout="horizontal"
+          dataSource={schedule}
+          renderItem={(item) => (
+            <List.Item
+              actions={item.status === 'completed' ? [] : [
+                <Button size="small" type="primary" onClick={() => { setSelectedPlanId(item.planId || 0); setCompleteOpen(true) }}>完成</Button>,
+                <Button size="small" danger onClick={() => handleDeletePlan(item.planId || 0)}>删除</Button>,
+              ]}
+            >
+              <List.Item.Meta
+                avatar={
+                  <Avatar style={{ backgroundColor: item.status === 'completed' ? '#52c41a' : '#1890ff' }}>
                     {item.status === 'completed' ? '✓' : item.dayOfWeek}
                   </Avatar>
-                </ListItemAvatar>
-                <ListItemText primary={item.planName} secondary={`${item.duration}分钟 · ${item.intensity}强度`} />
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {getTypeChip(item.planType)}
-                  {getIntensityChip(item.intensity)}
-                  <Chip label={item.status === 'completed' ? '已完成' : '待完成'} color={item.status === 'completed' ? 'success' : 'primary'} size="small" />
-                  {item.status === 'pending' && <>
-                    <Button size="small" variant="contained" color="success" onClick={() => { setSelectedPlanId(item.planId || 0); setCompleteOpen(true) }}>完成</Button>
-                    <Button size="small" variant="outlined" color="error" onClick={() => handleDeletePlan(item.planId || 0)}>删除</Button>
-                  </>}
-                </Box>
-              </ListItem>
-            ))}
-          </List>
-        </CardContent></Card>
+                }
+                title={item.planName}
+                description={`${item.duration}分钟 · ${item.intensity}强度`}
+              />
+              <Space>
+                {getTypeTag(item.planType)}
+                {getIntensityTag(item.intensity)}
+                <Tag color={item.status === 'completed' ? 'success' : 'processing'}>
+                  {item.status === 'completed' ? '已完成' : '待完成'}
+                </Tag>
+              </Space>
+            </List.Item>
+          )}
+        />
+      </Card>
 
-        <Card sx={{ mt: 3 }}><CardContent>
-          <Typography variant="h6" gutterBottom>推荐训练</Typography>
-          <Grid container spacing={2}>
-            {recommendations.map(item => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={item.recommendId}>
-                <Card variant="outlined"><CardContent>
-                  <Typography variant="subtitle1">{item.planName}</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    {getTypeChip(item.planType)}
-                    {getIntensityChip(item.intensity)}
-                  </Box>
-                  <Typography variant="body2" color="text.secondary">{item.duration}分钟</Typography>
-                  {item.caloriesBurn && <Typography variant="body2" color="text.secondary">消耗 {item.caloriesBurn} kcal</Typography>}
-                </CardContent></Card>
-              </Grid>
-            ))}
-          </Grid>
-        </CardContent></Card>
+      <Card style={{ marginTop: 24 }}>
+        <Typography.Title level={5}>推荐训练</Typography.Title>
+        <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
+          {recommendations.map(item => (
+            <Col xs={24} sm={12} md={6} key={item.recommendId}>
+              <Card size="small">
+                <Typography.Text strong>{item.planName}</Typography.Text>
+                <div style={{ marginTop: 8 }}>
+                  <Space>
+                    {getTypeTag(item.planType)}
+                    {getIntensityTag(item.intensity)}
+                  </Space>
+                </div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.duration}分钟</Typography.Text>
+                {item.caloriesBurn && (
+                  <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                    消耗 {item.caloriesBurn} kcal
+                  </Typography.Text>
+                )}
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </Card>
 
-        <Dialog open={createOpen} onClose={() => setCreateOpen(false)}>
-          <DialogTitle>创建训练计划</DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <TextField label="计划名称" value={planName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPlanName(e.target.value)} />
-              <FormControl fullWidth>
-                <InputLabel>训练类型</InputLabel>
-                <Select value={planType} onChange={(e) => setPlanType(e.target.value)}>
-                  {planTypes.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>目标强度</InputLabel>
-                    <Select value={targetIntensity} onChange={(e) => setTargetIntensity(e.target.value)}>
-                      {intensities.map(i => <MenuItem key={i.value} value={i.value}>{i.label}</MenuItem>)}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField label="预计时长" type="number" value={estimatedDuration} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEstimatedDuration(e.target.value)} />
-                </Grid>
-              </Grid>
-              <DatePicker label="计划日期" value={scheduledDate} onChange={(val: dayjs.Dayjs | null) => setScheduledDate(val)} />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCreateOpen(false)}>取消</Button>
-            <Button variant="contained" onClick={handleCreatePlan}>创建</Button>
-          </DialogActions>
-        </Dialog>
+      <Modal
+        title="创建训练计划"
+        open={createOpen}
+        onCancel={() => setCreateOpen(false)}
+        onOk={handleCreatePlan}
+        okText="创建"
+        cancelText="取消"
+      >
+        <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="planName" label="计划名称" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="planType" label="训练类型" rules={[{ required: true }]}>
+            <Select options={planTypes} />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="targetIntensity" label="目标强度" rules={[{ required: true }]}>
+                <Select options={intensities} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="estimatedDuration" label="预计时长" rules={[{ required: true }]}>
+                <InputNumber addonAfter="分钟" style={{ width: '100%' }} defaultValue={60} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="scheduledDate" label="计划日期" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} defaultValue={dayjs()} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-        <Dialog open={completeOpen} onClose={() => setCompleteOpen(false)}>
-          <DialogTitle>完成训练</DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <TextField label="实际时长" type="number" value={actualDuration} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActualDuration(e.target.value)} />
-              <FormControl fullWidth>
-                <InputLabel>实际强度</InputLabel>
-                <Select value={actualIntensity} onChange={(e) => setActualIntensity(e.target.value)}>
-                  {intensities.map(i => <MenuItem key={i.value} value={i.value}>{i.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <TextField label="消耗热量" type="number" value={caloriesBurned} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCaloriesBurned(e.target.value)} />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCompleteOpen(false)}>取消</Button>
-            <Button variant="contained" onClick={handleCompletePlan}>提交</Button>
-          </DialogActions>
-        </Dialog>
-
-        <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-        </Snackbar>
-      </Box>
-    </LocalizationProvider>
+      <Modal
+        title="完成训练"
+        open={completeOpen}
+        onCancel={() => setCompleteOpen(false)}
+        onOk={handleCompletePlan}
+        okText="提交"
+        cancelText="取消"
+      >
+        <Form form={completeForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="actualDuration" label="实际时长" rules={[{ required: true }]}>
+            <InputNumber addonAfter="分钟" style={{ width: '100%' }} defaultValue={60} />
+          </Form.Item>
+          <Form.Item name="actualIntensity" label="实际强度" rules={[{ required: true }]}>
+            <Select options={intensities} />
+          </Form.Item>
+          <Form.Item name="caloriesBurned" label="消耗热量">
+            <InputNumber addonAfter="kcal" style={{ width: '100%' }} defaultValue={0} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   )
 }
 

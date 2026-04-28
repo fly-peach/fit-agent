@@ -1,32 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Chip,
-  Skeleton,
-  Snackbar,
-  Alert,
-} from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers/DatePicker'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { Card, Typography, Row, Col, Table, Button, Modal, Form, InputNumber, DatePicker, Tag, message } from 'antd'
+import { DownloadOutlined, PlusOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { healthApi, type HealthMetrics, HealthMeasurement, HealthReport } from '../../services/health'
+import type { ColumnsType } from 'antd/es/table'
 
 const Health: React.FC = () => {
   const [metrics, setMetrics] = useState<HealthMetrics | null>(null)
@@ -34,14 +11,7 @@ const Health: React.FC = () => {
   const [report, setReport] = useState<HealthReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false, message: '', severity: 'success'
-  })
-
-  const [weight, setWeight] = useState('70')
-  const [height, setHeight] = useState('175')
-  const [bodyFat, setBodyFat] = useState('15')
-  const [measureDate, setMeasureDate] = useState<dayjs.Dayjs | null>(dayjs())
+  const [form] = Form.useForm()
 
   useEffect(() => {
     fetchData()
@@ -64,23 +34,20 @@ const Health: React.FC = () => {
   }
 
   const handleAddRecord = async () => {
-    if (!weight || !height || !bodyFat || !measureDate) {
-      setSnackbar({ open: true, message: '请填写所有字段', severity: 'error' })
-      return
-    }
-
     try {
+      const values = await form.validateFields()
       await healthApi.createMetric({
-        weight: parseFloat(weight),
-        height: parseFloat(height),
-        bodyFat: parseFloat(bodyFat),
-        measureDate: measureDate.format('YYYY-MM-DD'),
+        weight: values.weight,
+        height: values.height,
+        bodyFat: values.bodyFat,
+        measureDate: values.measureDate.format('YYYY-MM-DD'),
       })
-      setSnackbar({ open: true, message: '记录成功', severity: 'success' })
+      message.success('记录成功')
       setModalOpen(false)
+      form.resetFields()
       fetchData()
     } catch {
-      setSnackbar({ open: true, message: '记录失败', severity: 'error' })
+      message.error('记录失败')
     }
   }
 
@@ -93,171 +60,153 @@ const Health: React.FC = () => {
       a.download = 'health_data.csv'
       a.click()
       window.URL.revokeObjectURL(url)
-      setSnackbar({ open: true, message: '导出成功', severity: 'success' })
+      message.success('导出成功')
     } catch {
-      setSnackbar({ open: true, message: '导出失败', severity: 'error' })
+      message.error('导出失败')
     }
   }
 
-  const getBmiStatusChip = (status: string) => {
-    const colors: Record<string, 'success' | 'info' | 'warning' | 'default'> = {
-      normal: 'success',
-      under: 'info',
-      over: 'warning',
-    }
+  const getBmiStatusTag = (status: string) => {
+    const colors: Record<string, string> = { normal: 'success', under: 'processing', over: 'warning' }
     const labels: Record<string, string> = { normal: '正常', under: '偏瘦', over: '偏胖' }
-    return <Chip label={labels[status] || status} color={colors[status] || 'default'} size="small" />
+    return <Tag color={colors[status] || 'default'}>{labels[status] || status}</Tag>
   }
+
+  const columns: ColumnsType<HealthMeasurement> = [
+    { title: '日期', dataIndex: 'measureDate', render: (v: string) => dayjs(v).format('YYYY-MM-DD') },
+    { title: '体重', dataIndex: 'weight', render: (v: number) => `${v} kg` },
+    { title: '体脂率', dataIndex: 'bodyFat', render: (v: number) => `${v}%` },
+    { title: 'BMI', dataIndex: 'bmi', render: (v: number) => v.toFixed(1) },
+    { title: '状态', dataIndex: 'bmiStatus', render: (v: string) => getBmiStatusTag(v) },
+  ]
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <Box>
-        <Typography variant="h4" gutterBottom>
-          ❤️ 健康数据
-        </Typography>
+    <div style={{ padding: 24 }}>
+      <Typography.Title level={4} style={{ marginBottom: 24 }}>❤️ 健康数据</Typography.Title>
 
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                {loading ? <Skeleton /> : (
-                  <>
-                    <Typography color="text.secondary">当前体重</Typography>
-                    <Typography variant="h4">{metrics?.weight || 0} kg</Typography>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                {loading ? <Skeleton /> : (
-                  <>
-                    <Typography color="text.secondary">身高</Typography>
-                    <Typography variant="h4">{metrics?.height || 175} cm</Typography>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                {loading ? <Skeleton /> : (
-                  <>
-                    <Typography color="text.secondary">体脂率</Typography>
-                    <Typography variant="h4">{metrics?.bodyFat || 0}%</Typography>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                {loading ? <Skeleton /> : (
-                  <>
-                    <Typography color="text.secondary">BMI</Typography>
-                    <Typography variant="h4">{metrics?.bmi?.toFixed(1) || 0}</Typography>
-                    {metrics?.bmiStatus && getBmiStatusChip(metrics.bmiStatus)}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            {loading ? (
+              <Typography.Text type="secondary">加载中...</Typography.Text>
+            ) : (
+              <>
+                <Typography.Text type="secondary">当前体重</Typography.Text>
+                <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{metrics?.weight || 0} kg</Typography.Title>
+              </>
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            {loading ? (
+              <Typography.Text type="secondary">加载中...</Typography.Text>
+            ) : (
+              <>
+                <Typography.Text type="secondary">身高</Typography.Text>
+                <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{metrics?.height || 175} cm</Typography.Title>
+              </>
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            {loading ? (
+              <Typography.Text type="secondary">加载中...</Typography.Text>
+            ) : (
+              <>
+                <Typography.Text type="secondary">体脂率</Typography.Text>
+                <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{metrics?.bodyFat || 0}%</Typography.Title>
+              </>
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            {loading ? (
+              <Typography.Text type="secondary">加载中...</Typography.Text>
+            ) : (
+              <>
+                <Typography.Text type="secondary">BMI</Typography.Text>
+                <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{metrics?.bmi?.toFixed(1) || 0}</Typography.Title>
+                {metrics?.bmiStatus && getBmiStatusTag(metrics.bmiStatus)}
+              </>
+            )}
+          </Card>
+        </Col>
+      </Row>
 
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">历史记录</Typography>
-              <Box>
-                <Button variant="contained" onClick={() => setModalOpen(true)} sx={{ mr: 1 }}>
-                  添加记录
-                </Button>
-                <Button variant="outlined" onClick={handleExport}>导出</Button>
-              </Box>
-            </Box>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>日期</TableCell>
-                    <TableCell>体重</TableCell>
-                    <TableCell>体脂率</TableCell>
-                    <TableCell>BMI</TableCell>
-                    <TableCell>状态</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {measurements.map((m) => (
-                    <TableRow key={m.recordId}>
-                      <TableCell>{dayjs(m.measureDate).format('YYYY-MM-DD')}</TableCell>
-                      <TableCell>{m.weight} kg</TableCell>
-                      <TableCell>{m.bodyFat}%</TableCell>
-                      <TableCell>{m.bmi.toFixed(1)}</TableCell>
-                      <TableCell>{getBmiStatusChip(m.bmiStatus)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+      <Card style={{ marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>历史记录</Typography.Title>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>添加记录</Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>导出</Button>
+          </div>
+        </div>
+        <Table
+          columns={columns}
+          dataSource={measurements}
+          rowKey="recordId"
+          size="small"
+          pagination={false}
+          loading={loading}
+        />
+      </Card>
 
-        <Card sx={{ mt: 3 }}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>📈 健康趋势</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <Typography variant="subtitle1">体重变化</Typography>
-                {report?.weightTrend?.map((item, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                    <Typography>{dayjs(item.date).format('MM-DD')}</Typography>
-                    <Typography>{item.value} kg</Typography>
-                  </Box>
-                ))}
-                {report?.summary && (
-                  <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    平均: {report.summary.avgWeight} kg · 变化: {report.summary.weightChange > 0 ? '+' : ''}{report.summary.weightChange} kg
-                  </Typography>
-                )}
-              </Grid>
-              <Grid item xs={6}>
-                <Typography variant="subtitle1">BMI变化</Typography>
-                {report?.bmiTrend?.map((item, idx) => (
-                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                    <Typography>{dayjs(item.date).format('MM-DD')}</Typography>
-                    <Typography>{item.value.toFixed(1)}</Typography>
-                  </Box>
-                ))}
-              </Grid>
-            </Grid>
-          </CardContent>
-        </Card>
+      <Card style={{ marginTop: 24 }}>
+        <Typography.Title level={5}>📈 健康趋势</Typography.Title>
+        <Row gutter={16}>
+          <Col span={12}>
+            <Typography.Text strong>体重变化</Typography.Text>
+            {report?.weightTrend?.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f0f0f0' }}>
+                <Typography.Text>{dayjs(item.date).format('MM-DD')}</Typography.Text>
+                <Typography.Text>{item.value} kg</Typography.Text>
+              </div>
+            ))}
+            {report?.summary && (
+              <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>
+                平均: {report.summary.avgWeight} kg · 变化: {report.summary.weightChange > 0 ? '+' : ''}{report.summary.weightChange} kg
+              </Typography.Text>
+            )}
+          </Col>
+          <Col span={12}>
+            <Typography.Text strong>BMI变化</Typography.Text>
+            {report?.bmiTrend?.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f0f0f0' }}>
+                <Typography.Text>{dayjs(item.date).format('MM-DD')}</Typography.Text>
+                <Typography.Text>{item.value.toFixed(1)}</Typography.Text>
+              </div>
+            ))}
+          </Col>
+        </Row>
+      </Card>
 
-        <Dialog open={modalOpen} onClose={() => setModalOpen(false)}>
-          <DialogTitle>添加健康记录</DialogTitle>
-          <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-              <TextField label="体重 (kg)" type="number" value={weight} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWeight(e.target.value)} />
-              <TextField label="身高 (cm)" type="number" value={height} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHeight(e.target.value)} />
-              <TextField label="体脂率 (%)" type="number" value={bodyFat} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBodyFat(e.target.value)} />
-              <DatePicker label="测量日期" value={measureDate} onChange={(val: dayjs.Dayjs | null) => setMeasureDate(val)} />
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setModalOpen(false)}>取消</Button>
-            <Button variant="contained" onClick={handleAddRecord}>提交</Button>
-          </DialogActions>
-        </Dialog>
-
-        <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-        </Snackbar>
-      </Box>
-    </LocalizationProvider>
+      <Modal
+        title="添加健康记录"
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        onOk={handleAddRecord}
+        okText="提交"
+        cancelText="取消"
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="weight" label="体重 (kg)" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} defaultValue={70} />
+          </Form.Item>
+          <Form.Item name="height" label="身高 (cm)" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} defaultValue={175} />
+          </Form.Item>
+          <Form.Item name="bodyFat" label="体脂率 (%)" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} defaultValue={15} />
+          </Form.Item>
+          <Form.Item name="measureDate" label="测量日期" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} defaultValue={dayjs()} />
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
   )
 }
 

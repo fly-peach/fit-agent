@@ -1,25 +1,11 @@
 import React, { useEffect, useState } from 'react'
+import { Card, Typography, Row, Col, Statistic, Progress, List, Avatar, Tag, Skeleton } from 'antd'
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  LinearProgress,
-  Chip,
-  Avatar,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Grid,
-  Skeleton,
-} from '@mui/material'
-import {
-  Favorite as HealthIcon,
-  LocalFireDepartment as FireIcon,
-  EmojiEvents as TrophyIcon,
-  Restaurant as DietIcon,
-} from '@mui/icons-material'
+  FireOutlined,
+  TrophyOutlined,
+  HeartOutlined,
+  CoffeeOutlined,
+} from '@ant-design/icons'
 import { healthApi, type HealthMetrics } from '../../services/health'
 import { trainingApi, type WeeklyStats, TrainingSchedule } from '../../services/training'
 import { dietApi, type DietStats } from '../../services/diet'
@@ -57,188 +43,150 @@ const Dashboard: React.FC = () => {
     return Math.round((current / goal) * 100)
   }
 
-  const getTypeChip = (type: string) => {
-    const colors: Record<string, 'warning' | 'success' | 'info'> = {
-      strength: 'warning',
-      cardio: 'success',
-      flexibility: 'info',
+  const getTypeTag = (type: string) => {
+    const colors: Record<string, string> = {
+      strength: 'orange',
+      cardio: 'green',
+      flexibility: 'blue',
     }
-    const labels: Record<string, string> = {
-      strength: '力量',
-      cardio: '有氧',
-      flexibility: '柔韧',
-    }
-    return <Chip label={labels[type] || type} color={colors[type] || 'default'} size="small" />
+    const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
+    return <Tag color={colors[type] || 'default'}>{labels[type] || type}</Tag>
   }
 
-  const getStatusChip = (status: string) => {
-    if (status === 'completed') return <Chip label="已完成" color="success" size="small" />
-    return <Chip label="待完成" color="primary" size="small" />
+  const getStatusTag = (status: string) => {
+    if (status === 'completed') return <Tag color="success">已完成</Tag>
+    return <Tag color="processing">待完成</Tag>
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Skeleton active />
+      </div>
+    )
   }
 
   return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        📊 今日概览
-      </Typography>
+    <div style={{ padding: 24 }}>
+      <Typography.Title level={4} style={{ marginBottom: 24 }}>📊 今日概览</Typography.Title>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3}>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
-            <CardContent>
-              {loading ? <Skeleton width={100} /> : (
-                <>
-                  <Typography color="text.secondary" gutterBottom>
-                    <FireIcon sx={{ mr: 1 }} /> 本周训练
-                  </Typography>
-                  <Typography variant="h4" color="success.main">
-                    {weeklyStats?.weeklyCount || 0} 次
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={weeklyStats ? getProgressPercent(weeklyStats.completedCount, weeklyStats.weeklyCount) : 0}
-                    color="success"
-                    sx={{ mt: 1 }}
-                  />
-                </>
-              )}
-            </CardContent>
+            <Statistic
+              title={<><FireOutlined /> 本周训练</>}
+              value={weeklyStats?.weeklyCount || 0}
+              suffix="次"
+              valueStyle={{ color: '#52c41a' }}
+            />
+            <Progress
+              percent={weeklyStats ? getProgressPercent(weeklyStats.completedCount, weeklyStats.weeklyCount) : 0}
+              strokeColor="#52c41a"
+              style={{ marginTop: 8 }}
+            />
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
-            <CardContent>
-              {loading ? <Skeleton width={100} /> : (
-                <>
-                  <Typography color="text.secondary" gutterBottom>
-                    <DietIcon sx={{ mr: 1 }} /> 今日卡路里
-                  </Typography>
-                  <Typography variant="h4" color="error.main">
-                    {dietStats?.remainingCalories || 0} kcal
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    已摄入 {dietStats?.calories || 0} / {dietStats?.caloriesGoal || 2000} kcal
-                  </Typography>
-                </>
-              )}
-            </CardContent>
+            <Statistic
+              title={<><CoffeeOutlined /> 今日卡路里</>}
+              value={dietStats?.remainingCalories || 0}
+              suffix="kcal"
+              valueStyle={{ color: '#ff4d4f' }}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              已摄入 {dietStats?.calories || 0} / {dietStats?.caloriesGoal || 2000} kcal
+            </Typography.Text>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
-            <CardContent>
-              {loading ? <Skeleton width={100} /> : (
-                <>
-                  <Typography color="text.secondary" gutterBottom>
-                    <TrophyIcon sx={{ mr: 1 }} /> 连续训练
-                  </Typography>
-                  <Typography variant="h4" color="secondary.main">
-                    {weeklyStats?.streakDays || 0} 天
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    继续保持！
-                  </Typography>
-                </>
-              )}
-            </CardContent>
+            <Statistic
+              title={<><TrophyOutlined /> 连续训练</>}
+              value={weeklyStats?.streakDays || 0}
+              suffix="天"
+              valueStyle={{ color: '#722ed1' }}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>继续保持！</Typography.Text>
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Col xs={24} sm={12} lg={6}>
           <Card>
-            <CardContent>
-              {loading ? <Skeleton width={100} /> : (
-                <>
-                  <Typography color="text.secondary" gutterBottom>
-                    <HealthIcon sx={{ mr: 1 }} /> 当前体重
-                  </Typography>
-                  <Typography variant="h4">
-                    {healthMetrics?.weight || 0} kg
-                  </Typography>
-                  {healthMetrics?.weightGoal && (
-                    <Typography variant="body2" color="text.secondary">
-                      目标 {healthMetrics.weightGoal} kg
-                    </Typography>
-                  )}
-                </>
-              )}
-            </CardContent>
+            <Statistic
+              title={<><HeartOutlined /> 当前体重</>}
+              value={healthMetrics?.weight || 0}
+              suffix="kg"
+            />
+            {healthMetrics?.weightGoal && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                目标 {healthMetrics.weightGoal} kg
+              </Typography.Text>
+            )}
           </Card>
-        </Grid>
-      </Grid>
+        </Col>
+      </Row>
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                本周训练安排
-              </Typography>
-              <List>
-                {(loading ? [] : schedule).slice(0, 5).map((item) => (
-                  <ListItem key={item.planId}>
-                    <ListItemAvatar>
-                      <Avatar sx={{ bgcolor: item.status === 'completed' ? 'success.main' : 'primary.main' }}>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={12}>
+          <Card title="本周训练安排">
+            <List
+              itemLayout="horizontal"
+              dataSource={schedule.slice(0, 5)}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={
+                      <Avatar style={{ backgroundColor: item.status === 'completed' ? '#52c41a' : '#1890ff' }}>
                         {item.status === 'completed' ? '✓' : item.dayOfWeek}
                       </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={item.planName}
-                      secondary={`${item.duration}分钟 · ${item.intensity}强度`}
-                    />
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {getTypeChip(item.planType)}
-                      {getStatusChip(item.status)}
-                    </Box>
-                  </ListItem>
-                ))}
-              </List>
-            </CardContent>
+                    }
+                    title={item.planName}
+                    description={`${item.duration}分钟 · ${item.intensity}强度`}
+                  />
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {getTypeTag(item.planType)}
+                    {getStatusTag(item.status)}
+                  </div>
+                </List.Item>
+              )}
+            />
           </Card>
-        </Grid>
+        </Col>
 
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
-                今日营养摄入
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2">蛋白质</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={getProgressPercent(dietStats?.protein || 0, dietStats?.proteinGoal || 150)}
-                  color="success"
-                  sx={{ mb: 2 }}
-                />
-                <Typography variant="body2">碳水</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={getProgressPercent(dietStats?.carbs || 0, dietStats?.carbsGoal || 250)}
-                  color="warning"
-                  sx={{ mb: 2 }}
-                />
-                <Typography variant="body2">脂肪</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={getProgressPercent(dietStats?.fat || 0, dietStats?.fatGoal || 65)}
-                  color="error"
-                  sx={{ mb: 2 }}
-                />
-                <Typography variant="body2">饮水</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={getProgressPercent(dietStats?.water || 0, dietStats?.waterGoal || 2000)}
-                  color="info"
-                />
-              </Box>
-            </CardContent>
+        <Col xs={24} lg={12}>
+          <Card title="今日营养摄入">
+            <div style={{ marginTop: 16 }}>
+              <Typography.Text>蛋白质</Typography.Text>
+              <Progress
+                percent={getProgressPercent(dietStats?.protein || 0, dietStats?.proteinGoal || 150)}
+                strokeColor="#52c41a"
+                style={{ marginBottom: 8 }}
+              />
+              <Typography.Text>碳水</Typography.Text>
+              <Progress
+                percent={getProgressPercent(dietStats?.carbs || 0, dietStats?.carbsGoal || 250)}
+                strokeColor="#faad14"
+                style={{ marginBottom: 8 }}
+              />
+              <Typography.Text>脂肪</Typography.Text>
+              <Progress
+                percent={getProgressPercent(dietStats?.fat || 0, dietStats?.fatGoal || 65)}
+                strokeColor="#ff4d4f"
+                style={{ marginBottom: 8 }}
+              />
+              <Typography.Text>饮水</Typography.Text>
+              <Progress
+                percent={getProgressPercent(dietStats?.water || 0, dietStats?.waterGoal || 2000)}
+                strokeColor="#1890ff"
+              />
+            </div>
           </Card>
-        </Grid>
-      </Grid>
-    </Box>
+        </Col>
+      </Row>
+    </div>
   )
 }
 

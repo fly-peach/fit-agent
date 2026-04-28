@@ -1,20 +1,9 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
+import { ConfigProvider } from 'antd'
+import zhCN from 'antd/locale/zh_CN'
 import { MainLayout } from './components'
 import { Login, Dashboard, Health, Training, Diet, User } from './pages'
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#3b82f6',
-    },
-    secondary: {
-      main: '#722ed1',
-    },
-  },
-})
 
 const App: React.FC = () => {
   const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -23,8 +12,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ConfigProvider locale={zhCN}>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -45,7 +33,7 @@ const App: React.FC = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </ThemeProvider>
+    </ConfigProvider>
   )
 }
 
