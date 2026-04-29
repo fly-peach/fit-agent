@@ -78,7 +78,7 @@ const Login: React.FC = () => {
           </Form.Item>
         </Form>
         <Typography.Text type="secondary" style={{ display: 'block', textAlign: 'center', fontSize: 12 }}>
-          测试账号: test@test.com / 123456
+          测试账号: user@test.com / password123
         </Typography.Text>
       </Card>
 

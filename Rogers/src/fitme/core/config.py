@@ -1,4 +1,5 @@
 """FitMe Core Configuration"""
+import os
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -6,7 +7,7 @@ from typing import Optional
 class Settings(BaseSettings):
     """Application settings"""
     # Database (SQLite for development)
-    DATABASE_URL: str = "sqlite:///./fitagent.db"
+    DATABASE_URL: str = "sqlite:///./db/fitagent.db"
 
     # JWT
     JWT_SECRET_KEY: str = "your-secret-key-change-in-production"

@@ -21,6 +21,7 @@ import {
 } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import type { MenuProps } from 'antd'
+import AIAssistant from '../AIAssistant'
 
 const { Header, Content, Sider } = Layout
 const { Title } = Typography
@@ -79,7 +80,7 @@ const MainLayout: React.FC = () => {
         theme="dark"
         style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }}
       >
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'center', padding: '0 16px' }}>
+        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
           <Title level={4} style={{ color: '#fff', margin: 0 }}>
             {collapsed ? 'FA' : 'FitAgent'}
           </Title>
@@ -134,23 +135,21 @@ const MainLayout: React.FC = () => {
             </Dropdown>
           </div>
         </Header>
-        <Layout style={{ flexDirection: 'row', minHeight: 'calc(100vh - 64px)' }}>
-          <Content style={{ flex: '0 0 65%', margin: 0, background: '#f0f2f5', overflow: 'auto' }}>
+        <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+          <Content style={{ flex: rightDrawerOpen ? '0 0 65%' : '1 1 auto', background: '#f0f2f5', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
             <Outlet />
           </Content>
-          <Sider
-            width={'35%'}
-            theme="light"
-            trigger={null}
-            collapsed={!rightDrawerOpen}
-            collapsedWidth={0}
-            style={{ overflow: 'auto', borderLeft: '1px solid #f0f0f0' }}
-          >
-            <div style={{ padding: 16 }}>
-              <Title level={5} style={{ marginBottom: 16 }}>AI助手</Title>
-              <Typography.Text type="secondary">AI 助手面板</Typography.Text>
-            </div>
-          </Sider>
+          <div style={{
+            width: rightDrawerOpen ? '35%' : 0,
+            height: 'calc(100vh - 64px)',
+            position: 'relative',
+            background: '#fff',
+            borderLeft: rightDrawerOpen ? '1px solid #f0f0f0' : 'none',
+            overflow: 'hidden',
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-left 0.3s ease',
+          }}>
+            {rightDrawerOpen && <AIAssistant />}
+          </div>
         </Layout>
       </Layout>
     </Layout>

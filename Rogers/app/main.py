@@ -1,11 +1,15 @@
 """FitAgent FastAPI Application"""
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+import os
+import logging
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+import time
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from agentscope.session import RedisSession
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
+
+logger = logging.getLogger("fitagent")
 
 
 import sys
@@ -15,11 +19,16 @@ from src.fitme.utils.database import engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router
 from .routers.agent import agent_app
-from .config import REDIS_URL, SERVER_HOST, SERVER_PORT
+from .core.config import REDIS_URL, SERVER_HOST, SERVER_PORT
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """初始化服务。"""
+    # 创建数据库表并创建测试账户
+    Base.metadata.create_all(bind=engine)
+    from .seed import seed_test_accounts
+    seed_test_accounts()
+
     if REDIS_URL:
         import redis.asyncio as aioredis
 
@@ -58,12 +67,6 @@ app = FastAPI(
 )
 
 
-@app.on_event("startup")
-def startup():
-    """启动时创建数据库表"""
-    Base.metadata.create_all(bind=engine)
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -71,6 +74,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """记录每个 HTTP 请求的详细信息。"""
+    start_time = time.time()
+    method = request.method
+    path = request.url.path
+    client = request.client.host if request.client else "unknown"
+    logger.info(">> %s %s from %s", method, path, client)
+    
+    response = await call_next(request)
+    
+    duration = time.time() - start_time
+    logger.info("<< %s %s -> %s (%.2fs)", method, path, response.status_code, duration)
+    return response
 
 
 app.include_router(auth_router)

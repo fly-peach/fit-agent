@@ -1,0 +1,209 @@
+.fitagent-chat {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  --sidebar-width: 260px;
+  --scrollbar-width: 6px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+}
+
+/* ========================================
+   侧边栏独立滚动
+   ======================================== */
+
+/* 侧边栏容器 */
+.fitagent-chat .fitagent-chat-chat-anywhere-layout-left {
+  width: var(--sidebar-width) !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Sessions 容器 - 占满侧边栏 */
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions {
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Sessions Header - 固定 */
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-header {
+  flex-shrink: 0 !important;
+}
+
+/* Sessions Content - 占满剩余空间 */
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-content {
+  flex: 1 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* Sessions Adder - 固定 */
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-adder {
+  flex-shrink: 0 !important;
+}
+
+/* Sessions List - 核心滚动区域 */
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list {
+  flex: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-thumb) transparent !important;
+  -ms-overflow-style: auto !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar {
+  display: block !important;
+  width: var(--scrollbar-width) !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+  border-radius: 4px !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb) !important;
+  border-radius: 4px !important;
+  transition: background 0.2s !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover) !important;
+}
+
+/* 修复 Conversations 组件的 overflow-y: hidden 问题 */
+.fitagent-chat .fitagent-chat-conversations {
+  overflow-y: visible !important;
+  height: auto !important;
+}
+
+/* ========================================
+   对话区独立滚动
+   ======================================== */
+
+/* 右侧聊天区域 */
+.fitagent-chat .fitagent-chat-chat-anywhere-layout-right {
+  height: 100% !important;
+  max-height: 100% !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Chat 容器 */
+.fitagent-chat .fitagent-chat-chat-anywhere-chat {
+  flex: 1 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* 消息列表 */
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list {
+  flex: 1 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll {
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-thumb) transparent !important;
+  -ms-overflow-style: auto !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: var(--scrollbar-width) !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+  border-radius: 4px !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb) !important;
+  border-radius: 4px !important;
+  transition: background 0.2s !important;
+}
+
+.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover) !important;
+}
+
+/* 输入区域 - 固定在底部 */
+.fitagent-chat .fitagent-chat-chat-anywhere-input {
+  flex-shrink: 0 !important;
+}
+
+/* ========================================
+   整体布局约束
+   ======================================== */
+
+.fitagent-chat-chat-anywhere-layout {
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  overflow: hidden !important;
+}
+
+.fitagent-chat-chat-anywhere-layout-main {
+  height: 100% !important;
+  max-height: 100% !important;
+  display: flex !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ========================================
+   Drawer 约束
+   ======================================== */
+
+.fitagent-chat-drawer {
+  position: absolute !important;
+  height: 100% !important;
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+.fitagent-chat-drawer .ant-drawer-content {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.fitagent-chat-drawer .ant-drawer-wrapper-body {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.fitagent-chat-drawer .ant-drawer-mask {
+  position: absolute !important;
+}
+
+.fitagent-chat .ant-drawer {
+  max-width: 100% !important;
+}

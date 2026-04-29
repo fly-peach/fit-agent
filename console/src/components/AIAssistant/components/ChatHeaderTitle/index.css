@@ -1,0 +1,5 @@
+.chat-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--colorText, rgba(0, 0, 0, 0.88));
+}

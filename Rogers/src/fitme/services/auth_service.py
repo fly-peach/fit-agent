@@ -1,15 +1,12 @@
 """Auth Service"""
 from sqlalchemy.orm import Session
 from typing import Optional
-from passlib.context import CryptContext
+import bcrypt
 import jwt
 from datetime import datetime, timedelta
 from ..models import User, UserSettings
 from ..schemas.auth import LoginRequest, RegisterRequest
 from ..core.config import settings
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
@@ -18,12 +15,15 @@ class AuthService:
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """验证密码"""
-        return pwd_context.verify(plain_password, hashed_password)
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
 
     @staticmethod
     def hash_password(password: str) -> str:
         """生成密码哈希"""
-        return pwd_context.hash(password)
+        return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def create_token(user_id: int, email: str) -> str:
