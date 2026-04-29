@@ -1,20 +1,17 @@
 import os
-from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.model import DashScopeChatModel
 from agentscope.pipeline import stream_printing_messages
 from agentscope.tool import Toolkit, execute_python_code, ToolResponse
 from agentscope.memory import InMemoryMemory
-from agentscope.session import RedisSession
+
 
 from agentscope_runtime.engine.app import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 from dotenv import load_dotenv
-from agentscope_runtime.tools.searches import ModelstudioSearch
-import asyncio
 
 # load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 # if os.environ.get("DASHSCOPE_API_KEY") is None:
@@ -28,31 +25,10 @@ def get_weather(location: str, date: str) -> ToolResponse:
     return ToolResponse(content=[{"type": "text", "text": f"The weather in {location} is sunny with a temperature of 25°C."}])
 
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """初始化服务。"""
-    import fakeredis
-
-    fake_redis = fakeredis.aioredis.FakeRedis(
-        decode_responses=True
-    )
-    # 注意：这个 FakeRedis 实例仅用于开发/测试。
-    # 在生产环境中，请替换为你自己的 Redis 客户端/连接
-    #（例如 aioredis.Redis）。
-    app.state.session = RedisSession(
-        connection_pool=fake_redis.connection_pool
-    )
-    try:
-        yield
-    finally:
-        print("AgentApp is shutting down...")
-
 # 创建 AgentApp
 agent_app = AgentApp(
     app_name="MyAssistant",
     app_description="A helpful assistant agent",
-    lifespan=lifespan,
 )
 
 @agent_app.query(framework="agentscope")

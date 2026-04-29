@@ -3,9 +3,15 @@ import {
   IAgentScopeRuntimeWebUISessionAPI,
 } from '@agentscope-ai/chat';
 
+interface ExtendedSession extends IAgentScopeRuntimeWebUISession {
+  createdAt?: string | null;
+  pinned?: boolean;
+  _messages?: any[];
+}
+
 class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
   private lsKey: string;
-  private sessionList: IAgentScopeRuntimeWebUISession[];
+  private sessionList: ExtendedSession[];
 
   constructor() {
     this.lsKey = 'agent-scope-runtime-webui-sessions';
@@ -14,7 +20,7 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
 
   async getSessionList() {
     this.sessionList = JSON.parse(localStorage.getItem(this.lsKey) || '[]');
-    return [...this.sessionList];
+    return [...this.sessionList] as IAgentScopeRuntimeWebUISession[];
   }
 
   async getSession(sessionId: string) {
@@ -27,18 +33,24 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
       this.sessionList[index] = {
         ...this.sessionList[index],
         ...session,
-      };
+      } as ExtendedSession;
       localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
     }
 
-    return [...this.sessionList];
+    return [...this.sessionList] as IAgentScopeRuntimeWebUISession[];
   }
 
   async createSession(session: Partial<IAgentScopeRuntimeWebUISession>) {
     session.id = Date.now().toString();
-    this.sessionList.unshift(session as IAgentScopeRuntimeWebUISession);
+    const extended: ExtendedSession = {
+      ...session,
+      createdAt: new Date().toISOString(),
+      pinned: false,
+      _messages: [],
+    } as ExtendedSession;
+    this.sessionList.unshift(extended);
     localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
-    return [...this.sessionList];
+    return [...this.sessionList] as IAgentScopeRuntimeWebUISession[];
   }
 
   async removeSession(session: Partial<IAgentScopeRuntimeWebUISession>) {
@@ -46,7 +58,16 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
       (item) => item.id !== session.id,
     );
     localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
-    return [...this.sessionList];
+    return [...this.sessionList] as IAgentScopeRuntimeWebUISession[];
+  }
+
+  /** Store messages for a session (used by search) */
+  async storeMessages(sessionId: string, messages: any[]) {
+    const index = this.sessionList.findIndex((item) => item.id === sessionId);
+    if (index > -1) {
+      this.sessionList[index]._messages = messages;
+      localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
+    }
   }
 }
 
