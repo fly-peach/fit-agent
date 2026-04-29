@@ -8,7 +8,7 @@ from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 
-from agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
+from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.user_workspace import get_user_workspace, ensure_user_workspace
 
 logger = logging.getLogger("fitagent")
