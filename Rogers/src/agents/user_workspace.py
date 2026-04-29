@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 
-_WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent / "config" / "workspace"
+_WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace"
 _TEMPLATE_DIR = _WORKSPACE_ROOT / "templates"
 _USERS_DIR = _WORKSPACE_ROOT / "users"
 

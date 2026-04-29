@@ -209,7 +209,7 @@ def get_config() -> AppConfig:
     global _config
     if _config is None:
         # Try loading from default config path, fall back to env
-        config_path = Path(__file__).resolve().parent.parent.parent / "config" / "agent.json"
+        config_path = Path(__file__).resolve().parent.parent.parent / "agent_db" / "agent.json"
         _config = AppConfig.from_file(config_path)
     return _config
 

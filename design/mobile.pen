@@ -1175,7 +1175,7 @@
                 {
                   "type": "frame",
                   "id": "UQF1b",
-                  "name": "Nav Profile",
+                  "name": "Nav AI",
                   "layout": "vertical",
                   "gap": 4,
                   "alignItems": "center",
@@ -1186,19 +1186,19 @@
                       "name": "navProfileIcon",
                       "width": 24,
                       "height": 24,
-                      "iconFontName": "user",
+                      "iconFontName": "sparkles",
                       "iconFontFamily": "lucide",
-                      "fill": "#5B5F66"
+                      "fill": "#0F5FFE"
                     },
                     {
                       "type": "text",
                       "id": "0CFrQ",
                       "name": "Label",
-                      "fill": "#5B5F66",
-                      "content": "我的",
+                      "fill": "#0F5FFE",
+                      "content": "AI",
                       "fontFamily": "Roboto",
                       "fontSize": 11,
-                      "fontWeight": "normal"
+                      "fontWeight": "500"
                     }
                   ]
                 }
@@ -2052,7 +2052,7 @@
                 {
                   "type": "frame",
                   "id": "rxQe3",
-                  "name": "fitNavProfile",
+                  "name": "fitNavAI",
                   "layout": "vertical",
                   "gap": 4,
                   "alignItems": "center",
@@ -2063,7 +2063,7 @@
                       "name": "fitNavProfileIcon",
                       "width": 24,
                       "height": 24,
-                      "iconFontName": "user",
+                      "iconFontName": "sparkles",
                       "iconFontFamily": "lucide",
                       "fill": "#5B5F66"
                     },
@@ -2072,7 +2072,7 @@
                       "id": "rEPUD",
                       "name": "fitNavProfileText",
                       "fill": "#5B5F66",
-                      "content": "我的",
+                      "content": "AI",
                       "fontFamily": "Roboto",
                       "fontSize": 11,
                       "fontWeight": "normal"
@@ -2869,7 +2869,7 @@
                       "name": "dietNavProfileIcon",
                       "width": 24,
                       "height": 24,
-                      "iconFontName": "user",
+                      "iconFontName": "sparkles",
                       "iconFontFamily": "lucide",
                       "fill": "#5B5F66"
                     },
@@ -2878,7 +2878,7 @@
                       "id": "XNhbf",
                       "name": "dietNavProfileText",
                       "fill": "#5B5F66",
-                      "content": "我的",
+                      "content": "AI",
                       "fontFamily": "Roboto",
                       "fontSize": 11,
                       "fontWeight": "normal"
@@ -3641,6 +3641,479 @@
                       "fontWeight": "normal"
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "FiIez",
+      "x": 1425,
+      "y": 0,
+      "name": "Mobile AI Chat",
+      "clip": true,
+      "width": 375,
+      "height": 812,
+      "fill": "#F5F5F5",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "H7UpaS",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ZkH7s",
+              "name": "Back Button",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "hPRKI",
+                  "name": "backIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "arrow-left",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "T5hIj6",
+              "name": "Title",
+              "fill": "#333333",
+              "content": "AI助手",
+              "fontFamily": "Roboto",
+              "fontSize": 18,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "ulWbH",
+              "name": "Spacer",
+              "width": "fill_container",
+              "height": "fit_content(0)"
+            },
+            {
+              "type": "frame",
+              "id": "VRhZJ",
+              "name": "New Chat Button",
+              "fill": "#F2F3F0",
+              "cornerRadius": 8,
+              "padding": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "SSDGk",
+                  "name": "newChatIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "square-pen",
+                  "iconFontFamily": "lucide",
+                  "fill": "#333333"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ii4uN",
+          "name": "Scroll Area",
+          "clip": true,
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            12,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "HQcUW",
+              "name": "Welcome Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 16,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#E1E2E5"
+              },
+              "layout": "vertical",
+              "gap": 16,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mMELF",
+                  "name": "Avatar Circle",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "#0F5FFE",
+                  "cornerRadius": 24,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "ymCPl",
+                      "name": "robotIcon",
+                      "width": 24,
+                      "height": 24,
+                      "iconFontName": "bot",
+                      "iconFontFamily": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xMrmf",
+                  "name": "Title",
+                  "fill": "#333333",
+                  "content": "你好，我是Rogers",
+                  "fontFamily": "Roboto",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "DNLZu",
+                  "name": "Description",
+                  "fill": "#5B5F66",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "你的专业健身和健康管理助手。我可以帮你制定训练计划、管理饮食、追踪健康数据。",
+                  "fontFamily": "Roboto",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "DtZlY",
+                  "name": "Prompts Label",
+                  "fill": "#333333",
+                  "content": "你可以试试问我：",
+                  "fontFamily": "Roboto",
+                  "fontSize": 13,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "frame",
+                  "id": "ft3kQ",
+                  "name": "Prompts List",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "DH2pD",
+                      "name": "Prompt 1",
+                      "width": "fill_container",
+                      "fill": "#F0F5FF",
+                      "cornerRadius": 10,
+                      "padding": [
+                        10,
+                        14
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "oFAPr",
+                          "name": "Text",
+                          "fill": "#0F5FFE",
+                          "content": "帮我制定一个减脂训练计划",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Wyhbf",
+                      "name": "Prompt 2",
+                      "width": "fill_container",
+                      "fill": "#F0F5FF",
+                      "cornerRadius": 10,
+                      "padding": [
+                        10,
+                        14
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "xvtN2",
+                          "name": "Text",
+                          "fill": "#0F5FFE",
+                          "content": "今天应该吃多少蛋白质？",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ZiEl5",
+                      "name": "Prompt 3",
+                      "width": "fill_container",
+                      "fill": "#F0F5FF",
+                      "cornerRadius": 10,
+                      "padding": [
+                        10,
+                        14
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "MkGku",
+                          "name": "Text",
+                          "fill": "#0F5FFE",
+                          "content": "如何提高跑步耐力？",
+                          "fontFamily": "Roboto",
+                          "fontSize": 13,
+                          "fontWeight": "500"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TuvoV",
+              "name": "User Message",
+              "width": "fill_container",
+              "justifyContent": "end",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iQ7CQ",
+                  "name": "User Bubble",
+                  "fill": "#0F5FFE",
+                  "cornerRadius": 16,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "igI4y",
+                      "name": "Text",
+                      "fill": "#FFFFFF",
+                      "content": "帮我制定一个减脂训练计划",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "W7uDkb",
+                      "name": "Time",
+                      "opacity": 0.7,
+                      "fill": "#FFFFFF",
+                      "content": "23:31",
+                      "fontFamily": "Roboto",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BGP7k",
+              "name": "AI Message",
+              "width": "fill_container",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wT42w",
+                  "name": "AI Bubble",
+                  "width": 301,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 16,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#E1E2E5"
+                  },
+                  "layout": "vertical",
+                  "gap": 8,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "NnaVB",
+                      "name": "AI Header",
+                      "gap": 8,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "MpH2l",
+                          "name": "Mini Avatar",
+                          "width": 24,
+                          "height": 24,
+                          "fill": "#0F5FFE",
+                          "cornerRadius": 12,
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "icon_font",
+                              "id": "j1CmV9",
+                              "name": "icon",
+                              "width": 14,
+                              "height": 14,
+                              "iconFontName": "bot",
+                              "iconFontFamily": "lucide",
+                              "fill": "#FFFFFF"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "VJKQW",
+                          "name": "Name",
+                          "fill": "#333333",
+                          "content": "Rogers",
+                          "fontFamily": "Roboto",
+                          "fontSize": 12,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "klrvL",
+                      "name": "Text",
+                      "fill": "#333333",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "好的！为你设计了一个 4 周减脂训练计划：\n\n周一：上肢力量 + 20min 有氧\n周二：下肢力量 + 核心训练\n周三：休息或轻度有氧\n周四：全身 HIIT 训练\n周五：有氧 + 拉伸\n周末：户外活动或休息\n\n需要我调整强度或详细说明每个动作吗？",
+                      "fontFamily": "Roboto",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "WyBNS",
+                      "name": "Time",
+                      "fill": "#5B5F66",
+                      "content": "23:31",
+                      "fontFamily": "Roboto",
+                      "fontSize": 10,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "d39YJY",
+          "name": "Input Bar",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "top": 1
+            },
+            "fill": "#E1E2E5"
+          },
+          "gap": 8,
+          "padding": [
+            10,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "JHO1n",
+              "name": "Input Box",
+              "width": "fill_container",
+              "fill": "#F5F5F5",
+              "cornerRadius": 20,
+              "padding": [
+                10,
+                16
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kvJPx",
+                  "name": "Placeholder",
+                  "fill": "#999999",
+                  "content": "输入消息...",
+                  "fontFamily": "Roboto",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j6em5",
+              "name": "Send Button",
+              "width": 40,
+              "height": 40,
+              "fill": "#0F5FFE",
+              "cornerRadius": 20,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "tF3gd",
+                  "name": "sendIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "send",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
                 }
               ]
             }

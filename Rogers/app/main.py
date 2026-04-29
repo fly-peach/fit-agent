@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from agentscope.session import JSONSession
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 
 logger = logging.getLogger("fitagent")
@@ -28,10 +27,10 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # Disk-based session storage — one JSON file per user session
-    sessions_dir = Path(__file__).resolve().parent.parent / "config" / "workspace" / "users"
-    sessions_dir.mkdir(parents=True, exist_ok=True)
-    session = JSONSession(save_dir=str(sessions_dir))
+    # Disk-based session storage — stores under users/{user_id}/sessions/
+    sessions_dir = Path(__file__).resolve().parent.parent / "agent_db" / "workspace" / "users"
+    from src.agents.user_session import UserSession
+    session = UserSession(save_dir=str(sessions_dir))
 
     # agent_app 的 query_func 通过 agent_app.state 访问 session，
     # 需要同时设置到 agent_app 上。
