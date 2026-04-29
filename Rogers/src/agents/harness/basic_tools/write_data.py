@@ -4,9 +4,10 @@
 工具自动从 contextvars 获取。
 """
 
-from datetime import date, datetime, time as dt_time
+from datetime import date, datetime, timedelta, time as dt_time
+from decimal import Decimal
 
-from .read_data import get_db, require_user
+from agentscope.tool import ToolResponse
 
 from fitme.models import (
     HealthMetric,
@@ -15,7 +16,11 @@ from fitme.models import (
     DietMeal,
     User,
     UserSettings,
+    StreakStats,
+    DailyDietSummary,
 )
+
+from .read_data import get_db, require_user
 
 
 def _resolve_user() -> int | None:
@@ -23,23 +28,101 @@ def _resolve_user() -> int | None:
     return require_user()
 
 
+def _auto_update_diet_summary(user_id: int, meal_date: date, db):
+    """写入饮食后自动更新 DailyDietSummary 和 StreakStats。"""
+    today_meals = db.query(DietMeal).filter(
+        DietMeal.user_id == user_id,
+        DietMeal.meal_date == meal_date
+    ).all()
+    user_settings = db.query(UserSettings).filter(
+        UserSettings.user_id == user_id
+    ).first()
+    cal_goal = user_settings.calorie_goal if user_settings else 2000
+    protein_goal = user_settings.protein_goal if user_settings else 150
+    water_goal = user_settings.water_goal if user_settings else 2000
+
+    total_calories = sum(m.calories for m in today_meals)
+    total_protein = sum(float(m.protein or 0) for m in today_meals)
+    total_carbs = sum(float(m.carbs or 0) for m in today_meals)
+    total_fat = sum(float(m.fat or 0) for m in today_meals)
+    total_water = sum(m.water or 0 for m in today_meals)
+
+    summary = db.query(DailyDietSummary).filter(
+        DailyDietSummary.user_id == user_id,
+        DailyDietSummary.summary_date == meal_date
+    ).first()
+
+    if summary:
+        summary.total_calories = total_calories
+        summary.total_protein = total_protein
+        summary.total_carbs = total_carbs
+        summary.total_fat = total_fat
+        summary.total_water = total_water
+        summary.protein_goal_met = total_protein >= protein_goal
+        summary.water_goal_met = total_water >= water_goal
+        summary.meal_count = len(today_meals)
+    else:
+        db.add(DailyDietSummary(
+            user_id=user_id,
+            summary_date=meal_date,
+            total_calories=total_calories,
+            total_protein=total_protein,
+            total_carbs=total_carbs,
+            total_fat=total_fat,
+            total_water=total_water,
+            protein_goal_met=total_protein >= protein_goal,
+            water_goal_met=total_water >= water_goal,
+            meal_count=len(today_meals),
+        ))
+
+    # Update streak
+    streak = db.query(StreakStats).filter(
+        StreakStats.user_id == user_id
+    ).first()
+    if not streak:
+        streak = StreakStats(user_id=user_id)
+        db.add(streak)
+    if streak.last_diet_date != meal_date:
+        yesterday = meal_date - timedelta(days=1)
+        if streak.last_diet_date == yesterday:
+            streak.diet_streak = (streak.diet_streak or 0) + 1
+        else:
+            streak.diet_streak = 1
+        streak.last_diet_date = meal_date
+
+
+def _auto_update_training_streak(user_id: int, completed_at: datetime, db):
+    """完成训练后自动更新 StreakStats。"""
+    completed_date = completed_at.date()
+    streak = db.query(StreakStats).filter(
+        StreakStats.user_id == user_id
+    ).first()
+    if not streak:
+        streak = StreakStats(user_id=user_id)
+        db.add(streak)
+    if streak.last_training_date != completed_date:
+        yesterday = completed_date - timedelta(days=1)
+        if streak.last_training_date == yesterday:
+            streak.training_streak = (streak.training_streak or 0) + 1
+        else:
+            streak.training_streak = 1
+        streak.last_training_date = completed_date
+
+
 # =========================================================================
 # 工具函数
 # =========================================================================
 
-def update_profile(**kwargs) -> str:
-    """更新用户基本信息。
-
-    可传入 name, avatar 等字段。
-    """
+def update_profile(**kwargs) -> ToolResponse:
+    """更新用户基本信息。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         user = db.query(User).filter(User.user_id == user_id).first()
         if not user:
-            return "⚠️ 用户不存在"
+            return ToolResponse(content=[{"type": "text", "text": "用户不存在"}])
         changes = []
         if "name" in kwargs and kwargs["name"]:
             user.name = kwargs["name"]
@@ -48,36 +131,25 @@ def update_profile(**kwargs) -> str:
             user.avatar = kwargs["avatar"]
             changes.append(f"头像 → {kwargs['avatar']}")
         if not changes:
-            return "⚠️ 没有需要更新的字段"
+            return ToolResponse(content=[{"type": "text", "text": "没有需要更新的字段"}])
         db.commit()
-        return f"✅ 已更新用户信息：{'；'.join(changes)}"
+        return ToolResponse(content=[{"type": "text", "text": f"已更新用户信息：{'；'.join(changes)}"}])
     finally:
-        if get_db.__module__ is None:  # 判断是否为临时 session
-            pass
-        # 简单判断：非 context 注入的 session 需要 close
         from .read_data import _current_db
         if _current_db.get() is None:
             db.close()
 
 
 def add_health_metric(weight: float | None = None, height: float | None = None,
-                      body_fat: float | None = None, measure_date: str | None = None) -> str:
-    """添加一条新的健康指标记录。
-
-    Args:
-        weight: 体重 (kg)
-        height: 身高 (cm)
-        body_fat: 体脂率 (%)
-        measure_date: 测量日期 (YYYY-MM-DD)，默认今天
-    """
+                      body_fat: float | None = None, measure_date: str | None = None) -> ToolResponse:
+    """添加一条新的健康指标记录。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         if weight is None and height is None and body_fat is None:
-            return "⚠️ 请至少提供一项指标（体重、身高、体脂）"
-        from decimal import Decimal
+            return ToolResponse(content=[{"type": "text", "text": "请至少提供一项指标（体重、身高、体脂）"}])
         measure_dt = date.fromisoformat(measure_date) if measure_date else date.today()
 
         bmi = None
@@ -103,7 +175,7 @@ def add_health_metric(weight: float | None = None, height: float | None = None,
         db.add(metric)
         db.commit()
 
-        lines = [f"✅ 已记录健康指标（{measure_dt}）："]
+        lines = [f"已记录健康指标（{measure_dt}）："]
         if weight:
             lines.append(f"  体重：{weight} kg")
         if height:
@@ -112,7 +184,7 @@ def add_health_metric(weight: float | None = None, height: float | None = None,
             lines.append(f"  体脂率：{body_fat}%")
         if bmi:
             lines.append(f"  BMI：{bmi}（{bmi_status}）")
-        return "\n".join(lines)
+        return ToolResponse(content=[{"type": "text", "text": "\n".join(lines)}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
@@ -123,27 +195,20 @@ def add_training_plan(plan_name: str, plan_type: str,
                       scheduled_date: str | None = None,
                       estimated_duration: int = 60,
                       target_intensity: str = "medium",
-                      note: str | None = None) -> str:
-    """创建一条训练计划。
-
-    Args:
-        plan_name: 计划名称
-        plan_type: 类型 (strength / cardio / flexibility)
-        scheduled_date: 计划日期 (YYYY-MM-DD)，默认明天
-        estimated_duration: 预计时长（分钟）
-        target_intensity: 目标强度 (low / medium / high)
-        note: 备注
-    """
+                      note: str | None = None) -> ToolResponse:
+    """创建一条训练计划。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         if not plan_name:
-            return "⚠️ 请提供训练计划名称"
+            return ToolResponse(content=[{"type": "text", "text": "请提供训练计划名称"}])
         if plan_type not in ("strength", "cardio", "flexibility"):
-            return "⚠️ 计划类型需为 strength / cardio / flexibility 之一"
+            return ToolResponse(content=[{"type": "text", "text": "计划类型需为 strength / cardio / flexibility 之一"}])
         sched_dt = date.fromisoformat(scheduled_date) if scheduled_date else date.today()
+        # day_of_week: 1=周一, 7=周日
+        day = sched_dt.weekday() + 1
 
         plan = TrainingPlan(
             user_id=user_id,
@@ -152,19 +217,19 @@ def add_training_plan(plan_name: str, plan_type: str,
             target_intensity=target_intensity,
             estimated_duration=estimated_duration,
             scheduled_date=sched_dt,
-            day_of_week=(sched_dt.weekday() + 1) % 7 + 1,
+            day_of_week=day,
             note=note,
             status="pending",
         )
         db.add(plan)
         db.commit()
 
-        return (
-            f"✅ 已创建训练计划：{plan_name}\n"
+        return ToolResponse(content=[{"type": "text", "text": (
+            f"已创建训练计划：{plan_name}\n"
             f"  类型：{plan_type} | 时长：{estimated_duration}分钟 | "
             f"强度：{target_intensity}\n"
             f"  日期：{sched_dt}"
-        )
+        )}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
@@ -174,19 +239,11 @@ def add_training_plan(plan_name: str, plan_type: str,
 def complete_training(plan_id: int, actual_duration: int | None = None,
                       actual_intensity: str | None = None,
                       calories_burned: int | None = None,
-                      note: str | None = None) -> str:
-    """完成一个训练计划，标记为已完成并记录实际数据。
-
-    Args:
-        plan_id: 训练计划 ID
-        actual_duration: 实际时长（分钟）
-        actual_intensity: 实际强度 (low / medium / high)
-        calories_burned: 消耗卡路里
-        note: 备注
-    """
+                      note: str | None = None) -> ToolResponse:
+    """完成一个训练计划，标记为已完成并记录实际数据。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         plan = db.query(TrainingPlan).filter(
@@ -194,37 +251,39 @@ def complete_training(plan_id: int, actual_duration: int | None = None,
             TrainingPlan.user_id == user_id
         ).first()
         if not plan:
-            return f"⚠️ 训练计划 #{plan_id} 不存在"
+            return ToolResponse(content=[{"type": "text", "text": f"训练计划 #{plan_id} 不存在"}])
         plan.status = "completed"
+        now = datetime.now()
         db.add(TrainingRecord(
             plan_id=plan_id,
             user_id=user_id,
             actual_duration=actual_duration,
             actual_intensity=actual_intensity,
             calories_burned=calories_burned,
-            completed_at=datetime.now(),
+            completed_at=now,
             note=note,
         ))
+        _auto_update_training_streak(user_id, now, db)
         db.commit()
-        lines = [f"✅ 已完成训练：{plan.plan_name}"]
+        lines = [f"已完成训练：{plan.plan_name}"]
         if actual_duration:
             lines.append(f"  实际时长：{actual_duration}分钟")
         if actual_intensity:
             lines.append(f"  实际强度：{actual_intensity}")
         if calories_burned:
             lines.append(f"  消耗：{calories_burned} kcal")
-        return "\n".join(lines)
+        return ToolResponse(content=[{"type": "text", "text": "\n".join(lines)}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
             db.close()
 
 
-def delete_training_plan(plan_id: int) -> str:
+def delete_training_plan(plan_id: int) -> ToolResponse:
     """删除一个训练计划。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         plan = db.query(TrainingPlan).filter(
@@ -232,11 +291,11 @@ def delete_training_plan(plan_id: int) -> str:
             TrainingPlan.user_id == user_id
         ).first()
         if not plan:
-            return f"⚠️ 训练计划 #{plan_id} 不存在"
+            return ToolResponse(content=[{"type": "text", "text": f"训练计划 #{plan_id} 不存在"}])
         plan_name = plan.plan_name
         db.delete(plan)
         db.commit()
-        return f"✅ 已删除训练计划：{plan_name}"
+        return ToolResponse(content=[{"type": "text", "text": f"已删除训练计划：{plan_name}"}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
@@ -246,32 +305,20 @@ def delete_training_plan(plan_id: int) -> str:
 def add_meal(meal_type: str, meal_name: str, calories: int,
              protein: float = 0, carbs: float = 0, fat: float = 0,
              water: int = 0, meal_time_str: str | None = None,
-             note: str | None = None) -> str:
-    """添加饮食记录。
-
-    Args:
-        meal_type: 类型 (breakfast / lunch / dinner / snack)
-        meal_name: 食物名称
-        calories: 热量 (kcal)
-        protein: 蛋白质 (g)
-        carbs: 碳水化合物 (g)
-        fat: 脂肪 (g)
-        water: 饮水量 (ml)
-        meal_time_str: 进食时间 (HH:MM)，默认当前时间
-        note: 备注
-    """
+             note: str | None = None) -> ToolResponse:
+    """添加饮食记录。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         valid_types = ("breakfast", "lunch", "dinner", "snack")
         if meal_type not in valid_types:
-            return f"⚠️ 饮食类型需为 {' / '.join(valid_types)} 之一"
+            return ToolResponse(content=[{"type": "text", "text": f"饮食类型需为 {' / '.join(valid_types)} 之一"}])
         if not meal_name:
-            return "⚠️ 请提供食物名称"
+            return ToolResponse(content=[{"type": "text", "text": "请提供食物名称"}])
         if calories <= 0:
-            return "⚠️ 热量需大于 0"
+            return ToolResponse(content=[{"type": "text", "text": "热量需大于 0"}])
 
         now = datetime.now()
         if meal_time_str:
@@ -293,27 +340,25 @@ def add_meal(meal_type: str, meal_name: str, calories: int,
             note=note,
         )
         db.add(meal)
+        _auto_update_diet_summary(user_id, date.today(), db)
         db.commit()
 
-        return (
-            f"✅ 已记录饮食：{meal_name}（{meal_type}）\n"
+        return ToolResponse(content=[{"type": "text", "text": (
+            f"已记录饮食：{meal_name}（{meal_type}）\n"
             f"  热量：{calories} kcal | 蛋白 {protein}g | "
             f"碳水 {carbs}g | 脂肪 {fat}g | 水 {water}ml"
-        )
+        )}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
             db.close()
 
 
-def update_meal(meal_id: int, **kwargs) -> str:
-    """更新一条饮食记录。
-
-    可传入 meal_name, calories, protein, carbs, fat, water 等字段。
-    """
+def update_meal(meal_id: int, **kwargs) -> ToolResponse:
+    """更新一条饮食记录。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         meal = db.query(DietMeal).filter(
@@ -321,7 +366,7 @@ def update_meal(meal_id: int, **kwargs) -> str:
             DietMeal.user_id == user_id
         ).first()
         if not meal:
-            return f"⚠️ 饮食记录 #{meal_id} 不存在"
+            return ToolResponse(content=[{"type": "text", "text": f"饮食记录 #{meal_id} 不存在"}])
         changes = []
         if "meal_name" in kwargs and kwargs["meal_name"]:
             meal.meal_name = kwargs["meal_name"]
@@ -342,20 +387,20 @@ def update_meal(meal_id: int, **kwargs) -> str:
             meal.water = kwargs["water"]
             changes.append(f"水 → {kwargs['water']}ml")
         if not changes:
-            return "⚠️ 没有需要更新的字段"
+            return ToolResponse(content=[{"type": "text", "text": "没有需要更新的字段"}])
         db.commit()
-        return f"✅ 已更新饮食记录 #{meal_id}：{'；'.join(changes)}"
+        return ToolResponse(content=[{"type": "text", "text": f"已更新饮食记录 #{meal_id}：{'；'.join(changes)}"}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
             db.close()
 
 
-def delete_meal(meal_id: int) -> str:
+def delete_meal(meal_id: int) -> ToolResponse:
     """删除一条饮食记录。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         meal = db.query(DietMeal).filter(
@@ -363,31 +408,27 @@ def delete_meal(meal_id: int) -> str:
             DietMeal.user_id == user_id
         ).first()
         if not meal:
-            return f"⚠️ 饮食记录 #{meal_id} 不存在"
+            return ToolResponse(content=[{"type": "text", "text": f"饮食记录 #{meal_id} 不存在"}])
         meal_name = meal.meal_name
         db.delete(meal)
         db.commit()
-        return f"✅ 已删除饮食记录：{meal_name}"
+        return ToolResponse(content=[{"type": "text", "text": f"已删除饮食记录：{meal_name}"}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:
             db.close()
 
 
-def update_settings(**kwargs) -> str:
-    """更新用户设置（目标值等）。
-
-    可传入 calorie_goal, protein_goal, carbs_goal, fat_goal,
-    water_goal, weight_goal, weekly_training_goal 等。
-    """
+def update_settings(**kwargs) -> ToolResponse:
+    """更新用户设置（目标值等）。"""
     user_id = _resolve_user()
     if user_id is None:
-        return "⚠️ 请先登录"
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
     db = get_db()
     try:
         s = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if not s:
-            return "⚠️ 暂无用户设置，请先初始化设置"
+            return ToolResponse(content=[{"type": "text", "text": "暂无用户设置，请先初始化设置"}])
         field_map = {
             "calorie_goal": ("calorie_goal", int),
             "protein_goal": ("protein_goal", int),
@@ -404,9 +445,9 @@ def update_settings(**kwargs) -> str:
                 setattr(s, field, kwargs[key])
                 changes.append(f"{key} {old_val} → {kwargs[key]}")
         if not changes:
-            return "⚠️ 没有需要更新的设置项"
+            return ToolResponse(content=[{"type": "text", "text": "没有需要更新的设置项"}])
         db.commit()
-        return f"✅ 已更新设置：{'；'.join(changes)}"
+        return ToolResponse(content=[{"type": "text", "text": f"已更新设置：{'；'.join(changes)}"}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:

@@ -3,23 +3,22 @@ import os
 import logging
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import time
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from agentscope.session import RedisSession
+from agentscope.session import JSONSession
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 
 logger = logging.getLogger("fitagent")
 
 
-import sys
 from src.fitme.core.config import settings
 from src.fitme.models import Base
 from src.fitme.utils.database import engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router
-from .routers.agent import agent_app
-from .core.config import REDIS_URL, SERVER_HOST, SERVER_PORT
+from .routers.agent import agent_app, router as agent_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,23 +28,10 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    if REDIS_URL:
-        import redis.asyncio as aioredis
-
-        redis_client = aioredis.Redis.from_url(
-            REDIS_URL, decode_responses=True
-        )
-        session = RedisSession(
-            connection_pool=redis_client.connection_pool
-        )
-    else:
-        # 开发/测试环境：使用 fakeredis
-        import fakeredis
-
-        fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-        session = RedisSession(
-            connection_pool=fake_redis.connection_pool
-        )
+    # Disk-based session storage — one JSON file per user session
+    sessions_dir = Path(__file__).resolve().parent.parent / "config" / "workspace" / "users"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+    session = JSONSession(save_dir=str(sessions_dir))
 
     # agent_app 的 query_func 通过 agent_app.state 访问 session，
     # 需要同时设置到 agent_app 上。
@@ -98,6 +84,7 @@ app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
+app.include_router(agent_router)
 
 
 
