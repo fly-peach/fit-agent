@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react'
 import { Card, Typography, Row, Col, Avatar, Form, Input, InputNumber, Switch, TimePicker, Button, Divider, message, Descriptions } from 'antd'
 import { LogoutOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import { userApi, type UserProfile } from '../../services/user'
+import { userApi, type UserProfile, agentApi } from '../../services/user'
 
 const User: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileForm] = Form.useForm()
   const [settingsForm] = Form.useForm()
+  const [agentForm] = Form.useForm()
+  const [agentConfigLoading, setAgentConfigLoading] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -33,6 +35,9 @@ const User: React.FC = () => {
         notificationEnabled: settingsData.notificationEnabled,
         reminderTime: dayjs(settingsData.reminderTime, 'HH:mm:ss'),
       })
+
+      const agentData = await agentApi.getConfig()
+      agentForm.setFieldsValue({ agents_md: agentData.agents_md, soul_md: agentData.soul_md })
     } finally {
       setLoading(false)
     }
@@ -60,6 +65,19 @@ const User: React.FC = () => {
       fetchData()
     } catch {
       message.error('保存失败')
+    }
+  }
+
+  const handleSaveAgentConfig = async () => {
+    try {
+      setAgentConfigLoading(true)
+      const values = await agentForm.validateFields()
+      await agentApi.updateConfig(values)
+      message.success('Agent 配置已保存')
+    } catch {
+      message.error('保存失败')
+    } finally {
+      setAgentConfigLoading(false)
     }
   }
 
@@ -153,6 +171,32 @@ const User: React.FC = () => {
               </Row>
 
               <Button type="primary" htmlType="submit">保存设置</Button>
+            </Form>
+          </Card>
+
+          <Card title="🤖 AI Agent 配置" style={{ marginTop: 24 }}>
+            <Form form={agentForm} layout="vertical" onFinish={handleSaveAgentConfig}>
+              <Form.Item
+                name="agents_md"
+                label="系统提示词 (agents.md)"
+                help="定义 Agent 的主要功能、使用工具的方式以及回答风格"
+              >
+                <Input.TextArea
+                  rows={8}
+                  placeholder="例如：你是 Rogers，一个专业的健身和健康管理助手..."
+                />
+              </Form.Item>
+              <Form.Item
+                name="soul_md"
+                label="性格设定 (soul.md)"
+                help="定义 Agent 的个性、语气和沟通风格"
+              >
+                <Input.TextArea
+                  rows={6}
+                  placeholder="例如：温暖、专业、鼓励型，用简洁的语言回答问题..."
+                />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" loading={agentConfigLoading}>保存配置</Button>
             </Form>
           </Card>
         </Col>

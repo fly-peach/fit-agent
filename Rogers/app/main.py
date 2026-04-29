@@ -18,7 +18,7 @@ from src.fitme.models import Base
 from src.fitme.utils.database import engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router
-from .routers.agent import agent_app, router as agent_router
+from .routers.agent import agent_app, router as agent_router, _auth_token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,6 +60,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def set_auth_token(request: Request, call_next):
+    """从多个来源提取 token 存入 ContextVar：
+    1. Authorization: Bearer <token>
+    2. ?token=<token> 查询参数（SSE 场景常用）
+    3. Cookie token=<token>
+    """
+    token = None
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+    else:
+        token = request.query_params.get("token")
+    if not token:
+        token = request.cookies.get("token")
+    _auth_token.set(token)
+    return await call_next(request)
 
 
 @app.middleware("http")

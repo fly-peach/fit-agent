@@ -10,7 +10,11 @@ import os
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, model_validator
+
+# Ensure .env is loaded before any os.getenv calls
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env")
 
 
 # ---------------------------------------------------------------------------

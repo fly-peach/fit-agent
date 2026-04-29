@@ -38,6 +38,7 @@ const navItems: NavItem[] = [
   { key: '/training', icon: <FireOutlined />, label: '训练计划' },
   { key: '/diet', icon: <CoffeeOutlined />, label: '饮食管理' },
   { key: '/user', icon: <UserOutlined />, label: '个人中心' },
+  { key: '/agent-config', icon: <RobotOutlined />, label: 'Agent 配置' },
 ]
 
 const menuItems: MenuProps['items'] = navItems.map(item => ({ ...item }))

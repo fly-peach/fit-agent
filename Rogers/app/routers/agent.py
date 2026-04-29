@@ -1,6 +1,8 @@
 import os
 import logging
+from contextvars import ContextVar
 
+from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
 from src.agents.agent import agent_cache
 from agentscope_runtime.engine.app import AgentApp
@@ -10,6 +12,11 @@ from pydantic import BaseModel
 
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.user_workspace import get_user_workspace, ensure_user_workspace
+
+logger = logging.getLogger("fitagent")
+
+# ContextVar to carry the JWT token from middleware to query_func
+_auth_token: ContextVar[str | None] = ContextVar("auth_token", default=None)
 
 logger = logging.getLogger("fitagent")
 
@@ -24,18 +31,18 @@ async def query_func(
     self,
     msgs,
     request: AgentRequest | None = None,
-    **kwargs,
+    **_kwargs,
 ):
     """处理用户查询。"""
     assert request is not None, "request is required"
     session_id = request.session_id or "default"
 
-    # 从 Header 获取 JWT token，不信任请求体
-    auth_header = kwargs.get("auth_header") or ""
+    # 通过 ContextVar 获取 middleware 设置的 token
+    token = _auth_token.get() or ""
     try:
-        user_id = get_user_id_from_token(auth_header)
+        user_id = get_user_id_from_token(token)
     except NotAuthenticatedError:
-        yield "请先登录后再使用助手。", True
+        yield Msg(name="Rogers", content="请先登录后再使用助手。", role="assistant"), True
         return
 
     agent = await agent_cache.get_or_create(user_id)
@@ -62,49 +69,6 @@ async def query_func(
 
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
-
-@router.post("/chat")
-async def agent_chat(
-    request: AgentRequest,
-    authorization: str | None = Header(default=None),
-):
-    """发送消息到 agent，通过 Header 认证。"""
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
-
-    session_id = request.session_id or f"user-{user_id}"
-
-    agent = await agent_cache.get_or_create(user_id)
-    agent.set_console_output_enabled(False)
-
-    async with agent_context(user_id):
-        await agent_app.state.session.load_session_state(
-            session_id=session_id,
-            user_id=str(user_id),
-            agent=agent,
-        )
-
-        full_response = ""
-        async for msg, last, *_ in stream_printing_messages(
-            agents=[agent],
-            coroutine_task=agent(request.input),
-        ):
-            if msg and hasattr(msg, "content"):
-                full_response += str(msg.content)
-
-        await agent_app.state.session.save_session_state(
-            session_id=session_id,
-            user_id=str(user_id),
-            agent=agent,
-        )
-
-    return {"response": full_response}
 
 
 # ---------------------------------------------------------------------------

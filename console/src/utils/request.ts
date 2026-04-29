@@ -25,6 +25,10 @@ api.interceptors.response.use(
     if (code === 200) {
       return data
     }
+    // 直接返回数据（无 code 字段）
+    if (code === undefined && data === undefined) {
+      return response.data
+    }
     console.error(msg || '请求失败')
     return Promise.reject(new Error(msg))
   },

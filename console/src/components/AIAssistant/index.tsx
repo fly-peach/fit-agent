@@ -1,6 +1,6 @@
 import { AgentScopeRuntimeWebUI, IAgentScopeRuntimeWebUIOptions } from '@agentscope-ai/chat'
 import { ConfigProvider } from 'antd'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import sessionApi from './sessionApi'
 import ChatActionGroup from './components/ChatActionGroup'
 import ChatHeaderTitle from './components/ChatHeaderTitle'
@@ -11,11 +11,47 @@ import './components/ChatHeaderTitle/index.css'
 import './index.css'
 
 const AIAssistant: React.FC = () => {
+  const originalFetchRef = useRef<Window['fetch'] | null>(null)
+
+  // 拦截 fetch，为 /process 请求注入 Authorization header
+  useEffect(() => {
+    const originalFetch = window.fetch
+    originalFetchRef.current = originalFetch
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      if (url.includes('/process')) {
+        const token = localStorage.getItem('token')
+        if (token) {
+          const headers = new Headers(init?.headers || {})
+          headers.set('Authorization', `Bearer ${token}`)
+          init = { ...init, headers }
+        }
+      }
+      return originalFetch.call(window, input, init)
+    }
+
+    return () => {
+      window.fetch = originalFetchRef.current || originalFetch
+    }
+  }, [])
+
   const options = useMemo(() => {
     return {
       api: {
         baseURL: BASE_URL,
-        token: TOKEN,
+        requestInterceptors: [
+          (config: Record<string, any>) => {
+            const token = localStorage.getItem('token')
+            if (token) {
+              config.headers = {
+                ...(config.headers || {}),
+                Authorization: `Bearer ${token}`,
+              }
+            }
+            return config
+          },
+        ],
       },
       session: {
         multiple: true,

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { MainLayout } from './components'
-import { Login, Dashboard, Health, Training, Diet, User } from './pages'
+import { Login, Dashboard, Health, Training, Diet, User, AgentConfig } from './pages'
 
 const App: React.FC = () => {
   const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -29,6 +29,7 @@ const App: React.FC = () => {
             <Route path="training" element={<Training />} />
             <Route path="diet" element={<Diet />} />
             <Route path="user" element={<User />} />
+            <Route path="agent-config" element={<AgentConfig />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

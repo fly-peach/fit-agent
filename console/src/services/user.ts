@@ -34,3 +34,16 @@ export const userApi = {
   updateSettings: (data: Partial<UserSettings>): Promise<void> =>
     api.put('/user/settings', data),
 }
+
+export interface AgentConfig {
+  agents_md: string
+  soul_md: string
+}
+
+export const agentApi = {
+  getConfig: (): Promise<AgentConfig> =>
+    api.get('/agent/config'),
+
+  updateConfig: (data: Partial<AgentConfig>): Promise<void> =>
+    api.put('/agent/config', data),
+}
