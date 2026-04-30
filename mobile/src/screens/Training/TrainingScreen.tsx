@@ -10,11 +10,21 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trainingApi } from '../../services/training';
-import { COLORS, TRAINING_TYPE_LABELS } from '../../constants';
+import { COLORS, SHADOWS, TRAINING_TYPE_LABELS } from '../../constants';
 import type { WeeklyStats, TrainingSchedule, TrainingPlan } from '../../types';
 
+const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  strength: 'barbell',
+  cardio: 'heart',
+  stretch: 'leaf',
+};
+
 export default function TrainingScreen() {
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<WeeklyStats | null>(null);
   const [schedule, setSchedule] = useState<TrainingSchedule[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -102,92 +112,113 @@ export default function TrainingScreen() {
     ]);
   };
 
-  const statusColor = (status: string) => {
+  const statusConfig = (status: string) => {
     switch (status) {
-      case 'completed': return COLORS.success;
-      case 'in_progress': return COLORS.primary;
-      default: return COLORS.primary;
+      case 'completed': return { color: COLORS.success, bg: COLORS.successLight, label: '已完成', icon: 'checkmark-circle' as keyof typeof Ionicons.glyphMap };
+      case 'in_progress': return { color: COLORS.primary, bg: COLORS.blueBg, label: '进行中', icon: 'time-outline' as keyof typeof Ionicons.glyphMap };
+      default: return { color: COLORS.warning, bg: COLORS.warningLight, label: '待完成', icon: 'ellipse-outline' as keyof typeof Ionicons.glyphMap };
     }
   };
-  const statusLabel = (status: string) => {
-    switch (status) {
-      case 'completed': return '已完成';
-      case 'in_progress': return '进行中';
-      default: return '待完成';
-    }
-  };
+
+  const todayPlans = schedule.filter(s => s.date === today);
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.topTitle}>训练计划</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-          <Text style={styles.addBtnText}>+</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {/* Date */}
-        <View style={styles.card}>
-          <Text style={styles.dateText}>
-            {new Date().getFullYear()}年{new Date().getMonth() + 1}月{new Date().getDate()}日
-            {['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()]}
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Compact Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+          <Text style={styles.headerTitle}>训练计划</Text>
+          <Text style={styles.headerSub}>
+            {new Date().getMonth() + 1}月{new Date().getDate()}日 周{['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()]}
           </Text>
         </View>
 
         {/* Today's Plan */}
-        <View style={styles.card}>
+        <View style={[styles.card, { marginTop: 12 }]}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>今日训练计划</Text>
+            <Text style={styles.cardTitle}>今日训练</Text>
+            <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
+              <Ionicons name="add" size={22} color={COLORS.white} />
+            </TouchableOpacity>
           </View>
-          {schedule.filter(s => s.date === today).length === 0 ? (
-            <Text style={styles.emptyText}>暂无训练计划</Text>
+          {todayPlans.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="barbell-outline" size={48} color={COLORS.textTertiary} />
+              <Text style={styles.emptyTitle}>暂无训练计划</Text>
+              <Text style={styles.emptySub}>点击右上角添加今日训练</Text>
+            </View>
           ) : (
-            schedule.filter(s => s.date === today).map((item, idx) => (
-              <View key={item.planId || idx} style={styles.planItem}>
-                <View style={styles.planInfo}>
-                  <Text style={styles.planName}>{item.planName}</Text>
-                  <Text style={styles.planDetail}>{item.duration}分钟 | {item.intensity}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                  <View style={[styles.statusBadge, { backgroundColor: statusColor(item.status) + '18' }]}>
-                    <Text style={[styles.statusText, { color: statusColor(item.status) }]}>
-                      {statusLabel(item.status)}
-                    </Text>
+            todayPlans.map((item, idx) => {
+              const sc = statusConfig(item.status);
+              return (
+                <View key={item.planId || idx} style={styles.planItem}>
+                  <View style={[styles.planTypeIcon, { backgroundColor: sc.bg }]}>
+                    <Ionicons name={TYPE_ICONS[item.planType] || 'fitness'} size={20} color={sc.color} />
                   </View>
-                  {item.status !== 'completed' && item.planId && (
-                    <TouchableOpacity onPress={() => handleComplete(item.planId!)}>
-                      <Text style={{ color: COLORS.primary, fontSize: 13 }}>完成</Text>
-                    </TouchableOpacity>
-                  )}
-                  {item.planId && (
-                    <TouchableOpacity onPress={() => handleDelete(item.planId!)}>
-                      <Text style={{ color: COLORS.danger, fontSize: 13 }}>删除</Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={styles.planInfo}>
+                    <Text style={styles.planName}>{item.planName}</Text>
+                    <Text style={styles.planDetail}>{item.duration}分钟 · {item.intensity}</Text>
+                  </View>
+                  <View style={styles.planActions}>
+                    <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                      <Ionicons name={sc.icon} size={12} color={sc.color} />
+                      <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
+                    </View>
+                    {item.status !== 'completed' && item.planId && (
+                      <TouchableOpacity style={styles.completeBtn} onPress={() => handleComplete(item.planId!)}>
+                        <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                    {item.planId && (
+                      <TouchableOpacity onPress={() => handleDelete(item.planId!)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={16} color={COLORS.textTertiary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
         {/* Weekly Stats */}
         {stats && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>本周训练统计</Text>
+            <Text style={styles.cardTitle}>本周统计</Text>
             <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: '#FFF1F0' }]}>
-                <Text style={[styles.statValue, { color: '#CF1322' }]}>{stats.weeklyCalories}</Text>
-                <Text style={styles.statLabel}>消耗卡路里</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: '#E6F7FF' }]}>
-                <Text style={[styles.statValue, { color: COLORS.primary }]}>{stats.weeklyHours}h</Text>
-                <Text style={styles.statLabel}>训练时长</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: '#FFFBE6' }]}>
-                <Text style={[styles.statValue, { color: '#D48806' }]}>{stats.completedCount}</Text>
-                <Text style={styles.statLabel}>完成次数</Text>
-              </View>
+              <LinearGradient
+                colors={['#FF6B6B', '#FF8E8E']}
+                style={styles.statCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="flame" size={20} color={COLORS.white} />
+                <Text style={styles.statValueWhite}>{stats.weeklyCalories}</Text>
+                <Text style={styles.statLabelWhite}>消耗卡路里</Text>
+              </LinearGradient>
+              <LinearGradient
+                colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+                style={styles.statCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="time" size={20} color={COLORS.white} />
+                <Text style={styles.statValueWhite}>{stats.weeklyHours}h</Text>
+                <Text style={styles.statLabelWhite}>训练时长</Text>
+              </LinearGradient>
+              <LinearGradient
+                colors={['#F59E0B', '#FBBF24']}
+                style={styles.statCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="trophy" size={20} color={COLORS.white} />
+                <Text style={styles.statValueWhite}>{stats.completedCount}</Text>
+                <Text style={styles.statLabelWhite}>完成次数</Text>
+              </LinearGradient>
             </View>
           </View>
         )}
@@ -199,8 +230,8 @@ export default function TrainingScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Text style={styles.modalClose}>✕</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>添加训练计划</Text>
               <TouchableOpacity onPress={handleAddPlan} disabled={submitting}>
@@ -217,19 +248,26 @@ export default function TrainingScreen() {
                     style={[styles.chip, planType === key && styles.chipActive]}
                     onPress={() => setPlanType(key)}
                   >
+                    <Ionicons name={TYPE_ICONS[key]} size={16} color={planType === key ? COLORS.primary : COLORS.textTertiary} />
                     <Text style={[styles.chipText, planType === key && styles.chipActiveText]}>{label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               <Text style={styles.formLabel}>训练名称</Text>
-              <TextInput style={styles.formInput} placeholder="输入训练名称..." value={planName} onChangeText={setPlanName} />
+              <View style={styles.inputWrap}>
+                <Ionicons name="fitness-outline" size={18} color={COLORS.textTertiary} />
+                <TextInput style={styles.formInput} placeholder="输入训练名称..." value={planName} onChangeText={setPlanName} placeholderTextColor={COLORS.textTertiary} />
+              </View>
 
               <Text style={styles.formLabel}>训练时长（分钟）</Text>
-              <TextInput style={styles.formInput} placeholder="30" value={duration} onChangeText={setDuration} keyboardType="numeric" />
+              <View style={styles.inputWrap}>
+                <Ionicons name="time-outline" size={18} color={COLORS.textTertiary} />
+                <TextInput style={styles.formInput} placeholder="30" value={duration} onChangeText={setDuration} keyboardType="numeric" placeholderTextColor={COLORS.textTertiary} />
+              </View>
 
               <Text style={styles.formLabel}>备注</Text>
-              <TextInput style={[styles.formInput, { height: 80 }]} placeholder="添加训练备注..." value={note} onChangeText={setNote} multiline textAlignVertical="top" />
+              <TextInput style={[styles.formInputFull, { height: 80 }]} placeholder="添加训练备注..." value={note} onChangeText={setNote} multiline textAlignVertical="top" placeholderTextColor={COLORS.textTertiary} />
             </View>
           </View>
         </View>
@@ -240,103 +278,147 @@ export default function TrainingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingHorizontal: 16,
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
-  topTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text, flex: 1, textAlign: 'center' },
-  addBtn: {
-    position: 'absolute',
-    right: 16,
-    width: 32,
-    height: 32,
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text },
+  headerSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  card: {
+    backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginTop: 16,
     borderRadius: 16,
+    padding: 20,
+    ...SHADOWS.card,
+  },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  addBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addBtnText: { color: COLORS.white, fontSize: 20, fontWeight: 'bold' },
-  card: {
-    backgroundColor: COLORS.white,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 16,
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
   },
-  dateText: { fontSize: 15, color: COLORS.text, textAlign: 'center' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text },
-  emptyText: { color: COLORS.textSecondary, textAlign: 'center', paddingVertical: 16 },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 12 },
+  emptySub: { fontSize: 13, color: COLORS.textSecondary, marginTop: 4 },
   planItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: COLORS.divider,
+  },
+  planTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   planInfo: { flex: 1 },
-  planName: { fontSize: 15, fontWeight: '500', color: COLORS.text },
+  planName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   planDetail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: '500' },
-  statsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  statCard: { flex: 1, borderRadius: 10, padding: 12, alignItems: 'center' },
-  statValue: { fontSize: 20, fontWeight: 'bold' },
-  statLabel: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
+  planActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+  },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  completeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: COLORS.blueBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statsRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  statCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValueWhite: { fontSize: 20, fontWeight: 'bold', color: COLORS.white },
+  statLabelWhite: { fontSize: 11, color: 'rgba(255,255,255,0.85)' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: COLORS.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
-  modalClose: { fontSize: 20, color: COLORS.textSecondary, width: 32 },
-  modalTitle: { fontSize: 17, fontWeight: '600', color: COLORS.text },
-  modalSave: { color: COLORS.primary, fontSize: 16, fontWeight: '600', width: 48, textAlign: 'right' },
-  formCard: { padding: 16, gap: 12 },
-  formLabel: { fontSize: 14, fontWeight: '500', color: COLORS.text, marginTop: 4 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
+  modalSave: { color: COLORS.primary, fontSize: 16, fontWeight: '600' },
+  formCard: { padding: 20, gap: 14 },
+  formLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 2 },
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
+    gap: 6,
   },
-  chipActive: { backgroundColor: COLORS.primary + '18', borderColor: COLORS.primary },
+  chipActive: { backgroundColor: COLORS.blueBg, borderColor: COLORS.primary },
   chipText: { fontSize: 14, color: COLORS.textSecondary },
-  chipActiveText: { color: COLORS.primary, fontWeight: '500' },
-  formInput: {
-    height: 44,
-    borderWidth: 1,
+  chipActiveText: { color: COLORS.primary, fontWeight: '600' },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    gap: 8,
+    backgroundColor: COLORS.white,
+  },
+  formInput: {
+    flex: 1,
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  formInputFull: {
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
     color: COLORS.text,
     backgroundColor: COLORS.white,

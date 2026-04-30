@@ -63,6 +63,7 @@ class TrainingService:
 
         return [
             {
+                "planId": p.plan_id,
                 "dayOfWeek": (p.scheduled_date.weekday() + 1) % 7 + 1,
                 "date": p.scheduled_date,
                 "planName": p.plan_name,

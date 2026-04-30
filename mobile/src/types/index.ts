@@ -69,7 +69,7 @@ export interface HealthReport {
     avgWeight: number;
     avgBmi: number;
     weightChange: number;
-    statusSummary: { pass: number; low: number; high: number };
+    statusSummary: { normal: number; low: number; high: number };
   };
 }
 
@@ -150,6 +150,7 @@ export interface NutritionProgress {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  reasoning?: string;
 }
 
 export interface ChatSession {

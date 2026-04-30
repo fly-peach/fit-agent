@@ -1,50 +1,55 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import HealthScreen from '../screens/Health/HealthScreen';
 import TrainingScreen from '../screens/Training/TrainingScreen';
 import DietScreen from '../screens/Diet/DietScreen';
 import ChatScreen from '../screens/Chat/ChatScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
-import { COLORS } from '../constants';
+import { COLORS, SHADOWS } from '../constants';
 
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const icons: Record<string, string> = {
-    健康: '♥',
-    训练: '📋',
-    饮食: '🍎',
-    AI: '✨',
-    我的: '👤',
-  };
-  return (
-    <View style={styles.iconContainer}>
-      <Text style={[styles.icon, focused && styles.iconActive]}>{icons[name] || '?'}</Text>
-      {focused && <View style={styles.indicator} />}
-    </View>
-  );
-}
+const TAB_CONFIG: Record<string, { icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }> = {
+  '健康': { icon: 'heart-outline', iconActive: 'heart' },
+  '训练': { icon: 'barbell-outline', iconActive: 'barbell' },
+  '饮食': { icon: 'nutrition-outline', iconActive: 'nutrition' },
+  'AI': { icon: 'chatbubble-ellipses-outline', iconActive: 'chatbubble-ellipses' },
+  '我的': { icon: 'person-outline', iconActive: 'person' },
+};
 
 export default function MainTabs({ onLogout }: { onLogout: () => void }) {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
-        tabBarStyle: {
-          height: 60,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.border,
-          backgroundColor: COLORS.white,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginBottom: 4,
-        },
-      })}
+      screenOptions={({ route }) => {
+        const config = TAB_CONFIG[route.name] || { icon: 'help-outline' as keyof typeof Ionicons.glyphMap, iconActive: 'help' as keyof typeof Ionicons.glyphMap };
+        return {
+          headerShown: false,
+          tabBarIcon: ({ focused, size }) => (
+            <Ionicons
+              name={focused ? config.iconActive : config.icon}
+              size={focused ? 26 : 22}
+              color={focused ? COLORS.primary : COLORS.textTertiary}
+            />
+          ),
+          tabBarActiveTintColor: COLORS.primary,
+          tabBarInactiveTintColor: COLORS.textTertiary,
+          tabBarStyle: {
+            height: Platform.OS === 'ios' ? 84 : 64,
+            paddingTop: 6,
+            paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+            borderTopWidth: 0,
+            backgroundColor: COLORS.white,
+            ...SHADOWS.card,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: '500',
+            marginTop: 2,
+          },
+        };
+      }}
     >
       <Tab.Screen name="健康" component={HealthScreen} />
       <Tab.Screen name="训练" component={TrainingScreen} />
@@ -59,13 +64,4 @@ export default function MainTabs({ onLogout }: { onLogout: () => void }) {
 
 const styles = StyleSheet.create({
   iconContainer: { alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 22, color: COLORS.textSecondary },
-  iconActive: { color: COLORS.primary },
-  indicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.primary,
-    marginTop: 2,
-  },
 });

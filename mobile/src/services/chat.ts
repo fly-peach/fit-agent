@@ -3,6 +3,8 @@ import { API_BASE_URL } from '../constants';
 import { storage } from '../utils/storage';
 import type { ChatMessage, ChatSession } from '../types';
 
+const PROCESS_URL = API_BASE_URL.replace('/api', '') + '/process';
+
 const SESSIONS_KEY = 'fitagent-chat-sessions';
 
 const chatApi = axios.create({
@@ -21,22 +23,27 @@ chatApi.interceptors.request.use(async (config) => {
 
 /**
  * 解析 SSE 事件流，逐 chunk 回调。
- * 适用于 XHR onprogress 场景，responseText 会不断增长。
+ * 分别处理 reasoning（思考）和 message（回复）内容。
+ * 通过 object:"response" + status:"completed" 判断流结束。
  */
 function parseSSEStream(
   responseText: string,
   lastPosRef: { current: number },
+  state: {
+    responseMsgId: string | null,
+    reasoningMsgId: string | null
+  },
   onChunk: (text: string) => void,
+  onReasoningChunk: (text: string) => void,
   onDone: () => void,
 ): boolean {
   const text = responseText;
   const lastPos = lastPosRef.current;
 
-  // 只处理新增的部分
   const newChunk = text.slice(lastPos);
   if (!newChunk.trim()) {
     lastPosRef.current = text.length;
-    return false; // 没有新数据
+    return false;
   }
 
   lastPosRef.current = text.length;
@@ -49,13 +56,46 @@ function parseSSEStream(
     try {
       const data = JSON.parse(trimmed.slice(6));
 
-      // 增量文本块
-      if (data.object === 'content' && data.type === 'text' && data.text) {
-        onChunk(data.text);
+      // 追踪消息类型和 ID - 处理不同可能的格式
+      if (data.object === 'message') {
+        if (data.type === 'reasoning' && data.id) {
+          state.reasoningMsgId = data.id;
+        } else if (data.type === 'message' && data.id) {
+          state.responseMsgId = data.id;
+        } else if (data.role === 'assistant' && data.id) {
+          // 如果没有明确的 type，但 role 是 assistant，默认是回复消息
+          state.responseMsgId = data.id;
+        }
       }
 
-      // 完成信号
-      if (data.object === 'message' && data.status === 'completed') {
+      // 增量文本块
+      if (
+        data.object === 'content' &&
+        data.type === 'text' &&
+        data.delta === true &&
+        data.text
+      ) {
+        // 判断是 reasoning 还是回复内容
+        if (state.reasoningMsgId && data.msg_id === state.reasoningMsgId) {
+          onReasoningChunk(data.text);
+        } else if (state.responseMsgId && data.msg_id === state.responseMsgId) {
+          onChunk(data.text);
+        } else if (!state.reasoningMsgId && !state.responseMsgId) {
+          // 如果还没有追踪到任何 msg_id，先假设是回复内容
+          onChunk(data.text);
+        }
+      }
+
+      // 直接检查 content 字段 - 兼容不同格式
+      if (data.content && typeof data.content === 'string' && data.delta) {
+        onChunk(data.content);
+      }
+
+      // 流结束信号
+      if (data.object === 'response' && (data.status === 'completed' || data.status === 'failed')) {
+        done = true;
+      }
+      if (data.status === 'completed' || data.status === 'failed') {
         done = true;
       }
 
@@ -86,16 +126,51 @@ function buildAgentRequestBody(content: string, sessionId: string, stream: boole
   });
 }
 
+/**
+ * 从 SSE 文本中提取最终回复和思考内容
+ */
+function extractFinalReply(sseText: string): { reply: string; reasoning: string } {
+  let lastReply = '';
+  let lastReasoning = '';
+  for (const line of sseText.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data: ')) continue;
+    try {
+      const data = JSON.parse(trimmed.slice(6));
+      // 处理完成的消息
+      if (
+        data.object === 'message' &&
+        data.status === 'completed' &&
+        Array.isArray(data.content)
+      ) {
+        let textContent = '';
+        for (const c of data.content) {
+          if (c.type === 'text' && c.text) {
+            textContent = c.text;
+          }
+        }
+        if (data.type === 'reasoning') {
+          lastReasoning = textContent;
+        } else {
+          lastReply = textContent;
+        }
+      }
+    } catch {
+      // skip
+    }
+  }
+  return { reply: lastReply, reasoning: lastReasoning };
+}
+
 export const chatService = {
   /**
    * 非流式请求（fallback）。
-   * 适用于 RN 环境不支持 XHR streaming 时的降级方案。
    */
-  async sendMessage(content: string, sessionId?: string): Promise<string> {
+  async sendMessage(content: string, sessionId?: string): Promise<{ reply: string; reasoning: string }> {
     const sid = sessionId || 'default';
     const token = await storage.getItem('token');
 
-    const response = await fetch('http://localhost:8000/process', {
+    const response = await fetch(PROCESS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,60 +184,50 @@ export const chatService = {
     }
 
     const text = await response.text();
-    let lastMessage = '';
-    for (const line of text.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data: ')) continue;
-      try {
-        const data = JSON.parse(trimmed.slice(6));
-        if (data.object === 'message' && data.status === 'completed' && Array.isArray(data.content)) {
-          const lastContent = data.content[data.content.length - 1];
-          if (lastContent?.text) {
-            lastMessage = lastContent.text;
-          }
-        }
-      } catch {
-        // skip
-      }
-    }
-    return lastMessage || '未收到有效回复';
+    const result = extractFinalReply(text);
+    return result.reply ? result : { reply: '未收到有效回复', reasoning: '' };
   },
 
   /**
-   * 流式请求，使用 XMLHttpRequest onprogress 实现真正的逐字接收。
-   * 在 Expo 环境中有效，无需原生模块。
+   * 流式请求，使用 XMLHttpRequest onprogress 实现逐字接收。
    */
   async sendMessageStream(
     content: string,
     sessionId: string,
     onChunk: (text: string) => void,
+    onReasoningChunk: (text: string) => void,
     onDone: () => void,
     onError: (err: Error) => void,
   ): Promise<void> {
+    const token = await storage.getItem('token');
+
     return new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
       const lastPos = { current: 0 };
+      const state: {
+        responseMsgId: string | null,
+        reasoningMsgId: string | null
+      } = {
+        responseMsgId: null,
+        reasoningMsgId: null
+      };
       let completed = false;
 
-      xhr.open('POST', 'http://localhost:8000/process', true);
+      xhr.open('POST', PROCESS_URL, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
       xhr.timeout = 120000;
-
-      // 设置 auth token
-      storage.getItem('token').then((token) => {
-        if (token) {
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
-      });
 
       xhr.onprogress = () => {
         if (completed) return;
         const done = parseSSEStream(
           xhr.responseText,
           lastPos,
-          (text) => {
-            onChunk(text);
-          },
+          state,
+          onChunk,
+          onReasoningChunk,
           () => {
             completed = true;
             onDone();
@@ -176,13 +241,12 @@ export const chatService = {
 
       xhr.onload = () => {
         if (completed) return;
-        // 最终处理剩余数据
         parseSSEStream(
           xhr.responseText,
           lastPos,
-          (text) => {
-            onChunk(text);
-          },
+          state,
+          onChunk,
+          onReasoningChunk,
           () => {
             completed = true;
             onDone();
@@ -190,7 +254,6 @@ export const chatService = {
           },
         );
         if (!completed) {
-          // 没有收到完成信号，视为完成
           completed = true;
           onDone();
           resolve();
