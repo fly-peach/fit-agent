@@ -106,17 +106,17 @@ class DietService:
             DietMeal.user_id == user_id
         ).first()
         if meal:
-            if data.mealName:
+            if data.mealName is not None:
                 meal.meal_name = data.mealName
-            if data.calories:
+            if data.calories is not None:
                 meal.calories = data.calories
-            if data.protein:
+            if data.protein is not None:
                 meal.protein = data.protein
-            if data.carbs:
+            if data.carbs is not None:
                 meal.carbs = data.carbs
-            if data.fat:
+            if data.fat is not None:
                 meal.fat = data.fat
-            if data.water:
+            if data.water is not None:
                 meal.water = data.water
             db.commit()
             db.refresh(meal)

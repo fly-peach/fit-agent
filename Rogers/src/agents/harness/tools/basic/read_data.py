@@ -9,9 +9,11 @@ from contextvars import ContextVar
 from datetime import date
 from decimal import Decimal
 
+from agentscope.tool import ToolResponse
+from agentscope.message import TextBlock
 from sqlalchemy.orm import Session
 
-from fitme.models import (
+from src.fitme.models import (
     HealthMetric,
     TrainingPlan,
     DietMeal,
@@ -33,7 +35,7 @@ def get_db() -> Session:
     db = _current_db.get()
     if db is not None:
         return db
-    from fitme.utils.database import SessionLocal
+    from src.fitme.utils.database import SessionLocal
     return SessionLocal()
 
 
@@ -51,18 +53,23 @@ def _fmt_val(v) -> str:
     return str(v)
 
 
+def _tool_resp(text: str) -> ToolResponse:
+    """将字符串包装为 ToolResponse。"""
+    return ToolResponse(content=[TextBlock(type="text", text=text)])
+
+
 # =========================================================================
 # 工具函数
 # =========================================================================
-def get_user_profile() -> str:
+def get_user_profile() -> ToolResponse:
     """获取当前用户基本信息。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     user = db.query(User).filter(User.user_id == user_id, User.deleted_at.is_(None)).first()
     if not user:
-        return "用户不存在"
+        return _tool_resp("用户不存在")
     lines = [
         f"用户名：{user.name}",
         f"邮箱：{user.email}",
@@ -70,20 +77,20 @@ def get_user_profile() -> str:
     ]
     if user.role:
         lines.append(f"角色：{user.role}")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_health_summary() -> str:
+def get_health_summary() -> ToolResponse:
     """获取用户最新健康指标（体重、体脂、BMI）。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     latest = db.query(HealthMetric).filter(
         HealthMetric.user_id == user_id
     ).order_by(HealthMetric.measure_date.desc()).first()
     if not latest:
-        return "暂无健康数据，请记录你的身体指标"
+        return _tool_resp("暂无健康数据，请记录你的身体指标")
     lines = [
         f"最新健康指标（{latest.measure_date}）",
         f"  体重：{_fmt_val(latest.weight)} kg",
@@ -91,10 +98,10 @@ def get_health_summary() -> str:
         f"  体脂率：{_fmt_val(latest.body_fat)}%",
         f"  BMI：{_fmt_val(latest.bmi)}（{latest.bmi_status}）",
     ]
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_health_history(limit: int = 7) -> str:
+def get_health_history(limit: int = 7) -> ToolResponse:
     """获取近期健康指标变化趋势。
 
     Args:
@@ -102,27 +109,27 @@ def get_health_history(limit: int = 7) -> str:
     """
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     records = db.query(HealthMetric).filter(
         HealthMetric.user_id == user_id
     ).order_by(HealthMetric.measure_date.desc()).limit(limit).all()
     if not records:
-        return "暂无历史记录"
+        return _tool_resp("暂无历史记录")
     lines = [f"最近 {len(records)} 条健康指标："]
     for r in records:
         lines.append(
             f"  {r.measure_date} | 体重 {_fmt_val(r.weight)}kg | "
             f"体脂 {_fmt_val(r.body_fat)}% | BMI {_fmt_val(r.bmi)}"
         )
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_training_today() -> str:
+def get_training_today() -> ToolResponse:
     """获取今日训练计划。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     today = date.today()
     plans = db.query(TrainingPlan).filter(
@@ -130,7 +137,7 @@ def get_training_today() -> str:
         TrainingPlan.scheduled_date == today
     ).all()
     if not plans:
-        return "今天没有训练计划，好好休息吧！"
+        return _tool_resp("今天没有训练计划，好好休息吧！")
     lines = ["今天的训练计划："]
     for p in plans:
         lines.append(
@@ -140,14 +147,14 @@ def get_training_today() -> str:
         )
         if p.note:
             lines.append(f"    备注：{p.note}")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_training_weekly() -> str:
+def get_training_weekly() -> ToolResponse:
     """获取本周训练统计和安排。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     from datetime import timedelta
     today = date.today()
@@ -177,17 +184,17 @@ def get_training_weekly() -> str:
                 f"    {day_name} {status_tag} {p.plan_name} | "
                 f"{p.plan_type} | {p.estimated_duration}分钟"
             )
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_training_recommendations(limit: int = 5) -> str:
+def get_training_recommendations(limit: int = 5) -> ToolResponse:
     """获取推荐的训练计划。"""
     db = get_db()
     plans = db.query(RecommendedTraining).filter(
         RecommendedTraining.is_active == True
     ).limit(limit).all()
     if not plans:
-        return "暂无推荐训练"
+        return _tool_resp("暂无推荐训练")
     lines = ["推荐训练计划："]
     for p in plans:
         lines.append(
@@ -199,14 +206,14 @@ def get_training_recommendations(limit: int = 5) -> str:
             lines.append(f"    {p.description}")
         if p.target_body_type:
             lines.append(f"    适合：{p.target_body_type}")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_diet_today() -> str:
+def get_diet_today() -> ToolResponse:
     """获取今日饮食记录和统计。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     meals = db.query(DietMeal).filter(
         DietMeal.user_id == user_id,
@@ -233,14 +240,14 @@ def get_diet_today() -> str:
             )
     else:
         lines.append("  还没有记录今天的饮食")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_diet_weekly_trend() -> str:
+def get_diet_weekly_trend() -> ToolResponse:
     """获取本周饮食趋势。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     from datetime import timedelta
     today = date.today()
@@ -252,7 +259,7 @@ def get_diet_weekly_trend() -> str:
     settings_obj = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
     goal = settings_obj.calorie_goal if settings_obj else 2000
     if not summaries:
-        return "本周暂无饮食统计"
+        return _tool_resp("本周暂无饮食统计")
     lines = ["本周饮食趋势："]
     days_names = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
     for s in summaries:
@@ -264,17 +271,17 @@ def get_diet_weekly_trend() -> str:
             f"  {day_name}：{s.total_calories}kcal ({pct}% 目标) | "
             f"蛋白{protein_ok} | 水{water_ok}"
         )
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_food_recommendations(limit: int = 5) -> str:
+def get_food_recommendations(limit: int = 5) -> ToolResponse:
     """获取推荐食物。"""
     db = get_db()
     foods = db.query(RecommendedFood).filter(
         RecommendedFood.is_active == True
     ).limit(limit).all()
     if not foods:
-        return "暂无推荐食物"
+        return _tool_resp("暂无推荐食物")
     lines = ["推荐食物："]
     for f in foods:
         lines.append(
@@ -285,18 +292,18 @@ def get_food_recommendations(limit: int = 5) -> str:
             lines.append(f"    {f.reason}")
         if f.suitable_time:
             lines.append(f"    适合时间：{f.suitable_time}")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_user_settings() -> str:
+def get_user_settings() -> ToolResponse:
     """获取用户设置（热量目标、运动目标等）。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     db = get_db()
     s = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
     if not s:
-        return "暂无用户设置"
+        return _tool_resp("暂无用户设置")
     lines = [
         "用户设置",
         f"  每日热量目标：{s.calorie_goal} kcal",
@@ -308,21 +315,31 @@ def get_user_settings() -> str:
     ]
     if s.weight_goal:
         lines.append(f"  目标体重：{_fmt_val(s.weight_goal)} kg")
-    return "\n".join(lines)
+    return _tool_resp("\n".join(lines))
 
 
-def get_full_overview() -> str:
+def get_full_overview() -> ToolResponse:
     """获取用户综合概览（健康+训练+饮食）。"""
     user_id = require_user()
     if user_id is None:
-        return "请先登录"
+        return _tool_resp("请先登录")
     parts = [
-        get_user_profile(),
-        "",
-        get_health_summary(),
-        "",
-        get_training_today(),
-        "",
-        get_diet_today(),
+        get_user_profile().content[0].text if hasattr(get_user_profile(), "content") else "",
     ]
-    return "\n".join(parts)
+    # 内部组合调用，不使用 ToolResponse 包装
+    db = get_db()
+    user = db.query(User).filter(User.user_id == user_id, User.deleted_at.is_(None)).first()
+    profile = f"用户名：{user.name} | 邮箱：{user.email}" if user else "未知用户"
+
+    latest = db.query(HealthMetric).filter(HealthMetric.user_id == user_id).order_by(HealthMetric.measure_date.desc()).first()
+    health = f"最新指标（{latest.measure_date}）：体重 {latest.weight}kg, BMI {_fmt_val(latest.bmi)}" if latest else "暂无健康数据"
+
+    today = date.today()
+    plans = db.query(TrainingPlan).filter(TrainingPlan.user_id == user_id, TrainingPlan.scheduled_date == today).all()
+    training = f"今天 {len(plans)} 个训练计划" if plans else "今天无训练"
+
+    meals = db.query(DietMeal).filter(DietMeal.user_id == user_id, DietMeal.meal_date == today).all()
+    total_cal = sum(m.calories for m in meals)
+    diet = f"今天已摄入 {total_cal} kcal" if meals else "今天未记录饮食"
+
+    return _tool_resp(f"{profile}\n{health}\n{training}\n{diet}")

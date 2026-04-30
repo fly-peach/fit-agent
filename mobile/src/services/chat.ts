@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { API_BASE_URL } from '../constants';
 import { storage } from '../utils/storage';
 import type { ChatMessage, ChatSession } from '../types';
@@ -19,79 +19,196 @@ chatApi.interceptors.request.use(async (config) => {
   return config;
 });
 
-export const chatService = {
-  async sendMessage(content: string, sessionId?: string): Promise<string> {
-    const res = await chatApi.post('/agent/chat', {
-      content,
-      session_id: sessionId || 'default',
-    });
-    const { code, data, message } = res.data;
-    if (code === 200 && data) {
-      return data.response || data.content || data.message || JSON.stringify(data);
+/**
+ * 解析 SSE 事件流，逐 chunk 回调。
+ * 适用于 XHR onprogress 场景，responseText 会不断增长。
+ */
+function parseSSEStream(
+  responseText: string,
+  lastPosRef: { current: number },
+  onChunk: (text: string) => void,
+  onDone: () => void,
+): boolean {
+  const text = responseText;
+  const lastPos = lastPosRef.current;
+
+  // 只处理新增的部分
+  const newChunk = text.slice(lastPos);
+  if (!newChunk.trim()) {
+    lastPosRef.current = text.length;
+    return false; // 没有新数据
+  }
+
+  lastPosRef.current = text.length;
+
+  let done = false;
+  for (const line of newChunk.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+    try {
+      const data = JSON.parse(trimmed.slice(6));
+
+      // 增量文本块
+      if (data.object === 'content' && data.type === 'text' && data.text) {
+        onChunk(data.text);
+      }
+
+      // 完成信号
+      if (data.object === 'message' && data.status === 'completed') {
+        done = true;
+      }
+
+      // 错误信号
+      if (data.error) {
+        done = true;
+      }
+    } catch {
+      // 不完整的 JSON，忽略
     }
-    throw new Error(message || 'Chat request failed');
+  }
+
+  if (done) {
+    onDone();
+  }
+
+  return done;
+}
+
+/**
+ * 构建 AgentRequest 格式的请求体
+ */
+function buildAgentRequestBody(content: string, sessionId: string, stream: boolean = true): string {
+  return JSON.stringify({
+    input: [{ id: `msg-${Date.now()}`, role: 'user', content: [{ type: 'text', text: content }] }],
+    session_id: sessionId,
+    stream,
+  });
+}
+
+export const chatService = {
+  /**
+   * 非流式请求（fallback）。
+   * 适用于 RN 环境不支持 XHR streaming 时的降级方案。
+   */
+  async sendMessage(content: string, sessionId?: string): Promise<string> {
+    const sid = sessionId || 'default';
+    const token = await storage.getItem('token');
+
+    const response = await fetch('http://localhost:8000/process', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: buildAgentRequestBody(content, sid, false),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    let lastMessage = '';
+    for (const line of text.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      try {
+        const data = JSON.parse(trimmed.slice(6));
+        if (data.object === 'message' && data.status === 'completed' && Array.isArray(data.content)) {
+          const lastContent = data.content[data.content.length - 1];
+          if (lastContent?.text) {
+            lastMessage = lastContent.text;
+          }
+        }
+      } catch {
+        // skip
+      }
+    }
+    return lastMessage || '未收到有效回复';
   },
 
+  /**
+   * 流式请求，使用 XMLHttpRequest onprogress 实现真正的逐字接收。
+   * 在 Expo 环境中有效，无需原生模块。
+   */
   async sendMessageStream(
     content: string,
     sessionId: string,
     onChunk: (text: string) => void,
     onDone: () => void,
-    onError: (err: Error) => void
+    onError: (err: Error) => void,
   ): Promise<void> {
-    try {
-      const token = await storage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/agent/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ content, session_id: sessionId, stream: true }),
+    return new Promise<void>((resolve) => {
+      const xhr = new XMLHttpRequest();
+      const lastPos = { current: 0 };
+      let completed = false;
+
+      xhr.open('POST', 'http://localhost:8000/process', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.timeout = 120000;
+
+      // 设置 auth token
+      storage.getItem('token').then((token) => {
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        const data = await response.json();
-        onChunk(data?.data?.response || data?.data?.content || '');
-        onDone();
-        return;
-      }
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed === 'data: [DONE]') continue;
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const text = parsed.content || parsed.text || parsed.delta || '';
-              if (text) onChunk(text);
-            } catch {
-              onChunk(trimmed.slice(6));
-            }
-          }
+      xhr.onprogress = () => {
+        if (completed) return;
+        const done = parseSSEStream(
+          xhr.responseText,
+          lastPos,
+          (text) => {
+            onChunk(text);
+          },
+          () => {
+            completed = true;
+            onDone();
+            resolve();
+          },
+        );
+        if (done) {
+          completed = true;
         }
-      }
+      };
 
-      onDone();
-    } catch (err) {
-      onError(err instanceof Error ? err : new Error('Stream error'));
-    }
+      xhr.onload = () => {
+        if (completed) return;
+        // 最终处理剩余数据
+        parseSSEStream(
+          xhr.responseText,
+          lastPos,
+          (text) => {
+            onChunk(text);
+          },
+          () => {
+            completed = true;
+            onDone();
+            resolve();
+          },
+        );
+        if (!completed) {
+          // 没有收到完成信号，视为完成
+          completed = true;
+          onDone();
+          resolve();
+        }
+      };
+
+      xhr.onerror = () => {
+        onError(new Error('网络错误'));
+        resolve();
+      };
+
+      xhr.ontimeout = () => {
+        onError(new Error('请求超时'));
+        resolve();
+      };
+
+      xhr.send(buildAgentRequestBody(content, sessionId, true));
+    });
   },
 
   // Session management (local storage)
@@ -121,7 +238,6 @@ export const chatService = {
     const sessions = await this.getSessions();
     const filtered = sessions.filter((s) => s.id !== sessionId);
     await this.saveSessions(filtered);
-    // also tell server
     try {
       await chatApi.delete(`/agent/sessions/${sessionId}`);
     } catch {}

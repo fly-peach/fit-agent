@@ -139,7 +139,7 @@ def export_health(
             float(m.weight) if m.weight else "",
             float(m.body_fat) if m.body_fat else "",
             float(m.bmi) if m.bmi else "",
-            m.bmi_status,
+            m.bmi_status or "",
         ])
 
     output.seek(0)

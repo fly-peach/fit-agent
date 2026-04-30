@@ -16,3 +16,6 @@ pydantic-settings>=2.0.0
 
 # Utils
 python-multipart>=0.0.6
+
+# Memory (ReMe)
+reme-ai==0.3.1.8

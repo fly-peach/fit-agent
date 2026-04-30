@@ -1,4 +1,4 @@
-"""Agent factory — builds agents from AppConfig instead of hard-coded globals."""
+"""Agent 工厂 — 从 AppConfig 构建 Agent，不再使用硬编码全局变量。"""
 from __future__ import annotations
 
 from collections import OrderedDict
@@ -11,7 +11,7 @@ from agentscope.memory import InMemoryMemory
 from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit, execute_python_code, ToolResponse
 
-from .harness.basic_tools.read_data import (
+from .harness.tools.basic.read_data import (
     get_user_profile,
     get_health_summary,
     get_health_history,
@@ -24,7 +24,7 @@ from .harness.basic_tools.read_data import (
     get_user_settings,
     get_full_overview,
 )
-from .harness.basic_tools.write_data import (
+from .harness.tools.basic.write_data import (
     update_profile,
     add_health_metric,
     add_training_plan,
@@ -36,11 +36,15 @@ from .harness.basic_tools.write_data import (
     update_settings,
 )
 
-from .config import AgentConfig, get_config
-from .user_workspace import ensure_user_workspace, load_user_sys_prompt
+from .config import AgentConfig, get_config, load_agent_config
+from .harness.workspace.user_workspace import (
+    ensure_user_workspace,
+    load_user_sys_prompt,
+    load_user_context,
+)
 
 # ---------------------------------------------------------------------------
-# Tool registry — maps tool names to callable functions
+# 工具注册表 — 映射工具名称到可调用函数
 # ---------------------------------------------------------------------------
 
 _READ_TOOL_MAP = {
@@ -73,7 +77,7 @@ _ALL_TOOLS: dict[str, Callable] = {**_READ_TOOL_MAP, **_WRITE_TOOL_MAP}
 
 
 def get_weather(location: str, date: str) -> ToolResponse:
-    """Get weather data for a location and date."""
+    """获取指定位置和日期的天气数据。"""
     return ToolResponse(
         content=[{"type": "text", "text": f"The weather in {location} is sunny with a temperature of 25°C."}]
     )
@@ -90,23 +94,23 @@ DEFAULT_SYSTEM_PROMPT = (
 
 
 def _build_toolkit(agent_cfg: AgentConfig) -> Toolkit:
-    """Build a Toolkit from the agent config's tool_groups."""
+    """根据 Agent 配置构建工具集。"""
     toolkit = Toolkit()
     toolkit.register_tool_function(execute_python_code)
     toolkit.register_tool_function(get_weather)
 
     enabled = agent_cfg.get_enabled_tools()
     if enabled:
-        # Config-driven: only register tools explicitly enabled in tool_groups
+        # 配置驱动：仅注册 tool_groups 中明确启用的工具
         for name in enabled:
             func = _ALL_TOOLS.get(name)
             if func:
                 toolkit.register_tool_function(func)
             else:
-                # External/custom tool not in our map; skip silently
+                # 外部/自定义工具不在映射表中，静默跳过
                 pass
     else:
-        # No tool_groups defined: register all tools for backward compat
+        # 未定义 tool_groups：注册所有工具以向后兼容
         for func in _ALL_TOOLS.values():
             toolkit.register_tool_function(func)
 
@@ -114,7 +118,7 @@ def _build_toolkit(agent_cfg: AgentConfig) -> Toolkit:
 
 
 def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
-    """Create the model instance from the agent's model config."""
+    """根据 Agent 的模型配置创建模型实例。"""
     model_cfg = agent_cfg.model
     return DashScopeChatModel(
         model_cfg.model_name,
@@ -125,9 +129,9 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
 
 
 def create_agent(agent_cfg: AgentConfig | None = None) -> ReActAgent:
-    """Create a ReActAgent from an AgentConfig.
+    """从 AgentConfig 创建 ReActAgent。
 
-    If no config is provided, the active agent from the global AppConfig is used.
+    若未提供配置，则使用全局 AppConfig 中的活跃 Agent。
     """
     if agent_cfg is None:
         agent_cfg = get_config().get_active_agent()
@@ -146,16 +150,16 @@ def create_agent(agent_cfg: AgentConfig | None = None) -> ReActAgent:
     )
 
 
-# Backward compat: module-level singleton using default config
+# 向后兼容：模块级单例，使用默认配置
 rogers_agent = create_agent()
 
 
 # ---------------------------------------------------------------------------
-# Per-user agent factory and cache
+# 按用户创建 Agent 的工厂和缓存
 # ---------------------------------------------------------------------------
 
-# Shared toolkit built once at import time — safe because all tool functions
-# use contextvars for user isolation.
+# 共享工具集，在导入时构建一次 —— 安全，因为所有工具函数都使用
+# contextvars 实现用户隔离。
 _shared_toolkit: Toolkit | None = None
 
 
@@ -168,38 +172,75 @@ def _get_shared_toolkit() -> Toolkit:
 
 
 def create_user_agent(user_id: int | str) -> ReActAgent:
-    """Create a ReActAgent for a specific user with their custom sys_prompt.
+    """为指定用户创建 ReActAgent，附带自定义系统提示词。
 
-    Ensures the user workspace exists (copies templates on first use),
-    loads agents.md + soul.md, and builds an agent instance.
+    确保用户工作区存在，加载 agents.md + soul.md，查询数据库获取用
+    户上下文，初始化 ReMe 内存，并构建带有组合提示词的 Agent 实例。
     """
     ensure_user_workspace(user_id)
 
     app_cfg = get_config()
     agent_cfg = app_cfg.get_active_agent()
 
+    # 从静态 Markdown 文件构建基础提示词
     custom_prompt = load_user_sys_prompt(user_id)
-    sys_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
+    base_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
+
+    # 从数据库获取用户上下文（姓名、目标、健康指标、连续记录）并前置
+    user_context = load_user_context(user_id)
+    if user_context:
+        sys_prompt = f"{user_context}\n\n{base_prompt}"
+    else:
+        sys_prompt = base_prompt
 
     model = _build_model(agent_cfg)
     toolkit = _get_shared_toolkit()
 
-    return ReActAgent(
+    # --- ReMe 内存集成 ---
+    from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
+
+    working_dir = str(ensure_user_workspace(user_id))
+    memory_manager = ReMeLightMemoryManager(
+        working_dir=working_dir,
+        agent_id=str(user_id),
+    )
+    reme_memory = memory_manager.get_in_memory_memory()
+
+    # 注册 memory_search 工具
+    from src.agents.harness.tools.memory_search import create_memory_search_tool
+    toolkit.register_tool_function(
+        create_memory_search_tool(memory_manager),
+    )
+
+    agent = ReActAgent(
         name=agent_cfg.name,
         model=model,
         sys_prompt=sys_prompt,
         toolkit=toolkit,
-        memory=InMemoryMemory(),
+        memory=reme_memory if reme_memory else InMemoryMemory(),
         formatter=DashScopeChatFormatter(),
     )
 
+    # 注册上下文压缩钩子
+    from src.agents.harness.hooks.memory_compaction import create_memory_compaction_hook
+    hook = create_memory_compaction_hook(memory_manager)
+    agent.register_instance_hook(
+        hook_type="pre_reasoning",
+        hook_name="memory_compaction_hook",
+        hook=hook,
+    )
+
+    # 在 Agent 上保存 memory_manager 引用，用于生命周期管理
+    agent._memory_manager = memory_manager  # type: ignore[attr-defined]
+
+    return agent
+
 
 class AgentCache:
-    """LRU cache of per-user ReActAgent instances.
+    """按用户缓存 ReActAgent 实例的 LRU 缓存。
 
-    Each user gets one agent instance (created lazily). The agent's memory
-    is swapped per-request via session load/save, so the instance itself
-    is stateless between calls.
+    每个用户一个 Agent 实例（懒加载创建）。Agent 的内存通过 session
+    的加载/保存在每次请求间交换，因此实例本身在调用之间是无状态的。
     """
 
     def __init__(self, maxsize: int = 50):
@@ -211,7 +252,7 @@ class AgentCache:
         async with self._lock:
             uid = str(user_id)
             if uid in self._agents:
-                # Move to end (most recently used)
+                # 移到末尾（最近使用）
                 self._agents.move_to_end(uid)
                 return self._agents[uid]
 
@@ -221,7 +262,7 @@ class AgentCache:
             return agent
 
     async def evict(self, user_id: int | str) -> None:
-        """Remove a user's agent from cache (e.g. after config change)."""
+        """从缓存中移除用户的 Agent（例如配置变更后）。"""
         async with self._lock:
             self._agents.pop(str(user_id), None)
 
@@ -230,5 +271,5 @@ class AgentCache:
             self._agents.popitem(last=False)
 
 
-# Global agent cache singleton
+# 全局 Agent 缓存单例
 agent_cache = AgentCache()

@@ -11,14 +11,12 @@ from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
-from src.agents.user_workspace import get_user_workspace, ensure_user_workspace
+from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
 
 logger = logging.getLogger("fitagent")
 
 # ContextVar to carry the JWT token from middleware to query_func
 _auth_token: ContextVar[str | None] = ContextVar("auth_token", default=None)
-
-logger = logging.getLogger("fitagent")
 
 # 创建 AgentApp
 agent_app = AgentApp(

@@ -1,10 +1,10 @@
-"""Custom JSONSession that stores sessions under users/{user_id}/sessions/."""
+"""自定义 JSONSession，将会话存储在 users/{user_id}/sessions/ 下。"""
 import os
 from agentscope.session import JSONSession
 
 
 class UserSession(JSONSession):
-    """Store session files at {save_dir}/{user_id}/sessions/{session_id}.json."""
+    """将会话文件存储在 {save_dir}/{user_id}/sessions/{session_id}.json。"""
 
     def _get_save_path(self, session_id: str, user_id: str) -> str:
         if user_id:

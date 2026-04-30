@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from agentscope.tool import ToolResponse
 
-from fitme.models import (
+from src.fitme.models import (
     HealthMetric,
     TrainingPlan,
     TrainingRecord,
@@ -75,7 +75,7 @@ def _auto_update_diet_summary(user_id: int, meal_date: date, db):
             meal_count=len(today_meals),
         ))
 
-    # Update streak
+    # 更新连续记录
     streak = db.query(StreakStats).filter(
         StreakStats.user_id == user_id
     ).first()

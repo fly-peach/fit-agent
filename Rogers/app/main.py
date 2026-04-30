@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
     # Disk-based session storage — stores under users/{user_id}/sessions/
     sessions_dir = Path(__file__).resolve().parent.parent / "agent_db" / "workspace" / "users"
-    from src.agents.user_session import UserSession
+    from src.agents.harness.sessions.user_session import UserSession
     session = UserSession(save_dir=str(sessions_dir))
 
     # agent_app 的 query_func 通过 agent_app.state 访问 session，
@@ -40,6 +40,16 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        # Clean up ReMe memory managers
+        from src.agents.agent import agent_cache
+        for agent in agent_cache._agents.values():
+            mm = getattr(agent, "_memory_manager", None)
+            if mm:
+                try:
+                    await mm.close()
+                except Exception as e:
+                    logger.warning(f"Failed to close memory manager: {e}")
+        agent_cache._agents.clear()
         print("AgentApp is shutting down...")
         
         

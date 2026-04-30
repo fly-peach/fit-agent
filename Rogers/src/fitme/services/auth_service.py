@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import bcrypt
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from ..models import User, UserSettings
 from ..schemas.auth import LoginRequest, RegisterRequest
 from ..core.config import settings
@@ -31,7 +31,7 @@ class AuthService:
         payload = {
             "user_id": user_id,
             "email": email,
-            "exp": datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRATION_HOURS),
+            "exp": datetime.now(timezone.utc) + timedelta(hours=settings.JWT_EXPIRATION_HOURS),
         }
         return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
@@ -86,8 +86,8 @@ class AuthService:
         db.refresh(user)
 
         # 创建用户设置
-        settings = UserSettings(user_id=user.user_id)
-        db.add(settings)
+        user_settings = UserSettings(user_id=user.user_id)
+        db.add(user_settings)
         db.commit()
 
         # 返回 token 和用户信息

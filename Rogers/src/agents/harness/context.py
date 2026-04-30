@@ -7,9 +7,9 @@ agent 工具函数通过 contextvars 获取当前用户和 DB session，
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fitme.services.auth_service import AuthService
-from fitme.utils.database import SessionLocal
-from agents.harness.basic_tools.read_data import (
+from src.fitme.services.auth_service import AuthService
+from src.fitme.utils.database import SessionLocal
+from src.agents.harness.tools.basic.read_data import (
     _current_user_id,
     _current_db,
 )

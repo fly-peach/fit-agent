@@ -36,23 +36,23 @@ class UserService:
         """更新用户设置"""
         settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if settings:
-            if data.calorieGoal:
+            if data.calorieGoal is not None:
                 settings.calorie_goal = data.calorieGoal
-            if data.proteinGoal:
+            if data.proteinGoal is not None:
                 settings.protein_goal = data.proteinGoal
-            if data.carbsGoal:
+            if data.carbsGoal is not None:
                 settings.carbs_goal = data.carbsGoal
-            if data.fatGoal:
+            if data.fatGoal is not None:
                 settings.fat_goal = data.fatGoal
-            if data.waterGoal:
+            if data.waterGoal is not None:
                 settings.water_goal = data.waterGoal
-            if data.weightGoal:
+            if data.weightGoal is not None:
                 settings.weight_goal = data.weightGoal
-            if data.weeklyTrainingGoal:
+            if data.weeklyTrainingGoal is not None:
                 settings.weekly_training_goal = data.weeklyTrainingGoal
-            if data.notificationEnabled:
+            if data.notificationEnabled is not None:
                 settings.notification_enabled = data.notificationEnabled
-            if data.reminderTime:
+            if data.reminderTime is not None:
                 settings.reminder_time = data.reminderTime
             db.commit()
             db.refresh(settings)
