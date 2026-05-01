@@ -16,7 +16,7 @@ class User(Base):
     name = Column(String(50), nullable=False)
     email = Column(String(100), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
-    avatar = Column(String(10), default=None)
+    avatar = Column(String(512), default=None)
     role = Column(String(20), default="user")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

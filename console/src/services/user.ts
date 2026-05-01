@@ -38,6 +38,18 @@ export const userApi = {
 export interface AgentConfig {
   agents_md: string
   soul_md: string
+  api_key: string
+  api_key_masked: string
+  model_name: string
+  enable_thinking: boolean
+  is_custom_api_key: boolean
+}
+
+export interface DefaultConfig {
+  agents_md: string
+  soul_md: string
+  model_name: string
+  enable_thinking: boolean
 }
 
 export const agentApi = {
@@ -46,4 +58,7 @@ export const agentApi = {
 
   updateConfig: (data: Partial<AgentConfig>): Promise<void> =>
     api.put('/agent/config', data),
+
+  getDefaults: (): Promise<DefaultConfig> =>
+    api.get('/agent/defaults'),
 }

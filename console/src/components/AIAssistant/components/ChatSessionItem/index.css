@@ -1,6 +1,6 @@
 @keyframes chatStatusBreathe {
-  0%, 100% { opacity: 0.65; box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.55); transform: scale(1); }
-  50% { opacity: 1; box-shadow: 0 0 10px 3px rgba(20, 184, 166, 0.35); transform: scale(1.12); }
+  0%, 100% { opacity: 0.65; box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.55); transform: scale(1); }
+  50% { opacity: 1; box-shadow: 0 0 10px 3px rgba(14, 165, 233, 0.35); transform: scale(1.12); }
 }
 
 .fitagent-chat-session-item {
@@ -8,7 +8,7 @@
   display: flex;
   min-height: 77px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   gap: 8px;
   background-color: var(--colorBgBase, #fff);
   cursor: pointer;
@@ -17,7 +17,7 @@
 }
 
 .fitagent-chat-session-item:hover {
-  background: var(--colorFillTertiary, rgba(43, 18, 0, 0.03));
+  background: var(--colorFillTertiary, rgba(14, 165, 233, 0.04));
 }
 
 .fitagent-chat-session-item:hover .actions {
@@ -26,7 +26,7 @@
 }
 
 .fitagent-chat-session-item.active {
-  background: var(--colorFillTertiary, rgba(43, 18, 0, 0.03));
+  background: var(--colorFillTertiary, rgba(14, 165, 233, 0.08));
 }
 
 .fitagent-chat-session-item.editing .content {
@@ -46,7 +46,7 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background-color: var(--colorBorder, #d9d9d9);
+  background-color: var(--colorBorder, #E5E7EB);
 }
 
 .icon-placeholder::after {
@@ -58,7 +58,7 @@
   height: 5px;
   border-radius: 50%;
   background-color: var(--colorBgBase, #fff);
-  border: 1px solid var(--colorBorder, #d9d9d9);
+  border: 1px solid var(--colorBorder, #E5E7EB);
   z-index: 1;
 }
 
@@ -85,7 +85,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 24px;
-  color: var(--colorText, #1a1716);
+  color: var(--colorText, #1F2937);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -105,12 +105,12 @@
 }
 
 .status-dot-idle {
-  background: #94a3b8;
+  background: #9CA3AF;
   box-shadow: none;
 }
 
 .status-dot-active {
-  background: rgba(20, 184, 166, 1);
+  background: rgba(14, 165, 233, 1);
   animation: chatStatusBreathe 1.6s ease-in-out infinite;
 }
 
@@ -128,7 +128,7 @@
   min-width: 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--colorTextSecondary, rgba(26, 23, 22, 0.45));
+  color: var(--colorTextSecondary, #6B7280);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -167,5 +167,5 @@
 }
 
 .pin-button.pinned {
-  color: var(--colorPrimary, #ff9d4d);
+  color: var(--colorPrimary, #0EA5E9);
 }

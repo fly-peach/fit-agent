@@ -59,7 +59,7 @@ const AIAssistant: React.FC = () => {
         hideBuiltInSessionList: true,
       },
       theme: {
-        colorPrimary: '#1890ff',
+        colorPrimary: '#0EA5E9',
         darkMode: false,
         prefix: 'fitagent-chat',
         rightHeader: <ChatActionGroup />,

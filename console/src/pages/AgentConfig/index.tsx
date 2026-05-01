@@ -1,22 +1,54 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Form, Input, Button, message, Space, Tag } from 'antd'
-import { RobotOutlined, SaveOutlined } from '@ant-design/icons'
-import { agentApi } from '../../services/user'
+import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Switch, Row, Col, Alert, Tooltip } from 'antd'
+import { Bot, Key, Cpu, Brain, RotateCcw, Info } from 'lucide-react'
+import { agentApi, type DefaultConfig } from '../../services/user'
+
+const modelOptions = [
+  { value: 'qwen-turbo', label: 'Qwen Turbo (快速)' },
+  { value: 'qwen-plus', label: 'Qwen Plus (均衡)' },
+  { value: 'qwen-max', label: 'Qwen Max (强大)' },
+  { value: 'qwen-max-longcontext', label: 'Qwen Max LongContext (长文本)' },
+  { value: 'qwen2.5-72b-instruct', label: 'Qwen2.5 72B (最强)' },
+  { value: 'qwen2.5-32b-instruct', label: 'Qwen2.5 32B' },
+  { value: 'qwen2.5-14b-instruct', label: 'Qwen2.5 14B' },
+  { value: 'qwen2.5-7b-instruct', label: 'Qwen2.5 7B (轻量)' },
+]
 
 const AgentConfig: React.FC = () => {
   const [agentForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [isCustomApiKey, setIsCustomApiKey] = useState(false)
+  const [defaultConfig, setDefaultConfig] = useState<DefaultConfig | null>(null)
+  const [apiKeyMasked, setApiKeyMasked] = useState('')
 
   useEffect(() => {
     fetchConfig()
+    fetchDefaults()
   }, [])
 
   const fetchConfig = async () => {
     try {
       const data = await agentApi.getConfig()
-      agentForm.setFieldsValue({ agents_md: data.agents_md, soul_md: data.soul_md })
+      agentForm.setFieldsValue({
+        agents_md: data.agents_md,
+        soul_md: data.soul_md,
+        api_key: data.api_key,
+        model_name: data.model_name,
+        enable_thinking: data.enable_thinking,
+      })
+      setIsCustomApiKey(data.is_custom_api_key)
+      setApiKeyMasked(data.api_key_masked)
     } catch {
       message.error('获取配置失败')
+    }
+  }
+
+  const fetchDefaults = async () => {
+    try {
+      const data = await agentApi.getDefaults()
+      setDefaultConfig(data)
+    } catch {
+      // ignore
     }
   }
 
@@ -26,6 +58,7 @@ const AgentConfig: React.FC = () => {
       const values = await agentForm.validateFields()
       await agentApi.updateConfig(values)
       message.success('Agent 配置已保存')
+      fetchConfig()
     } catch {
       message.error('保存失败')
     } finally {
@@ -33,15 +66,150 @@ const AgentConfig: React.FC = () => {
     }
   }
 
+  const handleResetToDefault = async () => {
+    if (!defaultConfig) {
+      message.warning('无法获取默认配置')
+      return
+    }
+    try {
+      setSaving(true)
+      await agentApi.updateConfig({
+        agents_md: defaultConfig.agents_md,
+        soul_md: defaultConfig.soul_md,
+        model_name: defaultConfig.model_name,
+        enable_thinking: defaultConfig.enable_thinking,
+      })
+      message.success('已恢复默认提示词配置')
+      fetchConfig()
+    } catch {
+      message.error('恢复失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>
-        <RobotOutlined /> AI Agent 配置
-      </Typography.Title>
+    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <span className="fitagent-icon-badge" style={{ background: '#F5F3FF', color: '#A78BFA' }}>
+          <Bot size={18} />
+        </span>
+        <Typography.Title level={4} style={{ margin: 0 }}>AI Agent 配置</Typography.Title>
+      </div>
 
       <Form form={agentForm} layout="vertical" onFinish={handleSave}>
         <Space direction="vertical" size={24} style={{ width: '100%' }}>
-          <Card title="系统提示词" extra={<Tag color="blue">agents.md</Tag>}>
+          {/* 模型配置卡片 */}
+          <Card
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Cpu size={16} style={{ color: '#0EA5E9' }} />
+                <span>模型配置</span>
+              </div>
+            }
+            style={{ border: 'none' }}
+          >
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+              配置 DashScope API Key 和模型参数，控制 Agent 的响应能力和思考模式。
+            </Typography.Paragraph>
+
+            {/* API Key 来源提示 */}
+            {apiKeyMasked && (
+              <Alert
+                type={isCustomApiKey ? 'success' : 'info'}
+                showIcon
+                style={{ marginBottom: 16, borderRadius: 10 }}
+                message={
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>
+                      当前 API Key：{apiKeyMasked}
+                      <Tag color={isCustomApiKey ? '#10B981' : '#0EA5E9'} style={{ marginLeft: 8 }}>
+                        {isCustomApiKey ? '个人配置' : '系统环境变量'}
+                      </Tag>
+                    </span>
+                    <Tooltip title={isCustomApiKey ? '您已配置个人专属 API Key，响应更稳定可靠' : '使用系统环境变量中的默认 API Key，如需更稳定服务请配置个人 Key'}>
+                      <Info size={16} style={{ color: '#6B7280', cursor: 'help' }} />
+                    </Tooltip>
+                  </div>
+                }
+              />
+            )}
+            {!apiKeyMasked && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginBottom: 16, borderRadius: 10 }}
+                message="未配置 API Key，请在下方填入您的 DashScope API Key，或联系管理员配置系统环境变量"
+              />
+            )}
+
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="api_key"
+                  label={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Key size={14} style={{ color: '#0EA5E9' }} />
+                      <span>DashScope API Key</span>
+                    </div>
+                  }
+                  help="填入个人 DashScope API Key 可获得更稳定服务；留空则使用系统环境变量中的默认 Key"
+                >
+                  <Input.Password
+                    placeholder="留空使用系统默认 API Key"
+                    style={{ borderRadius: 10 }}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={16}>
+                <Form.Item
+                  name="model_name"
+                  label="模型选择"
+                  help="选择适合的模型，越强大的模型响应越准确但速度较慢"
+                >
+                  <Select
+                    options={modelOptions}
+                    style={{ borderRadius: 10 }}
+                    placeholder="选择模型"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={8}>
+                <Form.Item
+                  name="enable_thinking"
+                  label={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Brain size={14} style={{ color: '#10B981' }} />
+                      <span>启用思考模式</span>
+                    </div>
+                  }
+                  help="开启后模型会先思考再回答，结果更准确"
+                  valuePropName="checked"
+                >
+                  <Switch />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* 系统提示词卡片 */}
+          <Card
+            title="系统提示词"
+            extra={
+              <Button
+                type="link"
+                icon={<RotateCcw size={14} />}
+                onClick={handleResetToDefault}
+                loading={saving}
+                style={{ color: '#0EA5E9' }}
+              >
+                恢复默认
+              </Button>
+            }
+            style={{ border: 'none' }}
+          >
             <Typography.Paragraph type="secondary">
               定义 Agent 的主要功能、使用工具的方式以及回答风格。保存后下次对话将自动使用新的提示词。
             </Typography.Paragraph>
@@ -50,7 +218,22 @@ const AgentConfig: React.FC = () => {
             </Form.Item>
           </Card>
 
-          <Card title="性格设定" extra={<Tag color="green">soul.md</Tag>}>
+          {/* 性格设定卡片 */}
+          <Card
+            title="性格设定"
+            extra={
+              <Button
+                type="link"
+                icon={<RotateCcw size={14} />}
+                onClick={handleResetToDefault}
+                loading={saving}
+                style={{ color: '#10B981' }}
+              >
+                恢复默认
+              </Button>
+            }
+            style={{ border: 'none' }}
+          >
             <Typography.Paragraph type="secondary">
               定义 Agent 的个性、语气和沟通风格。
             </Typography.Paragraph>
@@ -59,7 +242,7 @@ const AgentConfig: React.FC = () => {
             </Form.Item>
           </Card>
 
-          <Button type="primary" icon={<SaveOutlined />} loading={saving} htmlType="submit" size="large">
+          <Button type="primary" loading={saving} htmlType="submit" size="large">
             保存配置
           </Button>
         </Space>

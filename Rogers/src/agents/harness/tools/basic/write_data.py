@@ -4,7 +4,7 @@
 工具自动从 contextvars 获取。
 """
 
-from datetime import date, datetime, timedelta, time as dt_time
+from datetime import date, datetime, timedelta, time as dt_time, timezone
 from decimal import Decimal
 
 from agentscope.tool import ToolResponse
@@ -208,7 +208,7 @@ def add_training_plan(plan_name: str, plan_type: str,
             return ToolResponse(content=[{"type": "text", "text": "计划类型需为 strength / cardio / flexibility 之一"}])
         sched_dt = date.fromisoformat(scheduled_date) if scheduled_date else date.today()
         # day_of_week: 1=周一, 7=周日
-        day = sched_dt.weekday() + 1
+        day = sched_dt.isoweekday()
 
         plan = TrainingPlan(
             user_id=user_id,
@@ -253,7 +253,7 @@ def complete_training(plan_id: int, actual_duration: int | None = None,
         if not plan:
             return ToolResponse(content=[{"type": "text", "text": f"训练计划 #{plan_id} 不存在"}])
         plan.status = "completed"
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         db.add(TrainingRecord(
             plan_id=plan_id,
             user_id=user_id,
@@ -320,7 +320,7 @@ def add_meal(meal_type: str, meal_name: str, calories: int,
         if calories <= 0:
             return ToolResponse(content=[{"type": "text", "text": "热量需大于 0"}])
 
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if meal_time_str:
             mt = dt_time.fromisoformat(meal_time_str)
         else:
@@ -340,6 +340,7 @@ def add_meal(meal_type: str, meal_name: str, calories: int,
             note=note,
         )
         db.add(meal)
+        db.flush()
         _auto_update_diet_summary(user_id, date.today(), db)
         db.commit()
 

@@ -16,7 +16,7 @@ class UserService:
     @staticmethod
     def update_profile(db: Session, user_id: int, data: UpdateProfileRequest) -> Optional[User]:
         """更新用户信息"""
-        user = db.query(User).filter(User.user_id == user_id).first()
+        user = db.query(User).filter(User.user_id == user_id, User.deleted_at.is_(None)).first()
         if user:
             if data.name:
                 user.name = data.name

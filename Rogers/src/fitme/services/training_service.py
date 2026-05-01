@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, List
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from ..models import TrainingPlan, TrainingRecord, RecommendedTraining, StreakStats
 from ..schemas.training import CreateTrainingPlanRequest, UpdateTrainingPlanRequest, CompleteTrainingRequest
 
@@ -64,7 +64,7 @@ class TrainingService:
         return [
             {
                 "planId": p.plan_id,
-                "dayOfWeek": (p.scheduled_date.weekday() + 1) % 7 + 1,
+                "dayOfWeek": p.scheduled_date.isoweekday(),
                 "date": p.scheduled_date,
                 "planName": p.plan_name,
                 "planType": p.plan_type,
@@ -122,7 +122,7 @@ class TrainingService:
             target_intensity=data.targetIntensity,
             estimated_duration=data.estimatedDuration,
             scheduled_date=data.scheduledDate,
-            day_of_week=(data.scheduledDate.weekday() + 1) % 7 + 1,
+            day_of_week=data.scheduledDate.isoweekday(),
             note=data.note,
             status="pending",
         )
@@ -143,7 +143,7 @@ class TrainingService:
                 plan.plan_name = data.planName
             if data.scheduledDate:
                 plan.scheduled_date = data.scheduledDate
-                plan.day_of_week = (data.scheduledDate.weekday() + 1) % 7 + 1
+                plan.day_of_week = data.scheduledDate.isoweekday()
             if data.targetIntensity:
                 plan.target_intensity = data.targetIntensity
             if data.estimatedDuration:
@@ -162,14 +162,13 @@ class TrainingService:
             TrainingPlan.user_id == user_id
         ).first()
         if plan:
-            from datetime import datetime
             record = TrainingRecord(
                 plan_id=plan_id,
                 user_id=user_id,
                 actual_duration=data.actualDuration,
                 actual_intensity=data.actualIntensity,
                 calories_burned=data.caloriesBurned,
-                completed_at=datetime.now(),
+                completed_at=datetime.now(timezone.utc),
                 note=data.note,
             )
             plan.status = "completed"

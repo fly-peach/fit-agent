@@ -8,17 +8,13 @@ import {
   Typography,
 } from 'antd'
 import {
-  DashboardOutlined,
-  HeartOutlined,
-  FireOutlined,
-  CoffeeOutlined,
-  UserOutlined,
-  LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   DownOutlined,
-  RobotOutlined,
+  UserOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons'
+import { LayoutDashboard, Heart, Dumbbell, Utensils, User, Bot } from 'lucide-react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import type { MenuProps } from 'antd'
 import AIAssistant from '../AIAssistant'
@@ -32,13 +28,28 @@ interface NavItem {
   label: string
 }
 
+const IconWrapper: React.FC<{ children: React.ReactNode; color: string }> = ({ children, color }) => (
+  <span style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    background: `${color}15`,
+    fontSize: 16,
+  }}>
+    {children}
+  </span>
+)
+
 const navItems: NavItem[] = [
-  { key: '/', icon: <DashboardOutlined />, label: '概览' },
-  { key: '/health', icon: <HeartOutlined />, label: '健康数据' },
-  { key: '/training', icon: <FireOutlined />, label: '训练计划' },
-  { key: '/diet', icon: <CoffeeOutlined />, label: '饮食管理' },
-  { key: '/user', icon: <UserOutlined />, label: '个人中心' },
-  { key: '/agent-config', icon: <RobotOutlined />, label: 'Agent 配置' },
+  { key: '/', icon: <IconWrapper color="#0EA5E9"><LayoutDashboard size={16} /></IconWrapper>, label: '概览' },
+  { key: '/health', icon: <IconWrapper color="#10B981"><Heart size={16} /></IconWrapper>, label: '健康数据' },
+  { key: '/training', icon: <IconWrapper color="#F59E0B"><Dumbbell size={16} /></IconWrapper>, label: '训练计划' },
+  { key: '/diet', icon: <IconWrapper color="#06B6D4"><Utensils size={16} /></IconWrapper>, label: '饮食管理' },
+  { key: '/user', icon: <IconWrapper color="#8B5CF6"><User size={16} /></IconWrapper>, label: '个人中心' },
+  { key: '/agent-config', icon: <IconWrapper color="#A78BFA"><Bot size={16} /></IconWrapper>, label: 'Agent 配置' },
 ]
 
 const menuItems: MenuProps['items'] = navItems.map(item => ({ ...item }))
@@ -78,34 +89,57 @@ const MainLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         width={240}
-        theme="dark"
-        style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, bottom: 0 }}
+        theme="light"
+        style={{
+          overflow: 'auto',
+          height: '100vh',
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          background: 'linear-gradient(180deg, #FFFFFF 0%, #F8F6F3 100%)',
+          borderRight: '1px solid #F0EDE8',
+        }}
       >
-        <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
-          <Title level={4} style={{ color: '#fff', margin: 0 }}>
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '0 16px',
+          borderBottom: '1px solid #F0EDE8',
+        }}>
+          <Title level={4} style={{
+            color: '#0EA5E9',
+            margin: 0,
+            fontWeight: 800,
+            fontFamily: "'Nunito', 'Noto Sans SC', sans-serif",
+          }}>
             {collapsed ? 'FA' : 'FitAgent'}
           </Title>
         </div>
         <Menu
-          theme="dark"
+          theme="light"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
+          style={{ borderRight: 'none' }}
         />
       </Sider>
       <Layout style={{ marginLeft: collapsed ? 80 : 240, transition: 'margin-left 0.2s' }}>
         <Header
           style={{
             padding: '0 24px',
-            background: '#fff',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             position: 'sticky',
             top: 0,
             zIndex: 1,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+            borderBottom: '1px solid #F0EDE8',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -121,14 +155,14 @@ const MainLayout: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Button
               type="default"
-              icon={<RobotOutlined />}
+              icon={<Bot size={16} />}
               onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
             >
               AI助手
             </Button>
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Avatar style={{ backgroundColor: '#1890ff' }}>
+                <Avatar style={{ backgroundColor: '#0EA5E9' }}>
                   {user.name?.charAt(0) || 'U'}
                 </Avatar>
                 <DownOutlined style={{ fontSize: 12, color: '#999' }} />
@@ -137,7 +171,7 @@ const MainLayout: React.FC = () => {
           </div>
         </Header>
         <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-          <Content style={{ flex: rightDrawerOpen ? '0 0 65%' : '1 1 auto', background: '#f0f2f5', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+          <Content style={{ flex: rightDrawerOpen ? '0 0 65%' : '1 1 auto', background: 'transparent', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
             <Outlet />
           </Content>
           <div style={{

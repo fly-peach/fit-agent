@@ -46,13 +46,63 @@ const Login: React.FC = () => {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #0EA5E9 0%, #06B6D4 50%, #10B981 100%)',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <Card style={{ width: 400, maxWidth: '90vw' }}>
-        <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 24, color: '#1890ff' }}>
-          FitAgent 健身管理平台
+      <div className="fitagent-float" style={{
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: '50%',
+        background: 'rgba(255, 255, 255, 0.1)',
+        top: -60,
+        right: -60,
+      }} />
+      <div className="fitagent-float-delay" style={{
+        position: 'absolute',
+        width: 200,
+        height: 200,
+        borderRadius: '50%',
+        background: 'rgba(255, 255, 255, 0.08)',
+        bottom: -40,
+        left: -40,
+      }} />
+      <div className="fitagent-float" style={{
+        position: 'absolute',
+        width: 150,
+        height: 150,
+        borderRadius: '50%',
+        background: 'rgba(255, 255, 255, 0.06)',
+        top: '40%',
+        left: '10%',
+      }} />
+
+      <Card style={{
+        width: 400,
+        maxWidth: '90vw',
+        borderRadius: 20,
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+        border: 'none',
+      }}>
+        <Typography.Title level={3} style={{
+          textAlign: 'center',
+          marginBottom: 8,
+          color: '#0EA5E9',
+          fontWeight: 800,
+          fontFamily: "'Nunito', 'Noto Sans SC', sans-serif",
+        }}>
+          FitAgent
         </Typography.Title>
+        <Typography.Text type="secondary" style={{
+          display: 'block',
+          textAlign: 'center',
+          marginBottom: 24,
+          fontSize: 14,
+        }}>
+          轻松健身，快乐生活
+        </Typography.Text>
         <Form onFinish={handleLogin} size="large">
           <Form.Item
             name="email"

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Progress, Avatar, List, Tag, Space, message } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import { Dumbbell } from 'lucide-react'
 import dayjs from 'dayjs'
 import { trainingApi, type WeeklyStats, TrainingSchedule, RecommendedTraining } from '../../services/training'
 
@@ -96,50 +97,55 @@ const Training: React.FC = () => {
   }
 
   const getTypeTag = (type: string) => {
-    const colors: Record<string, string> = { strength: 'orange', cardio: 'green', flexibility: 'blue' }
+    const colors: Record<string, string> = { strength: '#F59E0B', cardio: '#10B981', flexibility: '#0EA5E9' }
     const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
     return <Tag color={colors[type] || 'default'}>{labels[type] || type}</Tag>
   }
 
   const getIntensityTag = (intensity: string) => {
-    const colors: Record<string, string> = { low: 'blue', medium: 'orange', high: 'red' }
+    const colors: Record<string, string> = { low: '#06B6D4', medium: '#F59E0B', high: '#EF4444' }
     return <Tag color={colors[intensity] || 'default'}>{intensity}</Tag>
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>🔥 训练计划</Typography.Title>
+    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <span className="fitagent-icon-badge" style={{ background: '#FFF7ED', color: '#F59E0B' }}>
+          <Dumbbell size={18} />
+        </span>
+        <Typography.Title level={4} style={{ margin: 0 }}>训练计划</Typography.Title>
+      </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' }}>
             <Typography.Text type="secondary">本周训练</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#52c41a' }}>{loading ? '-' : `${weeklyStats?.weeklyCount || 0} 次`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#10B981', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyCount || 0} 次`}</Typography.Title>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none' }}>
             <Typography.Text type="secondary">本周时长</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{loading ? '-' : `${weeklyStats?.weeklyHours || 0} 小时`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyHours || 0} 小时`}</Typography.Title>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)' }}>
             <Typography.Text type="secondary">消耗热量</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{loading ? '-' : `${weeklyStats?.weeklyCalories || 0} kcal`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#F59E0B', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyCalories || 0} kcal`}</Typography.Title>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)' }}>
             <Typography.Text type="secondary">连续训练</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#722ed1' }}>{loading ? '-' : `${weeklyStats?.streakDays || 0} 天`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#8B5CF6', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.streakDays || 0} 天`}</Typography.Title>
           </Card>
         </Col>
       </Row>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <Typography.Title level={5}>本周进度</Typography.Title>
-        <Progress percent={getProgressPercent()} strokeColor="#52c41a" />
+        <Progress percent={getProgressPercent()} strokeColor="#10B981" />
         <Space style={{ marginTop: 16 }}>
           {weekDays.map((day, idx) => {
             const daySchedule = schedule.filter(s => s.dayOfWeek === idx + 1)
@@ -148,7 +154,7 @@ const Training: React.FC = () => {
               <div key={day} style={{ textAlign: 'center' }}>
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>{day}</Typography.Text>
                 <br />
-                <Avatar style={{ backgroundColor: completed ? '#52c41a' : '#d9d9d9', marginTop: 8 }}>
+                <Avatar style={{ backgroundColor: completed ? '#10B981' : '#d9d9d9', marginTop: 8 }}>
                   {completed ? '✓' : idx + 1}
                 </Avatar>
               </div>
@@ -157,7 +163,7 @@ const Training: React.FC = () => {
         </Space>
       </Card>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
           <Typography.Title level={5} style={{ margin: 0 }}>本周训练安排</Typography.Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建计划</Button>
@@ -174,7 +180,7 @@ const Training: React.FC = () => {
             >
               <List.Item.Meta
                 avatar={
-                  <Avatar style={{ backgroundColor: item.status === 'completed' ? '#52c41a' : '#1890ff' }}>
+                  <Avatar style={{ backgroundColor: item.status === 'completed' ? '#10B981' : '#0EA5E9' }}>
                     {item.status === 'completed' ? '✓' : item.dayOfWeek}
                   </Avatar>
                 }
@@ -184,7 +190,7 @@ const Training: React.FC = () => {
               <Space>
                 {getTypeTag(item.planType)}
                 {getIntensityTag(item.intensity)}
-                <Tag color={item.status === 'completed' ? 'success' : 'processing'}>
+                <Tag color={item.status === 'completed' ? '#10B981' : '#06B6D4'}>
                   {item.status === 'completed' ? '已完成' : '待完成'}
                 </Tag>
               </Space>
@@ -193,12 +199,12 @@ const Training: React.FC = () => {
         />
       </Card>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <Typography.Title level={5}>推荐训练</Typography.Title>
         <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
           {recommendations.map(item => (
             <Col xs={24} sm={12} md={6} key={item.recommendId}>
-              <Card size="small">
+              <Card size="small" className="fitagent-card-hover" style={{ border: 'none' }}>
                 <Typography.Text strong>{item.planName}</Typography.Text>
                 <div style={{ marginTop: 8 }}>
                   <Space>

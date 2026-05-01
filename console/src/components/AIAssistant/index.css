@@ -14,7 +14,6 @@
    侧边栏独立滚动
    ======================================== */
 
-/* 侧边栏容器 */
 .fitagent-chat .fitagent-chat-chat-anywhere-layout-left {
   width: var(--sidebar-width) !important;
   flex-shrink: 0 !important;
@@ -25,7 +24,6 @@
   overflow: hidden !important;
 }
 
-/* Sessions 容器 - 占满侧边栏 */
 .fitagent-chat .fitagent-chat-chat-anywhere-sessions {
   height: 100% !important;
   max-height: 100% !important;
@@ -34,12 +32,10 @@
   overflow: hidden !important;
 }
 
-/* Sessions Header - 固定 */
 .fitagent-chat .fitagent-chat-chat-anywhere-sessions-header {
   flex-shrink: 0 !important;
 }
 
-/* Sessions Content - 占满剩余空间 */
 .fitagent-chat .fitagent-chat-chat-anywhere-sessions-content {
   flex: 1 !important;
   height: 0 !important;
@@ -49,12 +45,10 @@
   overflow: hidden !important;
 }
 
-/* Sessions Adder - 固定 */
 .fitagent-chat .fitagent-chat-chat-anywhere-sessions-adder {
   flex-shrink: 0 !important;
 }
 
-/* Sessions List - 核心滚动区域 */
 .fitagent-chat .fitagent-chat-chat-anywhere-sessions-list {
   flex: 1 !important;
   height: auto !important;
@@ -86,7 +80,6 @@
   background: var(--scrollbar-thumb-hover) !important;
 }
 
-/* 修复 Conversations 组件的 overflow-y: hidden 问题 */
 .fitagent-chat .fitagent-chat-conversations {
   overflow-y: visible !important;
   height: auto !important;
@@ -96,7 +89,6 @@
    对话区独立滚动
    ======================================== */
 
-/* 右侧聊天区域 */
 .fitagent-chat .fitagent-chat-chat-anywhere-layout-right {
   height: 100% !important;
   max-height: 100% !important;
@@ -107,7 +99,6 @@
   overflow: hidden !important;
 }
 
-/* Chat 容器 */
 .fitagent-chat .fitagent-chat-chat-anywhere-chat {
   flex: 1 !important;
   height: 0 !important;
@@ -117,7 +108,6 @@
   overflow: hidden !important;
 }
 
-/* 消息列表 */
 .fitagent-chat .fitagent-chat-chat-anywhere-message-list {
   flex: 1 !important;
   height: 0 !important;
@@ -154,7 +144,6 @@
   background: var(--scrollbar-thumb-hover) !important;
 }
 
-/* 输入区域 - 固定在底部 */
 .fitagent-chat .fitagent-chat-chat-anywhere-input {
   flex-shrink: 0 !important;
 }

@@ -3,9 +3,9 @@ import { Card, Typography, Row, Col, Statistic, Progress, List, Avatar, Tag, Ske
 import {
   FireOutlined,
   TrophyOutlined,
-  HeartOutlined,
   CoffeeOutlined,
 } from '@ant-design/icons'
+import { LayoutDashboard } from 'lucide-react'
 import { healthApi, type HealthMetrics } from '../../services/health'
 import { trainingApi, type WeeklyStats, TrainingSchedule } from '../../services/training'
 import { dietApi, type DietStats } from '../../services/diet'
@@ -44,18 +44,14 @@ const Dashboard: React.FC = () => {
   }
 
   const getTypeTag = (type: string) => {
-    const colors: Record<string, string> = {
-      strength: 'orange',
-      cardio: 'green',
-      flexibility: 'blue',
-    }
+    const colors: Record<string, string> = { strength: '#F59E0B', cardio: '#10B981', flexibility: '#0EA5E9' }
     const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
     return <Tag color={colors[type] || 'default'}>{labels[type] || type}</Tag>
   }
 
   const getStatusTag = (status: string) => {
-    if (status === 'completed') return <Tag color="success">已完成</Tag>
-    return <Tag color="processing">待完成</Tag>
+    if (status === 'completed') return <Tag color="#10B981">已完成</Tag>
+    return <Tag color="#06B6D4">待完成</Tag>
   }
 
   if (loading) {
@@ -67,33 +63,38 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>📊 今日概览</Typography.Title>
+    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <span className="fitagent-icon-badge" style={{ background: '#E0F2FE', color: '#0EA5E9' }}>
+          <LayoutDashboard size={18} />
+        </span>
+        <Typography.Title level={4} style={{ margin: 0 }}>今日概览</Typography.Title>
+      </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)' }}>
             <Statistic
-              title={<><FireOutlined /> 本周训练</>}
+              title={<><FireOutlined style={{ color: '#0EA5E9' }} /> 本周训练</>}
               value={weeklyStats?.weeklyCount || 0}
               suffix="次"
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#0EA5E9', fontWeight: 700 }}
             />
             <Progress
               percent={weeklyStats ? getProgressPercent(weeklyStats.completedCount, weeklyStats.weeklyCount) : 0}
-              strokeColor="#52c41a"
+              strokeColor="#0EA5E9"
               style={{ marginTop: 8 }}
             />
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #ECFEFF 0%, #CFFAFE 100%)' }}>
             <Statistic
-              title={<><CoffeeOutlined /> 今日卡路里</>}
+              title={<><CoffeeOutlined style={{ color: '#06B6D4' }} /> 今日卡路里</>}
               value={dietStats?.remainingCalories || 0}
               suffix="kcal"
-              valueStyle={{ color: '#ff4d4f' }}
+              valueStyle={{ color: '#06B6D4', fontWeight: 700 }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
               已摄入 {dietStats?.calories || 0} / {dietStats?.caloriesGoal || 2000} kcal
@@ -102,23 +103,24 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)' }}>
             <Statistic
-              title={<><TrophyOutlined /> 连续训练</>}
+              title={<><TrophyOutlined style={{ color: '#8B5CF6' }} /> 连续训练</>}
               value={weeklyStats?.streakDays || 0}
               suffix="天"
-              valueStyle={{ color: '#722ed1' }}
+              valueStyle={{ color: '#8B5CF6', fontWeight: 700 }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>继续保持！</Typography.Text>
           </Card>
         </Col>
 
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' }}>
             <Statistic
-              title={<><HeartOutlined /> 当前体重</>}
+              title={<span style={{ color: '#10B981' }}>&#10084;&#65039; 当前体重</span>}
               value={healthMetrics?.weight || 0}
               suffix="kg"
+              valueStyle={{ fontWeight: 700 }}
             />
             {healthMetrics?.weightGoal && (
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -131,7 +133,7 @@ const Dashboard: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="本周训练安排">
+          <Card title="本周训练安排" style={{ border: 'none' }}>
             <List
               itemLayout="horizontal"
               dataSource={schedule.slice(0, 5)}
@@ -139,7 +141,7 @@ const Dashboard: React.FC = () => {
                 <List.Item>
                   <List.Item.Meta
                     avatar={
-                      <Avatar style={{ backgroundColor: item.status === 'completed' ? '#52c41a' : '#1890ff' }}>
+                      <Avatar style={{ backgroundColor: item.status === 'completed' ? '#10B981' : '#0EA5E9' }}>
                         {item.status === 'completed' ? '✓' : item.dayOfWeek}
                       </Avatar>
                     }
@@ -157,30 +159,30 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="今日营养摄入">
+          <Card title="今日营养摄入" style={{ border: 'none' }}>
             <div style={{ marginTop: 16 }}>
               <Typography.Text>蛋白质</Typography.Text>
               <Progress
                 percent={getProgressPercent(dietStats?.protein || 0, dietStats?.proteinGoal || 150)}
-                strokeColor="#52c41a"
+                strokeColor="#10B981"
                 style={{ marginBottom: 8 }}
               />
               <Typography.Text>碳水</Typography.Text>
               <Progress
                 percent={getProgressPercent(dietStats?.carbs || 0, dietStats?.carbsGoal || 250)}
-                strokeColor="#faad14"
+                strokeColor="#F59E0B"
                 style={{ marginBottom: 8 }}
               />
               <Typography.Text>脂肪</Typography.Text>
               <Progress
                 percent={getProgressPercent(dietStats?.fat || 0, dietStats?.fatGoal || 65)}
-                strokeColor="#ff4d4f"
+                strokeColor="#EF4444"
                 style={{ marginBottom: 8 }}
               />
               <Typography.Text>饮水</Typography.Text>
               <Progress
                 percent={getProgressPercent(dietStats?.water || 0, dietStats?.waterGoal || 2000)}
-                strokeColor="#1890ff"
+                strokeColor="#0EA5E9"
               />
             </div>
           </Card>

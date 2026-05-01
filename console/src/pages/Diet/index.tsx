@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, TimePicker, Table, Tag, Space, message, Progress } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
+import { Utensils } from 'lucide-react'
 import dayjs from 'dayjs'
 import { dietApi, type DietStats, DietMeal, RecommendedFood } from '../../services/diet'
 import type { ColumnsType } from 'antd/es/table'
@@ -111,7 +112,7 @@ const Diet: React.FC = () => {
   }
 
   const getMealTypeTag = (type: string) => {
-    const colors: Record<string, string> = { breakfast: 'orange', lunch: 'green', dinner: 'blue', snack: 'purple' }
+    const colors: Record<string, string> = { breakfast: '#F59E0B', lunch: '#10B981', dinner: '#0EA5E9', snack: '#8B5CF6' }
     const labels: Record<string, string> = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', snack: '加餐' }
     return <Tag color={colors[type] || 'default'}>{labels[type] || type}</Tag>
   }
@@ -136,63 +137,68 @@ const Diet: React.FC = () => {
   ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>🍽️ 饮食管理</Typography.Title>
+    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <span className="fitagent-icon-badge" style={{ background: '#ECFEFF', color: '#06B6D4' }}>
+          <Utensils size={18} />
+        </span>
+        <Typography.Title level={4} style={{ margin: 0 }}>饮食管理</Typography.Title>
+      </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={8}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%)' }}>
             <Typography.Text type="secondary">今日热量</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0', color: '#ff4d4f' }}>
+            <Typography.Title level={3} style={{ margin: '8px 0', color: '#EF4444', fontWeight: 700 }}>
               {loading ? '-' : `${stats?.calories || 0} / ${stats?.caloriesGoal || 2000} kcal`}
             </Typography.Title>
             <Progress
               percent={getProgressPercent(stats?.calories || 0, stats?.caloriesGoal || 2000)}
-              strokeColor="#52c41a"
+              strokeColor="#10B981"
             />
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>剩余 {stats?.remainingCalories || 0} kcal</Typography.Text>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none' }}>
             <Typography.Text type="secondary">连续记录</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0' }}>{loading ? '-' : `${stats?.streakDays || 0} 天`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0 0', fontWeight: 700 }}>{loading ? '-' : `${stats?.streakDays || 0} 天`}</Typography.Title>
           </Card>
         </Col>
         <Col xs={24} sm={12} md={8}>
-          <Card>
+          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)' }}>
             <Typography.Text type="secondary">饮水</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0' }}>{loading ? '-' : `${stats?.water || 0} / ${stats?.waterGoal || 2000} ml`}</Typography.Title>
+            <Typography.Title level={3} style={{ margin: '8px 0', color: '#0EA5E9', fontWeight: 700 }}>{loading ? '-' : `${stats?.water || 0} / ${stats?.waterGoal || 2000} ml`}</Typography.Title>
             <Progress
               percent={getProgressPercent(stats?.water || 0, stats?.waterGoal || 2000)}
-              strokeColor="#1890ff"
+              strokeColor="#0EA5E9"
             />
           </Card>
         </Col>
       </Row>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <Typography.Title level={5}>今日营养摄入</Typography.Title>
         <Row gutter={16} style={{ marginTop: 8 }}>
           <Col span={8}>
             <Typography.Text>蛋白质</Typography.Text>
-            <Progress percent={getProgressPercent(stats?.protein || 0, stats?.proteinGoal || 150)} strokeColor="#52c41a" />
+            <Progress percent={getProgressPercent(stats?.protein || 0, stats?.proteinGoal || 150)} strokeColor="#10B981" />
             <Typography.Text type="secondary">{stats?.protein || 0}/{stats?.proteinGoal || 150}g</Typography.Text>
           </Col>
           <Col span={8}>
             <Typography.Text>碳水</Typography.Text>
-            <Progress percent={getProgressPercent(stats?.carbs || 0, stats?.carbsGoal || 250)} strokeColor="#faad14" />
+            <Progress percent={getProgressPercent(stats?.carbs || 0, stats?.carbsGoal || 250)} strokeColor="#F59E0B" />
             <Typography.Text type="secondary">{stats?.carbs || 0}/{stats?.carbsGoal || 250}g</Typography.Text>
           </Col>
           <Col span={8}>
             <Typography.Text>脂肪</Typography.Text>
-            <Progress percent={getProgressPercent(stats?.fat || 0, stats?.fatGoal || 65)} strokeColor="#ff4d4f" />
+            <Progress percent={getProgressPercent(stats?.fat || 0, stats?.fatGoal || 65)} strokeColor="#EF4444" />
             <Typography.Text type="secondary">{stats?.fat || 0}/{stats?.fatGoal || 65}g</Typography.Text>
           </Col>
         </Row>
       </Card>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
           <Typography.Title level={5} style={{ margin: 0 }}>今日饮食记录</Typography.Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>添加记录</Button>
@@ -207,16 +213,16 @@ const Diet: React.FC = () => {
         />
       </Card>
 
-      <Card style={{ marginTop: 24 }}>
+      <Card style={{ marginTop: 24, border: 'none' }}>
         <Typography.Title level={5}>推荐食物</Typography.Title>
         <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
           {recommendations.map(item => (
             <Col xs={24} sm={12} md={6} key={item.recommendId}>
-              <Card size="small">
+              <Card size="small" className="fitagent-card-hover" style={{ border: 'none' }}>
                 <Typography.Text strong>{item.foodName}</Typography.Text>
                 <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{item.calories} kcal</Typography.Text>
                 {item.protein && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.protein}g蛋白质</Typography.Text>}
-                {item.reason && <Tag color="blue" style={{ marginTop: 8 }}>{item.reason}</Tag>}
+                {item.reason && <Tag color="#06B6D4" style={{ marginTop: 8 }}>{item.reason}</Tag>}
               </Card>
             </Col>
           ))}

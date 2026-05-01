@@ -37,6 +37,10 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+db/
+
+# Agent database (user workspace, sessions, configs)
+agent_db/
 
 # Logs
 logs/
@@ -51,9 +55,12 @@ Thumbs.db
 htmlcov/
 .pytest_cache/
 
-# Pencil
+# Pencil design files
 *.pen.operations
 
 # Misc
 *.bak
 *.tmp
+
+# Claude Code
+.claude/

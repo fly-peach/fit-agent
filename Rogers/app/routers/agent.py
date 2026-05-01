@@ -1,6 +1,7 @@
 import os
 import logging
 from contextvars import ContextVar
+from pathlib import Path
 
 from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
+from src.agents.config import get_config
 
 logger = logging.getLogger("fitagent")
 
@@ -73,14 +75,60 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 # Per-user agent configuration management
 # ---------------------------------------------------------------------------
 
+# 默认配置路径
+DEFAULT_AGENT_JSON = Path(__file__).resolve().parent.parent.parent / "agent_db" / "agent.json"
+
+
+def _get_default_api_key() -> str:
+    """从环境变量获取默认 API Key。"""
+    return os.getenv("DASHSCOPE_API_KEY", "")
+
+
+def _get_default_config() -> dict:
+    """获取默认配置（不含敏感信息）。"""
+    import json
+    if DEFAULT_AGENT_JSON.exists():
+        with open(DEFAULT_AGENT_JSON, encoding="utf-8") as f:
+            config = json.load(f)
+        # 清除配置文件中的 API Key，仅从环境变量读取
+        if "models" in config:
+            for model_key in config["models"]:
+                if "api_key" in config["models"][model_key]:
+                    config["models"][model_key]["api_key"] = ""
+        return config
+    return {}
+
+
+def _mask_api_key(api_key: str) -> str:
+    """遮蔽 API Key，只显示前8位和后4位。"""
+    if not api_key or len(api_key) < 12:
+        return api_key
+    return api_key[:8] + "****" + api_key[-4:]
+
+
 class AgentConfigUpdate(BaseModel):
     agents_md: str | None = None
     soul_md: str | None = None
+    api_key: str | None = None
+    model_name: str | None = None
+    enable_thinking: bool | None = None
 
 
 class AgentConfigResponse(BaseModel):
     agents_md: str
     soul_md: str
+    api_key: str
+    api_key_masked: str
+    model_name: str
+    enable_thinking: bool
+    is_custom_api_key: bool  # 是否使用自定义 API Key
+
+
+class DefaultConfigResponse(BaseModel):
+    agents_md: str
+    soul_md: str
+    model_name: str
+    enable_thinking: bool
 
 
 @router.get("/config", response_model=AgentConfigResponse)
@@ -88,6 +136,7 @@ async def get_agent_config(
     authorization: str | None = Header(default=None),
 ):
     """获取当前用户的 agent 配置。"""
+    import json
     token = ""
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
@@ -101,7 +150,72 @@ async def get_agent_config(
     agents_md = (user_dir / "agents.md").read_text(encoding="utf-8") if (user_dir / "agents.md").exists() else ""
     soul_md = (user_dir / "soul.md").read_text(encoding="utf-8") if (user_dir / "soul.md").exists() else ""
 
-    return AgentConfigResponse(agents_md=agents_md, soul_md=soul_md)
+    # 从环境变量获取默认 API Key
+    default_api_key = _get_default_api_key()
+
+    # 加载用户级 agent.json
+    user_config_path = user_dir / "agent.json"
+    user_api_key = ""
+    model_name = "qwen-turbo"
+    enable_thinking = True
+    is_custom_api_key = False
+
+    if user_config_path.exists():
+        with open(user_config_path, encoding="utf-8") as f:
+            user_config = json.load(f)
+        model_config = user_config.get("model", {})
+        if isinstance(model_config, dict):
+            user_api_key = model_config.get("api_key", "")
+            model_name = model_config.get("model_name", "qwen-turbo")
+            enable_thinking = model_config.get("enable_thinking", True)
+
+    # 判断 API Key 来源
+    if user_api_key:
+        # 用户有自定义 API Key
+        is_custom_api_key = True
+        api_key = user_api_key
+    else:
+        # 使用环境变量中的默认 API Key
+        api_key = default_api_key
+        is_custom_api_key = False
+
+    return AgentConfigResponse(
+        agents_md=agents_md,
+        soul_md=soul_md,
+        api_key=api_key,
+        api_key_masked=_mask_api_key(api_key),
+        model_name=model_name,
+        enable_thinking=enable_thinking,
+        is_custom_api_key=is_custom_api_key,
+    )
+
+
+@router.get("/defaults", response_model=DefaultConfigResponse)
+async def get_default_config():
+    """获取默认的 agent 配置。"""
+    default_config = _get_default_config()
+
+    # 从 agents 配置中获取默认 sys_prompt
+    agents_md = ""
+    soul_md = ""
+    model_name = "qwen-turbo"
+    enable_thinking = True
+
+    if "agents" in default_config and "default" in default_config["agents"]:
+        agent_cfg = default_config["agents"]["default"]
+        agents_md = agent_cfg.get("sys_prompt", "")
+
+    if "models" in default_config and "primary" in default_config["models"]:
+        model_cfg = default_config["models"]["primary"]
+        model_name = model_cfg.get("model_name", "qwen-turbo")
+        enable_thinking = model_cfg.get("enable_thinking", True)
+
+    return DefaultConfigResponse(
+        agents_md=agents_md,
+        soul_md=soul_md,
+        model_name=model_name,
+        enable_thinking=enable_thinking,
+    )
 
 
 @router.put("/config")
@@ -110,6 +224,7 @@ async def update_agent_config(
     authorization: str | None = Header(default=None),
 ):
     """更新当前用户的 agent 配置。"""
+    import json
     token = ""
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
@@ -126,7 +241,30 @@ async def update_agent_config(
     if body.soul_md is not None:
         (user_dir / "soul.md").write_text(body.soul_md, encoding="utf-8")
 
-    # Evict cached agent so next request picks up new prompt
+    # 更新用户级 agent.json（模型配置）
+    user_config_path = user_dir / "agent.json"
+    user_config = {}
+    if user_config_path.exists():
+        with open(user_config_path, encoding="utf-8") as f:
+            user_config = json.load(f)
+
+    # 确保 model 字段存在
+    if "model" not in user_config or not isinstance(user_config.get("model"), dict):
+        user_config["model"] = {}
+
+    if body.api_key is not None:
+        user_config["model"]["api_key"] = body.api_key
+    if body.model_name is not None:
+        user_config["model"]["model_name"] = body.model_name
+    if body.enable_thinking is not None:
+        user_config["model"]["enable_thinking"] = body.enable_thinking
+
+    # 只有在有模型配置更新时才写入
+    if body.api_key is not None or body.model_name is not None or body.enable_thinking is not None:
+        with open(user_config_path, "w", encoding="utf-8") as f:
+            json.dump(user_config, f, indent=2, ensure_ascii=False)
+
+    # Evict cached agent so next request picks up new config
     await agent_cache.evict(user_id)
 
     return {"status": "ok"}
@@ -138,6 +276,9 @@ async def delete_session(
     authorization: str | None = Header(default=None),
 ):
     """删除指定 session 文件。"""
+    import re
+    if not re.match(r'^[a-zA-Z0-9_\-]+$', session_id):
+        raise HTTPException(status_code=400, detail="session_id 仅支持字母、数字、下划线、短横线")
     token = ""
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]

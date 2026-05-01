@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Typography, Row, Col, Avatar, Form, Input, InputNumber, Switch, TimePicker, Button, Divider, message, Descriptions } from 'antd'
 import { LogoutOutlined } from '@ant-design/icons'
+import { User } from 'lucide-react'
 import dayjs from 'dayjs'
 import { userApi, type UserProfile, agentApi } from '../../services/user'
 
-const User: React.FC = () => {
+const UserPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileForm] = Form.useForm()
@@ -88,17 +89,22 @@ const User: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={4} style={{ marginBottom: 24 }}>👤 个人中心</Typography.Title>
+    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <span className="fitagent-icon-badge" style={{ background: '#F5F3FF', color: '#8B5CF6' }}>
+          <User size={18} />
+        </span>
+        <Typography.Title level={4} style={{ margin: 0 }}>个人中心</Typography.Title>
+      </div>
 
       <Row gutter={[24, 24]}>
         <Col xs={24} md={8}>
-          <Card>
+          <Card style={{ border: 'none', background: 'linear-gradient(135deg, #E0F2FE 0%, #F5F3FF 100%)' }}>
             <div style={{ textAlign: 'center' }}>
               {loading ? (
                 <Avatar size={64} icon={<LogoutOutlined />} />
               ) : (
-                <Avatar size={64} style={{ backgroundColor: '#1890ff', marginBottom: 16 }}>
+                <Avatar size={64} style={{ backgroundColor: '#0EA5E9', marginBottom: 16, fontWeight: 700 }}>
                   {profile?.avatar || profile?.name?.charAt(0) || 'U'}
                 </Avatar>
               )}
@@ -119,7 +125,7 @@ const User: React.FC = () => {
         </Col>
 
         <Col xs={24} md={16}>
-          <Card title="编辑个人信息">
+          <Card title="编辑个人信息" style={{ border: 'none' }}>
             <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile}>
               <Row gutter={16}>
                 <Col span={12}>
@@ -137,7 +143,7 @@ const User: React.FC = () => {
             </Form>
           </Card>
 
-          <Card title="⚙️ 健身目标设置" style={{ marginTop: 24 }}>
+          <Card title="健身目标设置" style={{ marginTop: 24, border: 'none' }}>
             <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
               <Typography.Text type="secondary">饮食目标</Typography.Text>
               <Row gutter={16} style={{ marginTop: 8 }}>
@@ -174,7 +180,7 @@ const User: React.FC = () => {
             </Form>
           </Card>
 
-          <Card title="🤖 AI Agent 配置" style={{ marginTop: 24 }}>
+          <Card title="AI Agent 配置" style={{ marginTop: 24, border: 'none' }}>
             <Form form={agentForm} layout="vertical" onFinish={handleSaveAgentConfig}>
               <Form.Item
                 name="agents_md"
@@ -205,4 +211,4 @@ const User: React.FC = () => {
   )
 }
 
-export default User
+export default UserPage
