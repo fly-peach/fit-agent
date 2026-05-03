@@ -66,7 +66,25 @@ const AIAssistant: React.FC = () => {
         leftHeader: <ChatHeaderTitle />,
       },
       sender: {
-        attachments: false,
+        attachments: {
+          customRequest: async ({ file, onSuccess, onError }: any) => {
+            const formData = new FormData()
+            formData.append('file', file)
+            const token = localStorage.getItem('token')
+            try {
+              const resp = await fetch(`${BASE_URL}/api/agent/upload`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+              })
+              if (!resp.ok) throw new Error('Upload failed')
+              const data = await resp.json()
+              onSuccess({ url: `${BASE_URL}${data.url}` })
+            } catch (e: any) {
+              onError(e)
+            }
+          },
+        },
         maxLength: 2000,
       },
       welcome: {

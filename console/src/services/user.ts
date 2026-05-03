@@ -42,6 +42,7 @@ export interface AgentConfig {
   api_key_masked: string
   model_name: string
   enable_thinking: boolean
+  multimodality: boolean
   is_custom_api_key: boolean
 }
 
@@ -50,6 +51,7 @@ export interface DefaultConfig {
   soul_md: string
   model_name: string
   enable_thinking: boolean
+  multimodality: boolean
 }
 
 export const agentApi = {

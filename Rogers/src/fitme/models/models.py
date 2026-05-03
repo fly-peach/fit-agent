@@ -1,5 +1,5 @@
 """FitMe Database Models"""
-from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, Time, Boolean, Text, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, Time, Boolean, Text, ForeignKey, Index, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -28,6 +28,7 @@ class User(Base):
     training_plans = relationship("TrainingPlan", back_populates="user")
     diet_meals = relationship("DietMeal", back_populates="user")
     streak_stats = relationship("StreakStats", back_populates="user", uselist=False)
+    images = relationship("UserImage", back_populates="user")
 
 
 class UserSettings(Base):
@@ -214,3 +215,21 @@ class RecommendedFood(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class UserImage(Base):
+    """用户图片存储表"""
+    __tablename__ = "user_images"
+    __table_args__ = (
+        Index("idx_user_image_user_id", "user_id"),
+    )
+
+    image_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    content_type = Column(String(50), nullable=False)
+    file_size = Column(Integer, nullable=False)
+    data = Column(LargeBinary, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="images")

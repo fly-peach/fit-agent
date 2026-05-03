@@ -35,6 +35,7 @@ from .harness.tools.basic.write_data import (
     delete_meal,
     update_settings,
 )
+from .harness.tools.basic.image_view import view_image
 
 from .config import AgentConfig, get_config, load_agent_config
 from .harness.workspace.user_workspace import (
@@ -73,7 +74,11 @@ _WRITE_TOOL_MAP = {
     "update_settings": update_settings,
 }
 
-_ALL_TOOLS: dict[str, Callable] = {**_READ_TOOL_MAP, **_WRITE_TOOL_MAP}
+_MULTIMODAL_TOOL_MAP = {
+    "view_image": view_image,
+}
+
+_ALL_TOOLS: dict[str, Callable] = {**_READ_TOOL_MAP, **_WRITE_TOOL_MAP, **_MULTIMODAL_TOOL_MAP}
 
 
 def get_weather(location: str, date: str) -> ToolResponse:
@@ -125,6 +130,7 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
         api_key=model_cfg.api_key,
         enable_thinking=model_cfg.enable_thinking,
         stream=model_cfg.stream,
+        multimodality=model_cfg.multimodality if model_cfg.multimodality else None,
     )
 
 

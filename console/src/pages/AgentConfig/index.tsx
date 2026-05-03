@@ -12,6 +12,14 @@ const modelOptions = [
   { value: 'qwen2.5-32b-instruct', label: 'Qwen2.5 32B' },
   { value: 'qwen2.5-14b-instruct', label: 'Qwen2.5 14B' },
   { value: 'qwen2.5-7b-instruct', label: 'Qwen2.5 7B (轻量)' },
+  { value: 'qwen3.5-plus', label: 'Qwen3.5-Plus (多模态推荐)' },
+  { value: 'qwen-vl-max', label: 'Qwen2.5-VL Max (视觉理解最强)' },
+  { value: 'qwen-vl-plus', label: 'Qwen2.5-VL Plus (视觉理解均衡)' },
+  { value: 'qwen2.5-vl-72b', label: 'Qwen2.5-VL 72B (开源视觉理解)' },
+  { value: 'qwen2.5-vl-32b', label: 'Qwen2.5-VL 32B (视觉性价比)' },
+  { value: 'qwen2.5-vl-7b', label: 'Qwen2.5-VL 7B (视觉轻量)' },
+  { value: 'qwen3-vl-plus', label: 'Qwen3-VL Plus (新一代视觉)' },
+  { value: 'qwen3-vl-flash', label: 'Qwen3-VL Flash (新一代视觉快速)' },
 ]
 
 const AgentConfig: React.FC = () => {
@@ -35,6 +43,7 @@ const AgentConfig: React.FC = () => {
         api_key: data.api_key,
         model_name: data.model_name,
         enable_thinking: data.enable_thinking,
+        multimodality: data.multimodality,
       })
       setIsCustomApiKey(data.is_custom_api_key)
       setApiKeyMasked(data.api_key_masked)
@@ -78,6 +87,7 @@ const AgentConfig: React.FC = () => {
         soul_md: defaultConfig.soul_md,
         model_name: defaultConfig.model_name,
         enable_thinking: defaultConfig.enable_thinking,
+        multimodality: false,
       })
       message.success('已恢复默认提示词配置')
       fetchConfig()
@@ -173,8 +183,19 @@ const AgentConfig: React.FC = () => {
                     options={modelOptions}
                     style={{ borderRadius: 10 }}
                     placeholder="选择模型"
+                    showSearch
+                    optionFilterProp="label"
                   />
                 </Form.Item>
+                <div style={{ marginTop: -8, marginBottom: 12 }}>
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    更多模型请访问{' '}
+                    <a href="https://bailian.console.aliyun.com/cn-beijing/?tab=model#/model-market" target="_blank" rel="noopener noreferrer">
+                      阿里云百炼模型市场
+                    </a>
+                    {' '}选择适合的视觉/多模态模型 ID
+                  </Typography.Text>
+                </div>
               </Col>
               <Col span={8}>
                 <Form.Item
@@ -186,6 +207,18 @@ const AgentConfig: React.FC = () => {
                     </div>
                   }
                   help="开启后模型会先思考再回答，结果更准确"
+                  valuePropName="checked"
+                >
+                  <Switch />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col span={8}>
+                <Form.Item
+                  name="multimodality"
+                  label="多模态支持"
+                  help="开启后可识别图片内容，支持图片上传对话"
                   valuePropName="checked"
                 >
                   <Switch />

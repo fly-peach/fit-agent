@@ -8,12 +8,16 @@ from agentscope.pipeline import stream_printing_messages
 from src.agents.agent import agent_cache
 from agentscope_runtime.engine.app import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends, UploadFile
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
 from src.agents.config import get_config
+from src.fitme.utils.database import get_db
+from src.fitme.models import UserImage
 
 logger = logging.getLogger("fitagent")
 
@@ -112,6 +116,7 @@ class AgentConfigUpdate(BaseModel):
     api_key: str | None = None
     model_name: str | None = None
     enable_thinking: bool | None = None
+    multimodality: bool | None = None
 
 
 class AgentConfigResponse(BaseModel):
@@ -121,6 +126,7 @@ class AgentConfigResponse(BaseModel):
     api_key_masked: str
     model_name: str
     enable_thinking: bool
+    multimodality: bool
     is_custom_api_key: bool  # 是否使用自定义 API Key
 
 
@@ -129,6 +135,7 @@ class DefaultConfigResponse(BaseModel):
     soul_md: str
     model_name: str
     enable_thinking: bool
+    multimodality: bool
 
 
 @router.get("/config", response_model=AgentConfigResponse)
@@ -158,6 +165,7 @@ async def get_agent_config(
     user_api_key = ""
     model_name = "qwen-turbo"
     enable_thinking = True
+    multimodality = False
     is_custom_api_key = False
 
     if user_config_path.exists():
@@ -168,6 +176,7 @@ async def get_agent_config(
             user_api_key = model_config.get("api_key", "")
             model_name = model_config.get("model_name", "qwen-turbo")
             enable_thinking = model_config.get("enable_thinking", True)
+            multimodality = model_config.get("multimodality", False)
 
     # 判断 API Key 来源
     if user_api_key:
@@ -186,6 +195,7 @@ async def get_agent_config(
         api_key_masked=_mask_api_key(api_key),
         model_name=model_name,
         enable_thinking=enable_thinking,
+        multimodality=multimodality,
         is_custom_api_key=is_custom_api_key,
     )
 
@@ -200,6 +210,7 @@ async def get_default_config():
     soul_md = ""
     model_name = "qwen-turbo"
     enable_thinking = True
+    multimodality = False
 
     if "agents" in default_config and "default" in default_config["agents"]:
         agent_cfg = default_config["agents"]["default"]
@@ -209,12 +220,14 @@ async def get_default_config():
         model_cfg = default_config["models"]["primary"]
         model_name = model_cfg.get("model_name", "qwen-turbo")
         enable_thinking = model_cfg.get("enable_thinking", True)
+        multimodality = model_cfg.get("multimodality", False)
 
     return DefaultConfigResponse(
         agents_md=agents_md,
         soul_md=soul_md,
         model_name=model_name,
         enable_thinking=enable_thinking,
+        multimodality=multimodality,
     )
 
 
@@ -258,9 +271,11 @@ async def update_agent_config(
         user_config["model"]["model_name"] = body.model_name
     if body.enable_thinking is not None:
         user_config["model"]["enable_thinking"] = body.enable_thinking
+    if body.multimodality is not None:
+        user_config["model"]["multimodality"] = body.multimodality
 
     # 只有在有模型配置更新时才写入
-    if body.api_key is not None or body.model_name is not None or body.enable_thinking is not None:
+    if body.api_key is not None or body.model_name is not None or body.enable_thinking is not None or body.multimodality is not None:
         with open(user_config_path, "w", encoding="utf-8") as f:
             json.dump(user_config, f, indent=2, ensure_ascii=False)
 
@@ -296,3 +311,84 @@ async def delete_session(
         return {"status": "ok"}
 
     raise HTTPException(status_code=404, detail="Session not found")
+
+
+# ---------------------------------------------------------------------------
+# Image upload / retrieval / deletion
+# ---------------------------------------------------------------------------
+
+def _get_user_id(authorization: str | None) -> int:
+    """从 Authorization header 提取并验证用户 ID。"""
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    try:
+        return get_user_id_from_token(token)
+    except NotAuthenticatedError:
+        raise HTTPException(status_code=401, detail="请先登录")
+
+
+@router.post("/upload")
+async def upload_image(
+    file: UploadFile,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """上传图片，存入数据库，返回 URL。"""
+    user_id = _get_user_id(authorization)
+
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="仅支持图片文件")
+
+    data = await file.read()
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="图片不能超过 10MB")
+
+    image = UserImage(
+        user_id=user_id,
+        file_name=file.filename or "image",
+        content_type=file.content_type,
+        file_size=len(data),
+        data=data,
+    )
+    db.add(image)
+    db.commit()
+    db.refresh(image)
+
+    return {"url": f"/api/agent/images/{image.image_id}"}
+
+
+@router.get("/images/{image_id}")
+async def get_image(
+    image_id: int,
+    db: Session = Depends(get_db),
+):
+    """从数据库读取图片并返回。"""
+    image = db.query(UserImage).filter(UserImage.image_id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="图片不存在")
+
+    return Response(
+        content=image.data,
+        media_type=image.content_type,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router.delete("/images/{image_id}")
+async def delete_image(
+    image_id: int,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """删除图片。"""
+    user_id = _get_user_id(authorization)
+    image = db.query(UserImage).filter(
+        UserImage.image_id == image_id,
+        UserImage.user_id == user_id,
+    ).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="图片不存在")
+    db.delete(image)
+    db.commit()
+    return {"status": "ok"}

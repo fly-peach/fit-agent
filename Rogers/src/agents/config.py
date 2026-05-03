@@ -29,6 +29,7 @@ class ModelProvider(BaseModel):
     model_name: str = "qwen-turbo"
     enable_thinking: bool = True
     stream: bool = True
+    multimodality: bool = False  # 是否启用多模态（支持图片输入）
 
 
 # ---------------------------------------------------------------------------

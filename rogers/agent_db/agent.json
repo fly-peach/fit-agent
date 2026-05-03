@@ -12,11 +12,45 @@
   "models": {
     "primary": {
       "provider": "dashscope",
-      "api_key": "",
-      "model_name": "qwen-turbo",
-      "enable_thinking": true,
-      "stream": true
+      "model_name": "qwen-vl-max",
+      "enable_thinking": false,
+      "stream": true,
+      "multimodality": true
+    },
+    "qwen3_vl_plus": {
+      "provider": "dashscope",
+      "model_name": "qwen3-vl-plus",
+      "enable_thinking": false,
+      "stream": true,
+      "multimodality": true
+    },
+    "qwen3_vl_flash": {
+      "provider": "dashscope",
+      "model_name": "qwen3-vl-flash",
+      "enable_thinking": false,
+      "stream": true,
+      "multimodality": true
+    },
+    "qwen2_vl_72b": {
+      "provider": "dashscope",
+      "model_name": "qwen2.5-vl-72b",
+      "enable_thinking": false,
+      "stream": true,
+      "multimodality": true
+    },
+    "qwen2_vl_32b": {
+      "provider": "dashscope",
+      "model_name": "qwen2.5-vl-32b",
+      "enable_thinking": false,
+      "stream": true,
+      "multimodality": true
     }
+  },
+
+  "model_console": {
+    "name": "阿里云百炼模型市场",
+    "url": "https://bailian.console.aliyun.com/cn-beijing/?tab=model#/model-market",
+    "description": "在此浏览和选择可用的模型ID，支持文本、视觉、多模态等多种模型"
   },
 
   "agents": {
