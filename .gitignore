@@ -39,8 +39,8 @@ build/
 *.sqlite3
 db/
 
-# Agent database (user workspace, sessions, configs)
-agent_db/
+# Agent database workspace (user data, sessions)
+**/agent_db/workspace/
 
 # Logs
 logs/
