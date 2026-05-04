@@ -12,38 +12,28 @@
   "models": {
     "primary": {
       "provider": "dashscope",
-      "model_name": "qwen-vl-max",
-      "enable_thinking": false,
-      "stream": true,
-      "multimodality": true
+      "model_name": "qwen3.5-flash",
+      "stream": true
     },
     "qwen3_vl_plus": {
       "provider": "dashscope",
       "model_name": "qwen3-vl-plus",
-      "enable_thinking": false,
-      "stream": true,
-      "multimodality": true
+      "stream": true
     },
     "qwen3_vl_flash": {
       "provider": "dashscope",
       "model_name": "qwen3-vl-flash",
-      "enable_thinking": false,
-      "stream": true,
-      "multimodality": true
+      "stream": true
     },
     "qwen2_vl_72b": {
       "provider": "dashscope",
       "model_name": "qwen2.5-vl-72b",
-      "enable_thinking": false,
-      "stream": true,
-      "multimodality": true
+      "stream": true
     },
     "qwen2_vl_32b": {
       "provider": "dashscope",
       "model_name": "qwen2.5-vl-32b",
-      "enable_thinking": false,
-      "stream": true,
-      "multimodality": true
+      "stream": true
     }
   },
 
@@ -74,7 +64,8 @@
             "get_diet_weekly_trend",
             "get_food_recommendations",
             "get_user_settings",
-            "get_full_overview"
+            "get_full_overview",
+            "search_foods"
           ]
         },
         "write_tools": {
@@ -88,7 +79,14 @@
             "add_meal",
             "update_meal",
             "delete_meal",
-            "update_settings"
+            "update_settings",
+            "add_custom_food"
+          ]
+        },
+        "multimodal_tools": {
+          "enabled": true,
+          "tool_names": [
+            "view_image"
           ]
         }
       },
@@ -113,8 +111,7 @@
           "token_count_estimate_divisor": 3.75,
           "context_compact_enabled": true,
           "memory_compact_ratio": 0.75,
-          "memory_reserve_ratio": 0.1,
-          "compact_with_thinking_block": true
+          "memory_reserve_ratio": 0.1
         },
         "tool_result_compact": {
           "enabled": true,

@@ -162,13 +162,17 @@ class TrainingService:
             TrainingPlan.user_id == user_id
         ).first()
         if plan:
+            completed_dt = datetime.now(timezone.utc)
+            if data.completedDate:
+                completed_dt = datetime.combine(date.fromisoformat(data.completedDate), datetime.min.time()).replace(tzinfo=timezone.utc)
+
             record = TrainingRecord(
                 plan_id=plan_id,
                 user_id=user_id,
                 actual_duration=data.actualDuration,
                 actual_intensity=data.actualIntensity,
                 calories_burned=data.caloriesBurned,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=completed_dt,
                 note=data.note,
             )
             plan.status = "completed"
@@ -190,3 +194,34 @@ class TrainingService:
             db.commit()
             return True
         return False
+
+    @staticmethod
+    def get_date_range_trend(db: Session, user_id: int, start_date: date, end_date: date) -> dict:
+        """获取日期范围内的每日训练趋势"""
+        # 按日期分组聚合训练记录
+        records = db.query(TrainingRecord).filter(
+            TrainingRecord.user_id == user_id,
+            TrainingRecord.completed_at >= datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc),
+            TrainingRecord.completed_at <= datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc),
+        ).order_by(TrainingRecord.completed_at).all()
+
+        # 按日期分组
+        daily_map: dict[date, list] = {}
+        for r in records:
+            day = r.completed_at.date()
+            daily_map.setdefault(day, []).append(r)
+
+        # 填充所有日期（包括没有记录的日期）
+        daily_stats = []
+        current = start_date
+        while current <= end_date:
+            day_records = daily_map.get(current, [])
+            daily_stats.append({
+                "date": current,
+                "duration": sum(r.actual_duration or 0 for r in day_records),
+                "caloriesBurned": sum(r.calories_burned or 0 for r in day_records),
+                "planCount": len(day_records),
+            })
+            current += timedelta(days=1)
+
+        return {"dailyStats": daily_stats}

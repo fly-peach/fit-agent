@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from 'react'
-import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, TimePicker, Table, Tag, Space, message, Progress } from 'antd'
+import React, { useEffect, useState, useCallback } from 'react'
+import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, TimePicker, DatePicker, Table, Tag, Space, message, Progress, AutoComplete, Divider, Radio, Checkbox } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { Utensils } from 'lucide-react'
+import { Utensils, Sun, Moon, Sunrise } from 'lucide-react'
 import dayjs from 'dayjs'
-import { dietApi, type DietStats, DietMeal, RecommendedFood } from '../../services/diet'
+import { dietApi, type DietStats, DietMeal, type FoodItem } from '../../services/diet'
 import type { ColumnsType } from 'antd/es/table'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+
+const CALORIE_LEVEL_COLORS: Record<string, string> = {
+  低: '#10B981',
+  中: '#F59E0B',
+  高: '#F59E0B',
+  超高: '#EF4444',
+}
 
 const mealTypes = [
   { value: 'breakfast', label: '早餐' },
@@ -13,34 +21,140 @@ const mealTypes = [
   { value: 'snack', label: '加餐' },
 ]
 
+const MEAL_FILTERS = [
+  { key: '', label: '全部', icon: null, color: '#666' },
+  { key: 'breakfast', label: '早餐', icon: <Sunrise size={14} />, color: '#F59E0B' },
+  { key: 'lunch', label: '午餐', icon: <Sun size={14} />, color: '#10B981' },
+  { key: 'dinner', label: '晚餐', icon: <Moon size={14} />, color: '#6366F1' },
+] as const
+
 const Diet: React.FC = () => {
   const [stats, setStats] = useState<DietStats | null>(null)
   const [meals, setMeals] = useState<DietMeal[]>([])
-  const [recommendations, setRecommendations] = useState<RecommendedFood[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [customFoodOpen, setCustomFoodOpen] = useState(false)
   const [selectedMeal, setSelectedMeal] = useState<DietMeal | null>(null)
   const [addForm] = Form.useForm()
   const [editForm] = Form.useForm()
+  const [customFoodForm] = Form.useForm()
+
+  // Food autocomplete
+  const [foodOptions, setFoodOptions] = useState<FoodItem[]>([])
+  const [foodLoading, setFoodLoading] = useState(false)
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null)
+  const [foodCategories, setFoodCategories] = useState<string[]>([])
+  const [mealFilter, setMealFilter] = useState('')
+  const [currentSearch, setCurrentSearch] = useState('')
+
+  // Diet trend chart
+  const [trendDays, setTrendDays] = useState(7)
+  const [trendLoading, setTrendLoading] = useState(false)
+  const [trendData, setTrendData] = useState<any[]>([])
+  const [trendGoals, setTrendGoals] = useState<{ caloriesGoal: number; proteinGoal: number; carbsGoal: number; fatGoal: number; waterGoal: number } | null>(null)
+  const [activeMetrics, setActiveMetrics] = useState<string[]>(['calories'])
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [dayMeals, setDayMeals] = useState<DietMeal[]>([])
+  const [dayMealsLoading, setDayMealsLoading] = useState(false)
 
   useEffect(() => {
     fetchData()
+    fetchCategories()
   }, [])
+
+  useEffect(() => {
+    fetchTrendData()
+  }, [trendDays])
+
+  const fetchTrendData = async () => {
+    setTrendLoading(true)
+    try {
+      const end = dayjs()
+      const start = end.subtract(trendDays - 1, 'day')
+      const result = await dietApi.getDateRangeTrend(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'))
+      const formatted = result.dailyStats.map(d => ({
+        ...d,
+        date: dayjs(d.date).format('MM/DD'),
+        fullDate: d.date,
+      }))
+      setTrendData(formatted)
+      setTrendGoals(result.goals)
+    } catch {
+      // ignore
+    } finally {
+      setTrendLoading(false)
+    }
+  }
+
+  const fetchDayMeals = async (dateStr: string) => {
+    setDayMealsLoading(true)
+    try {
+      const meals = await dietApi.getTodayMeals(dateStr)
+      setDayMeals(meals)
+      setSelectedDate(dateStr)
+    } catch {
+      setDayMeals([])
+    } finally {
+      setDayMealsLoading(false)
+    }
+  }
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [statsData, mealsData, recs] = await Promise.all([
+      const [statsData, mealsData] = await Promise.all([
         dietApi.getTodayStats(),
         dietApi.getTodayMeals(),
-        dietApi.getRecommendations(),
       ])
       setStats(statsData)
       setMeals(mealsData)
-      setRecommendations(recs)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const cats = await dietApi.getFoodCategories()
+      setFoodCategories(cats)
+    } catch {
+      // ignore
+    }
+  }
+
+  const doSearch = useCallback(async (keyword: string, mealType: string) => {
+    setFoodLoading(true)
+    try {
+      const results = await dietApi.searchFoods(keyword || '', '', mealType)
+      setFoodOptions(results)
+    } catch {
+      // ignore
+    } finally {
+      setFoodLoading(false)
+    }
+  }, [])
+
+  const searchFoods = useCallback((keyword: string) => {
+    setCurrentSearch(keyword)
+    doSearch(keyword, mealFilter)
+  }, [mealFilter, doSearch])
+
+  const handleFoodSelect = (_value: string, food: FoodItem) => {
+    setSelectedFood(food)
+    addForm.setFieldsValue({
+      mealName: food.name,
+      calories: food.portionCalories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+    })
+    // Auto-set meal type based on food's suitable meals
+    if (food.suitableMeals) {
+      const meals = food.suitableMeals.split(',').filter((m: string) => m !== 'dinner')
+      if (meals.length > 0) {
+        addForm.setFieldsValue({ mealType: meals[0] })
+      }
     }
   }
 
@@ -55,10 +169,12 @@ const Diet: React.FC = () => {
         fat: values.fat || 0,
         water: values.water || 0,
         time: values.time.format('HH:mm'),
+        mealDate: values.mealDate?.format('YYYY-MM-DD'),
       })
       message.success('添加成功')
       setAddOpen(false)
       addForm.resetFields()
+      setSelectedFood(null)
       fetchData()
     } catch {
       message.error('添加失败')
@@ -94,6 +210,22 @@ const Diet: React.FC = () => {
     }
   }
 
+  // Edit food autocomplete
+  const [editFoodOptions, setEditFoodOptions] = useState<FoodItem[]>([])
+  const [editFoodLoading, setEditFoodLoading] = useState(false)
+
+  const searchEditFoods = useCallback(async (keyword: string) => {
+    setEditFoodLoading(true)
+    try {
+      const results = await dietApi.searchFoods(keyword || '', '', '')
+      setEditFoodOptions(results)
+    } catch {
+      // ignore
+    } finally {
+      setEditFoodLoading(false)
+    }
+  }, [])
+
   const openEditDialog = (meal: DietMeal) => {
     setSelectedMeal(meal)
     editForm.setFieldsValue({
@@ -104,6 +236,24 @@ const Diet: React.FC = () => {
       fat: meal.fat,
     })
     setEditOpen(true)
+  }
+
+  const handleAddCustomFood = async () => {
+    try {
+      const values = await customFoodForm.validateFields()
+      await dietApi.addCustomFood({
+        ...values,
+        protein: values.protein || 0,
+        carbs: values.carbs || 0,
+        fat: values.fat || 0,
+      })
+      message.success('自定义食物已添加')
+      setCustomFoodOpen(false)
+      customFoodForm.resetFields()
+      fetchCategories()
+    } catch {
+      message.error('添加失败')
+    }
   }
 
   const getProgressPercent = (current: number, goal: number) => {
@@ -198,6 +348,91 @@ const Diet: React.FC = () => {
         </Row>
       </Card>
 
+      {/* 饮食趋势图表 */}
+      <Card style={{ marginTop: 24, border: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>饮食趋势</Typography.Title>
+          <Radio.Group value={trendDays} onChange={e => setTrendDays(e.target.value)} size="small">
+            <Radio.Button value={7}>近7天</Radio.Button>
+            <Radio.Button value={14}>近14天</Radio.Button>
+            <Radio.Button value={30}>近30天</Radio.Button>
+          </Radio.Group>
+        </div>
+
+        <Checkbox.Group
+          value={activeMetrics}
+          onChange={(vals: any[]) => setActiveMetrics(vals)}
+          style={{ marginBottom: 16 }}
+        >
+          <Space wrap>
+            <Checkbox value="calories">热量</Checkbox>
+            <Checkbox value="protein">蛋白质</Checkbox>
+            <Checkbox value="carbs">碳水</Checkbox>
+            <Checkbox value="fat">脂肪</Checkbox>
+          </Space>
+        </Checkbox.Group>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={trendLoading ? [] : trendData} onClick={(e: any) => {
+            if (e?.activePayload?.[0]?.payload?.date) {
+              // Map back to full date from trendData
+              const idx = trendData.findIndex(d => d.date === e.activePayload[0].payload.date)
+              if (idx >= 0) {
+                const fullDate = trendData[idx].date // MM/DD format already
+                // We need the actual date - use trendData item's raw date
+                fetchDayMeals(trendData[idx].fullDate || fullDate)
+              }
+            }
+          }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+            <Tooltip
+              formatter={(value: any, name: any) => {
+                const labels: Record<string, string> = { calories: '热量', protein: '蛋白质', carbs: '碳水', fat: '脂肪', water: '饮水' }
+                const units: Record<string, string> = { calories: ' kcal', protein: 'g', carbs: 'g', fat: 'g', water: 'ml' }
+                return [`${value}${units[name] || ''}`, labels[name] || name]
+              }}
+            />
+            {activeMetrics.includes('calories') && trendGoals && (
+              <ReferenceLine yAxisId="left" y={trendGoals.caloriesGoal} stroke="#EF4444" strokeDasharray="4 4" label={{ value: '目标', fill: '#EF4444', fontSize: 10 }} />
+            )}
+            {activeMetrics.includes('calories') && <Line type="monotone" yAxisId="left" dataKey="calories" name="calories" stroke="#EF4444" strokeWidth={2} dot={{ r: 3 }} />}
+            {activeMetrics.includes('protein') && trendGoals && (
+              <ReferenceLine yAxisId="right" y={trendGoals.proteinGoal} stroke="#10B981" strokeDasharray="4 4" label={{ value: '目标', fill: '#10B981', fontSize: 10 }} />
+            )}
+            {activeMetrics.includes('protein') && <Line type="monotone" yAxisId="right" dataKey="protein" name="protein" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} />}
+            {activeMetrics.includes('carbs') && trendGoals && (
+              <ReferenceLine yAxisId="right" y={trendGoals.carbsGoal} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: '目标', fill: '#F59E0B', fontSize: 10 }} />
+            )}
+            {activeMetrics.includes('carbs') && <Line type="monotone" yAxisId="right" dataKey="carbs" name="carbs" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />}
+            {activeMetrics.includes('fat') && trendGoals && (
+              <ReferenceLine yAxisId="right" y={trendGoals.fatGoal} stroke="#8B5CF6" strokeDasharray="4 4" label={{ value: '目标', fill: '#8B5CF6', fontSize: 10 }} />
+            )}
+            {activeMetrics.includes('fat') && <Line type="monotone" yAxisId="right" dataKey="fat" name="fat" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />}
+          </LineChart>
+        </ResponsiveContainer>
+
+        {selectedDate && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Typography.Text strong>{dayjs(selectedDate).format('YYYY-MM-DD')} 饮食记录</Typography.Text>
+              <Button size="small" onClick={() => { setSelectedDate(null); setDayMeals([]) }}>关闭</Button>
+            </div>
+            <Table
+              columns={mealColumns}
+              dataSource={dayMeals}
+              rowKey="mealId"
+              size="small"
+              pagination={false}
+              loading={dayMealsLoading}
+              locale={{ emptyText: '暂无记录' }}
+            />
+          </div>
+        )}
+      </Card>
+
       <Card style={{ marginTop: 24, border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
           <Typography.Title level={5} style={{ margin: 0 }}>今日饮食记录</Typography.Title>
@@ -213,63 +448,149 @@ const Diet: React.FC = () => {
         />
       </Card>
 
-      <Card style={{ marginTop: 24, border: 'none' }}>
-        <Typography.Title level={5}>推荐食物</Typography.Title>
-        <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
-          {recommendations.map(item => (
-            <Col xs={24} sm={12} md={6} key={item.recommendId}>
-              <Card size="small" className="fitagent-card-hover" style={{ border: 'none' }}>
-                <Typography.Text strong>{item.foodName}</Typography.Text>
-                <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>{item.calories} kcal</Typography.Text>
-                {item.protein && <Typography.Text type="secondary" style={{ fontSize: 12 }}>{item.protein}g蛋白质</Typography.Text>}
-                {item.reason && <Tag color="#06B6D4" style={{ marginTop: 8 }}>{item.reason}</Tag>}
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </Card>
-
+      {/* Add Meal Modal */}
       <Modal
         title="添加饮食记录"
         open={addOpen}
-        onCancel={() => setAddOpen(false)}
+        onCancel={() => { setAddOpen(false); addForm.resetFields(); setSelectedFood(null); setMealFilter(''); setCurrentSearch(''); setFoodOptions([]) }}
         onOk={handleAddMeal}
         okText="提交"
         cancelText="取消"
+        width={600}
       >
-        <Form form={addForm} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={addForm} layout="vertical" style={{ marginTop: 16 }} initialValues={{ mealDate: dayjs() }}>
           <Form.Item name="mealType" label="餐次类型" rules={[{ required: true }]}>
             <Select options={mealTypes} defaultValue="breakfast" />
           </Form.Item>
-          <Form.Item name="mealName" label="食物名称" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item
+            name="mealName"
+            label={
+              <span>食物名称 <Button size="small" type="link" style={{ padding: 0 }} onClick={() => setCustomFoodOpen(true)}>+ 添加新食物</Button></span>
+            }
+            rules={[{ required: true }]}
+          >
+            <AutoComplete
+              placeholder="点击搜索食物，或直接输入食物名称..."
+              notFoundContent={foodLoading ? '加载中...' : '未找到匹配的食物，可手动输入或添加新食物'}
+              onSearch={searchFoods}
+              onFocus={() => searchFoods('')}
+              onSelect={(_value, option) => {
+                const food = option.food as FoodItem
+                if (food) handleFoodSelect(_value, food)
+              }}
+              dropdownRender={(menu) => (
+                <div>
+                  <div style={{ padding: '8px 12px', display: 'flex', gap: 8 }}>
+                    {MEAL_FILTERS.map(m => (
+                      <Button
+                        key={m.key}
+                        size="small"
+                        type={mealFilter === m.key ? 'primary' : 'default'}
+                        ghost={mealFilter === m.key}
+                        icon={m.icon}
+                        onClick={() => {
+                          setMealFilter(m.key)
+                          doSearch(currentSearch, m.key)
+                        }}
+                      >
+                        {m.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Divider style={{ margin: 0 }} />
+                  {menu}
+                </div>
+              )}
+              options={foodOptions.map(food => ({
+                value: food.name,
+                label: (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>
+                      <strong>{food.name}</strong>
+                      {food.portionUnit && <span style={{ color: '#999', fontSize: 12, marginLeft: 6 }}>{food.portionUnit}</span>}
+                    </span>
+                    <span style={{ color: '#EF4444', fontSize: 12 }}>{food.portionCalories} kcal</span>
+                  </div>
+                ),
+                food,
+              }))}
+            />
           </Form.Item>
+
+          {/* Selected food info */}
+          {selectedFood && (
+            <div style={{ marginBottom: 16, padding: 10, background: '#F0FDF4', borderRadius: 8 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {selectedFood.name} · {selectedFood.portionCalories} kcal/份
+                {selectedFood.protein > 0 && ` · 蛋白质${selectedFood.protein}g`}
+                {selectedFood.carbs > 0 && ` · 碳水${selectedFood.carbs}g`}
+                {selectedFood.fat > 0 && ` · 脂肪${selectedFood.fat}g`}
+                {selectedFood.calorieLevel && (
+                  <Tag color={CALORIE_LEVEL_COLORS[selectedFood.calorieLevel]} style={{ marginLeft: 8 }}>
+                    {selectedFood.calorieLevel}热量
+                  </Tag>
+                )}
+              </Typography.Text>
+            </div>
+          )}
+
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="calories" label="热量" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={0} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} defaultValue={0} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="calories" label="热量" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="kcal" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} defaultValue={0} /></Form.Item></Col>
-            <Col span={12}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} defaultValue={0} /></Form.Item></Col>
+            <Col span={12}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
           </Row>
-          <Form.Item name="water" label="饮水"><InputNumber style={{ width: '100%' }} defaultValue={0} /></Form.Item>
+          <Form.Item name="water" label="饮水"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="ml" /></Form.Item>
+          <Form.Item name="mealDate" label="日期" rules={[{ required: true }]}>
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
           <Form.Item name="time" label="时间" rules={[{ required: true }]}>
             <TimePicker style={{ width: '100%' }} defaultValue={dayjs()} />
           </Form.Item>
         </Form>
       </Modal>
 
+      {/* Edit Modal */}
       <Modal
         title="编辑饮食记录"
         open={editOpen}
-        onCancel={() => setEditOpen(false)}
+        onCancel={() => { setEditOpen(false); setEditFoodOptions([]); setEditFoodLoading(false) }}
         onOk={handleEditMeal}
         okText="更新"
         cancelText="取消"
+        width={600}
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="mealName" label="食物名称" rules={[{ required: true }]}>
-            <Input />
+            <AutoComplete
+              placeholder="搜索食物..."
+              notFoundContent={editFoodLoading ? '加载中...' : '未找到匹配的食物'}
+              onSearch={searchEditFoods}
+              onSelect={(_value, option) => {
+                const food = option.food as FoodItem
+                if (food) {
+                  editForm.setFieldsValue({
+                    mealName: food.name,
+                    calories: food.portionCalories,
+                    protein: food.protein,
+                    carbs: food.carbs,
+                    fat: food.fat,
+                  })
+                }
+              }}
+              options={editFoodOptions.map(food => ({
+                value: food.name,
+                label: (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span><strong>{food.name}</strong>{food.portionUnit && <span style={{ color: '#999', fontSize: 12, marginLeft: 6 }}>{food.portionUnit}</span>}</span>
+                    <span style={{ color: '#EF4444', fontSize: 12 }}>{food.portionCalories} kcal</span>
+                  </div>
+                ),
+                food,
+              }))}
+            />
           </Form.Item>
           <Form.Item name="calories" label="热量" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} />
@@ -278,6 +599,48 @@ const Diet: React.FC = () => {
             <Col span={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* Custom Food Modal */}
+      <Modal
+        title="添加自定义食物"
+        open={customFoodOpen}
+        onCancel={() => { setCustomFoodOpen(false); customFoodForm.resetFields() }}
+        onOk={handleAddCustomFood}
+        okText="添加"
+        cancelText="取消"
+      >
+        <Form form={customFoodForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="name" label="食物名称" rules={[{ required: true }]}>
+            <Input placeholder="如：自制燕麦饼干" />
+          </Form.Item>
+          <Form.Item name="category" label="分类" rules={[{ required: true }]}>
+            <Select placeholder="选择分类" options={foodCategories.map(c => ({ label: c, value: c }))} />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}><Form.Item name="portionUnit" label="一份单位"><Input placeholder="如：1 块" /></Form.Item></Col>
+            <Col span={12}><Form.Item name="portionGrams" label="一份克数"><InputNumber style={{ width: '100%' }} addonAfter="g" /></Form.Item></Col>
+          </Row>
+          <Form.Item name="portionCalories" label="一份热量" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} addonAfter="kcal" />
+          </Form.Item>
+          <Form.Item name="caloriesPer100g" label="每100g热量" rules={[{ required: true }]}>
+            <InputNumber style={{ width: '100%' }} addonAfter="kcal" />
+          </Form.Item>
+          <Form.Item name="calorieLevel" label="热量等级">
+            <Select options={[
+              { label: '低', value: '低' },
+              { label: '中', value: '中' },
+              { label: '高', value: '高' },
+              { label: '超高', value: '超高' },
+            ]} />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
+            <Col span={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
+            <Col span={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
           </Row>
         </Form>
       </Modal>

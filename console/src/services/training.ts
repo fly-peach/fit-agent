@@ -67,9 +67,19 @@ export const trainingApi = {
   updatePlan: (planId: number, data: Partial<TrainingPlan>): Promise<void> =>
     api.put(`/training/plans/${planId}`, data),
 
-  completePlan: (planId: number, data: { actualDuration: number; actualIntensity?: string; caloriesBurned?: number; note?: string }): Promise<void> =>
+  completePlan: (planId: number, data: { actualDuration: number; actualIntensity?: string; caloriesBurned?: number; note?: string; completedDate?: string }): Promise<void> =>
     api.post(`/training/complete/${planId}`, data),
 
   deletePlan: (planId: number): Promise<void> =>
     api.delete(`/training/plans/${planId}`),
+
+  getDateRangeTrend: (startDate: string, endDate: string): Promise<{
+    dailyStats: {
+      date: string
+      duration: number
+      caloriesBurned: number
+      planCount: number
+    }[]
+  }> =>
+    api.get('/training/trend/range', { params: { start_date: startDate, end_date: endDate } }),
 }

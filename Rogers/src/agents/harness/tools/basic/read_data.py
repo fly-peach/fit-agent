@@ -24,6 +24,7 @@ from src.fitme.models import (
     DailyDietSummary,
     RecommendedTraining,
     RecommendedFood,
+    FoodItem,
 )
 
 # 由 AgentContext 在用户登录后设置，工具函数内部使用
@@ -326,6 +327,49 @@ def get_user_settings() -> ToolResponse:
         ]
         if s.weight_goal:
             lines.append(f"  目标体重：{_fmt_val(s.weight_goal)} kg")
+        return _tool_resp("\n".join(lines))
+
+
+def search_foods(keyword: str = "", category: str = "", meal_type: str = "") -> ToolResponse:
+    """搜索食物数据库（系统食物 + 用户自定义）。
+
+    Args:
+        keyword: 搜索关键词，支持食物名称模糊匹配。
+        category: 食物分类筛选（如"蔬菜""水果""肉类"等）。
+        meal_type: 餐次筛选（breakfast / lunch / dinner）。
+    """
+    user_id = require_user()
+    if user_id is None:
+        return _tool_resp("请先登录")
+    from sqlalchemy import or_
+    with get_db() as db:
+        query = db.query(FoodItem).filter(
+            or_(FoodItem.source == "system", FoodItem.user_id == user_id)
+        )
+        if keyword:
+            query = query.filter(FoodItem.name.ilike(f"%{keyword}%"))
+        if category:
+            query = query.filter(FoodItem.category == category)
+        if meal_type:
+            query = query.filter(FoodItem.suitable_meals.like(f"%{meal_type}%"))
+        foods = query.order_by(FoodItem.calories_per_100g).limit(50).all()
+        if not foods:
+            return _tool_resp("未找到匹配的食物")
+        lines = [f"找到 {len(foods)} 种食物："]
+        for f in foods:
+            source_tag = "[自定义]" if f.source == "custom" else ""
+            macros = f"蛋白 {f.protein}g | 碳水 {f.carbs}g | 脂肪 {f.fat}g"
+            portion_info = ""
+            if f.portion_unit and f.portion_calories:
+                portion_info = f" | 每{f.portion_unit} {f.portion_calories}kcal"
+            lines.append(
+                f"  {f.name}（{f.category}）{source_tag} | "
+                f"{f.calories_per_100g}kcal/100g{portion_info} | {macros}"
+            )
+            if f.suitable_meals:
+                meal_labels = {"breakfast": "早餐", "lunch": "午餐", "dinner": "晚餐"}
+                meal_names = [meal_labels.get(m.strip(), m.strip()) for m in f.suitable_meals.split(",") if m.strip()]
+                lines.append(f"    适合：{' / '.join(meal_names)}")
         return _tool_resp("\n".join(lines))
 
 

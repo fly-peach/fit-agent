@@ -1,0 +1,394 @@
+.landing-page {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #1E293B;
+  background: #FFFFFF;
+  line-height: 1.6;
+}
+
+/* Navigation */
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 64px;
+  height: 72px;
+  background: #FFFFFF;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  box-shadow: 0 1px 0 #E2E8F0;
+}
+
+.landing-nav-logo {
+  font-size: 22px;
+  font-weight: 600;
+  color: #3B82F6;
+  cursor: pointer;
+}
+
+.landing-nav-links {
+  display: flex;
+  gap: 32px;
+}
+
+.landing-nav-link {
+  font-size: 14px;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.landing-nav-link:hover {
+  color: #3B82F6;
+}
+
+.landing-nav-btn {
+  padding: 10px 24px;
+  background: #3B82F6;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+}
+
+.landing-nav-btn:hover {
+  background: #2563EB;
+}
+
+/* Hero Section */
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 152px 64px 80px;
+  background: #FFFFFF;
+  gap: 24px;
+}
+
+.landing-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #EFF6FF;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3B82F6;
+}
+
+.landing-hero-title {
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 700px;
+}
+
+.landing-hero-desc {
+  font-size: 17px;
+  color: #64748B;
+  text-align: center;
+  max-width: 600px;
+}
+
+.landing-hero-btns {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.landing-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: #3B82F6;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+}
+
+.landing-btn-primary:hover {
+  background: #2563EB;
+}
+
+.landing-btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  background: #FFFFFF;
+  color: #1E293B;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #E2E8F0;
+  transition: all 0.2s;
+}
+
+.landing-btn-secondary:hover {
+  border-color: #3B82F6;
+  color: #3B82F6;
+}
+
+/* Features Section */
+.landing-features {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 64px;
+  background: #F0F7FF;
+  gap: 64px;
+}
+
+.landing-section-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.landing-section-title {
+  font-size: 36px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.landing-section-desc {
+  font-size: 16px;
+  color: #64748B;
+  text-align: center;
+}
+
+.landing-features-grid {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.landing-feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  width: 280px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.landing-feature-icon {
+  width: 48px;
+  height: 48px;
+  background: #EFF6FF;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.landing-feature-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.landing-feature-desc {
+  font-size: 14px;
+  color: #64748B;
+}
+
+/* How It Works */
+.landing-how-it-works {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 64px;
+  background: #FFFFFF;
+  gap: 64px;
+}
+
+.landing-steps {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  flex-wrap: wrap;
+}
+
+.landing-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 280px;
+}
+
+.landing-step-num {
+  width: 56px;
+  height: 56px;
+  background: #3B82F6;
+  border-radius: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.landing-step-title {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.landing-step-desc {
+  font-size: 14px;
+  color: #64748B;
+  text-align: center;
+}
+
+/* CTA Section */
+.landing-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 64px;
+  background: #EFF6FF;
+  gap: 32px;
+}
+
+.landing-cta-title {
+  font-size: 32px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.landing-cta-desc {
+  font-size: 16px;
+  color: #64748B;
+  text-align: center;
+}
+
+/* Contact Section */
+.landing-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 64px;
+  background: #F8FAFC;
+  gap: 32px;
+}
+
+.landing-contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.landing-contact-name {
+  font-size: 16px;
+  color: #1E293B;
+  font-weight: 500;
+}
+
+.landing-contact-item {
+  font-size: 15px;
+  color: #64748B;
+}
+
+/* Footer */
+.landing-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 64px;
+  background: #FFFFFF;
+  gap: 24px;
+}
+
+.landing-footer-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1E293B;
+}
+
+.landing-footer-links {
+  display: flex;
+  gap: 32px;
+}
+
+.landing-footer-link {
+  font-size: 14px;
+  color: #64748B;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.landing-footer-link:hover {
+  color: #3B82F6;
+}
+
+.landing-footer-copyright {
+  font-size: 13px;
+  color: #64748B;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .landing-nav {
+    padding: 0 24px;
+  }
+
+  .landing-nav-links {
+    display: none;
+  }
+
+  .landing-hero {
+    padding: 120px 24px 60px;
+  }
+
+  .landing-hero-title {
+    font-size: 32px;
+  }
+
+  .landing-hero-desc {
+    font-size: 15px;
+  }
+
+  .landing-features,
+  .landing-how-it-works,
+  .landing-cta,
+  .landing-contact {
+    padding: 60px 24px;
+  }
+
+  .landing-section-title {
+    font-size: 28px;
+  }
+
+  .landing-feature-card,
+  .landing-step {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .landing-footer {
+    padding: 32px 24px;
+  }
+}

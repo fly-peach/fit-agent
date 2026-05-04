@@ -1,10 +1,10 @@
 """Diet Service"""
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from typing import Optional, List
 from datetime import date, timedelta
-from ..models import DietMeal, DailyDietSummary, RecommendedFood, UserSettings, StreakStats
-from ..schemas.diet import CreateMealRequest, UpdateMealRequest
+from ..models import DietMeal, DailyDietSummary, RecommendedFood, UserSettings, StreakStats, FoodItem
+from ..schemas.diet import CreateMealRequest, UpdateMealRequest, CreateCustomFood
 
 
 class DietService:
@@ -50,13 +50,14 @@ class DietService:
         }
 
     @staticmethod
-    def get_today_meals(db: Session, user_id: int) -> List[dict]:
-        """获取今日饮食记录"""
-        today = date.today()
+    def get_today_meals(db: Session, user_id: int, target_date: Optional[date] = None) -> List[dict]:
+        """获取饮食记录（默认今日，支持指定日期）"""
+        if target_date is None:
+            target_date = date.today()
 
         meals = db.query(DietMeal).filter(
             DietMeal.user_id == user_id,
-            DietMeal.meal_date == today
+            DietMeal.meal_date == target_date
         ).order_by(DietMeal.meal_time).all()
 
         return [
@@ -79,6 +80,7 @@ class DietService:
         """添加饮食记录"""
         from datetime import datetime
         meal_time = datetime.strptime(data.time, "%H:%M").time()
+        meal_date = date.fromisoformat(data.mealDate) if data.mealDate else date.today()
 
         meal = DietMeal(
             user_id=user_id,
@@ -89,7 +91,7 @@ class DietService:
             carbs=data.carbs,
             fat=data.fat,
             water=data.water,
-            meal_date=date.today(),
+            meal_date=meal_date,
             meal_time=meal_time,
             note=data.note,
         )
@@ -201,3 +203,111 @@ class DietService:
                 "waterGoalDays": water_goal_days,
             },
         }
+
+    @staticmethod
+    def get_date_range_trend(db: Session, user_id: int, start_date: date, end_date: date) -> dict:
+        """获取日期范围内的每日饮食趋势"""
+        from ..models import UserSettings
+
+        settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+
+        summaries = db.query(DailyDietSummary).filter(
+            DailyDietSummary.user_id == user_id,
+            DailyDietSummary.summary_date >= start_date,
+            DailyDietSummary.summary_date <= end_date
+        ).order_by(DailyDietSummary.summary_date).all()
+
+        daily_stats = [
+            {
+                "date": s.summary_date,
+                "calories": s.total_calories,
+                "protein": float(s.total_protein),
+                "carbs": float(s.total_carbs),
+                "fat": float(s.total_fat),
+                "water": s.total_water,
+                "proteinGoalMet": s.protein_goal_met,
+                "waterGoalMet": s.water_goal_met,
+                "mealCount": s.meal_count,
+            }
+            for s in summaries
+        ]
+
+        goals = {
+            "caloriesGoal": settings.calorie_goal if settings else 2000,
+            "proteinGoal": settings.protein_goal if settings else 150,
+            "carbsGoal": settings.carbs_goal if settings else 250,
+            "fatGoal": settings.fat_goal if settings else 65,
+            "waterGoal": settings.water_goal if settings else 2000,
+        }
+
+        return {"dailyStats": daily_stats, "goals": goals}
+
+    # -----------------------------------------------------------------------
+    # 食物数据库
+    # -----------------------------------------------------------------------
+
+    @staticmethod
+    def search_foods(db: Session, user_id: int, keyword: str = "", category: str = "", meal_type: str = "", limit: int = 200) -> List[FoodItem]:
+        """搜索食物（系统 + 用户自定义）"""
+        query = db.query(FoodItem).filter(
+            or_(FoodItem.source == "system", FoodItem.user_id == user_id)
+        )
+        if keyword:
+            query = query.filter(FoodItem.name.ilike(f"%{keyword}%"))
+        if category:
+            query = query.filter(FoodItem.category == category)
+        if meal_type:
+            query = query.filter(FoodItem.suitable_meals.like(f"%{meal_type}%"))
+        return query.order_by(FoodItem.calories_per_100g).limit(limit).all()
+
+    @staticmethod
+    def get_food_by_id(db: Session, user_id: int, food_id: int) -> Optional[FoodItem]:
+        """获取指定食物"""
+        return db.query(FoodItem).filter(
+            FoodItem.food_id == food_id,
+            or_(FoodItem.source == "system", FoodItem.user_id == user_id)
+        ).first()
+
+    @staticmethod
+    def get_categories(db: Session, user_id: int) -> List[str]:
+        """获取所有食物分类"""
+        results = db.query(FoodItem.category).filter(
+            or_(FoodItem.source == "system", FoodItem.user_id == user_id)
+        ).distinct().all()
+        return [r[0] for r in results if r[0]]
+
+    @staticmethod
+    def create_custom_food(db: Session, user_id: int, data: CreateCustomFood) -> FoodItem:
+        """添加自定义食物"""
+        food = FoodItem(
+            user_id=user_id,
+            source="custom",
+            name=data.name,
+            category=data.category,
+            portion_unit=data.portionUnit,
+            portion_grams=data.portionGrams,
+            portion_calories=data.portionCalories,
+            calories_per_100g=data.caloriesPer100g,
+            calorie_level=data.calorieLevel,
+            protein=data.protein,
+            carbs=data.carbs,
+            fat=data.fat,
+        )
+        db.add(food)
+        db.commit()
+        db.refresh(food)
+        return food
+
+    @staticmethod
+    def delete_custom_food(db: Session, user_id: int, food_id: int) -> bool:
+        """删除自定义食物"""
+        food = db.query(FoodItem).filter(
+            FoodItem.food_id == food_id,
+            FoodItem.user_id == user_id,
+            FoodItem.source == "custom"
+        ).first()
+        if food:
+            db.delete(food)
+            db.commit()
+            return True
+        return False

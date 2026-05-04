@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Progress, Avatar, List, Tag, Space, message } from 'antd'
+import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Progress, Avatar, List, Tag, Space, message, Radio, Checkbox } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { Dumbbell } from 'lucide-react'
 import dayjs from 'dayjs'
 import { trainingApi, type WeeklyStats, TrainingSchedule, RecommendedTraining } from '../../services/training'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const planTypes = [
   { value: 'strength', label: '力量训练' },
@@ -30,9 +31,37 @@ const Training: React.FC = () => {
   const [createForm] = Form.useForm()
   const [completeForm] = Form.useForm()
 
+  // Training trend chart
+  const [trendDays, setTrendDays] = useState(7)
+  const [trendLoading, setTrendLoading] = useState(false)
+  const [trendData, setTrendData] = useState<any[]>([])
+  const [activeMetrics, setActiveMetrics] = useState<string[]>(['duration', 'caloriesBurned'])
+
   useEffect(() => {
     fetchData()
   }, [])
+
+  useEffect(() => {
+    fetchTrendData()
+  }, [trendDays])
+
+  const fetchTrendData = async () => {
+    setTrendLoading(true)
+    try {
+      const end = dayjs()
+      const start = end.subtract(trendDays - 1, 'day')
+      const result = await trainingApi.getDateRangeTrend(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'))
+      const formatted = result.dailyStats.map(d => ({
+        ...d,
+        date: dayjs(d.date).format('MM/DD'),
+      }))
+      setTrendData(formatted)
+    } catch {
+      // ignore
+    } finally {
+      setTrendLoading(false)
+    }
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -71,7 +100,10 @@ const Training: React.FC = () => {
     if (!selectedPlanId) return
     try {
       const values = await completeForm.validateFields()
-      await trainingApi.completePlan(selectedPlanId, values)
+      await trainingApi.completePlan(selectedPlanId, {
+        ...values,
+        completedDate: values.completedDate?.format('YYYY-MM-DD'),
+      })
       message.success('完成记录成功')
       setCompleteOpen(false)
       completeForm.resetFields()
@@ -142,6 +174,47 @@ const Training: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* 训练趋势图表 */}
+      <Card style={{ marginTop: 24, border: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <Typography.Title level={5} style={{ margin: 0 }}>训练趋势</Typography.Title>
+          <Radio.Group value={trendDays} onChange={e => setTrendDays(e.target.value)} size="small">
+            <Radio.Button value={7}>近7天</Radio.Button>
+            <Radio.Button value={14}>近14天</Radio.Button>
+            <Radio.Button value={30}>近30天</Radio.Button>
+          </Radio.Group>
+        </div>
+
+        <Checkbox.Group
+          value={activeMetrics}
+          onChange={(vals: any[]) => setActiveMetrics(vals)}
+          style={{ marginBottom: 16 }}
+        >
+          <Space wrap>
+            <Checkbox value="duration">时长</Checkbox>
+            <Checkbox value="caloriesBurned">消耗热量</Checkbox>
+          </Space>
+        </Checkbox.Group>
+
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={trendLoading ? [] : trendData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+            <Tooltip
+              formatter={(value: any, name: any) => {
+                const labels: Record<string, string> = { duration: '时长', caloriesBurned: '消耗热量', planCount: '计划数' }
+                const units: Record<string, string> = { duration: ' 分钟', caloriesBurned: ' kcal' }
+                return [`${value}${units[name] || ''}`, labels[name] || name]
+              }}
+            />
+            {activeMetrics.includes('duration') && <Line type="monotone" yAxisId="left" dataKey="duration" name="duration" stroke="#10B981" strokeWidth={2} dot={{ r: 3 }} />}
+            {activeMetrics.includes('caloriesBurned') && <Line type="monotone" yAxisId="right" dataKey="caloriesBurned" name="caloriesBurned" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />}
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
 
       <Card style={{ marginTop: 24, border: 'none' }}>
         <Typography.Title level={5}>本周进度</Typography.Title>
@@ -265,7 +338,10 @@ const Training: React.FC = () => {
         okText="提交"
         cancelText="取消"
       >
-        <Form form={completeForm} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={completeForm} layout="vertical" style={{ marginTop: 16 }} initialValues={{ completedDate: dayjs() }}>
+          <Form.Item name="completedDate" label="完成日期">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
           <Form.Item name="actualDuration" label="实际时长" rules={[{ required: true }]}>
             <InputNumber addonAfter="分钟" style={{ width: '100%' }} defaultValue={60} />
           </Form.Item>

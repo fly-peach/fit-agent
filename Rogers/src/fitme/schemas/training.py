@@ -107,3 +107,28 @@ class CompleteTrainingRequest(BaseModel):
     actualIntensity: Optional[str] = None
     caloriesBurned: Optional[int] = None
     note: Optional[str] = None
+    completedDate: Optional[str] = None  # YYYY-MM-DD，默认今天
+
+
+# ---------------------------------------------------------------------------
+# 日期范围趋势
+# ---------------------------------------------------------------------------
+
+
+class DailyTrainingTrendItem(BaseModel):
+    """日期范围每日训练趋势"""
+    date: date
+    duration: int
+    caloriesBurned: int
+    planCount: int
+
+
+class DateRangeTrainingTrend(BaseModel):
+    """日期范围训练趋势"""
+    dailyStats: List[DailyTrainingTrendItem]
+
+
+class DateRangeTrainingTrendResponse(BaseModel):
+    """日期范围训练趋势响应"""
+    code: int = 200
+    data: DateRangeTrainingTrend

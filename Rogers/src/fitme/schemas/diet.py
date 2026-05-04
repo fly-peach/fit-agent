@@ -63,6 +63,7 @@ class CreateMealRequest(BaseModel):
     water: Optional[int] = 0
     time: str
     note: Optional[str] = None
+    mealDate: Optional[str] = None  # YYYY-MM-DD，默认今天
 
 
 class CreateMealResponse(BaseModel):
@@ -137,3 +138,85 @@ class WeeklyDietTrendResponse(BaseModel):
     """本周饮食趋势响应"""
     code: int = 200
     data: WeeklyDietTrend
+
+
+# ---------------------------------------------------------------------------
+# 食物数据库
+# ---------------------------------------------------------------------------
+
+class DateRangeDietTrendItem(BaseModel):
+    """日期范围每日饮食趋势"""
+    date: date
+    calories: int
+    protein: float
+    carbs: float
+    fat: float
+    water: int
+    proteinGoalMet: bool
+    waterGoalMet: bool
+    mealCount: int
+
+
+class DietTrendGoals(BaseModel):
+    """饮食目标值"""
+    caloriesGoal: int
+    proteinGoal: int
+    carbsGoal: int
+    fatGoal: int
+    waterGoal: int
+
+
+class DateRangeDietTrend(BaseModel):
+    """日期范围饮食趋势"""
+    dailyStats: List[DateRangeDietTrendItem]
+    goals: DietTrendGoals
+
+
+class DateRangeDietTrendResponse(BaseModel):
+    """日期范围饮食趋势响应"""
+    code: int = 200
+    data: DateRangeDietTrend
+
+
+class FoodItem(BaseModel):
+    """食物项"""
+    foodId: int
+    name: str
+    category: str
+    source: str = "system"
+    portionUnit: str | None = None
+    portionGrams: int | None = None
+    portionCalories: int
+    caloriesPer100g: int
+    calorieLevel: str | None = None
+    protein: float = 0
+    carbs: float = 0
+    fat: float = 0
+    suitableMeals: str = "breakfast,lunch,dinner"
+
+
+class FoodItemsResponse(BaseModel):
+    """食物列表响应"""
+    code: int = 200
+    data: list[FoodItem]
+
+
+class CreateCustomFood(BaseModel):
+    """添加自定义食物请求"""
+    name: str
+    category: str
+    portionUnit: str | None = None
+    portionGrams: int | None = None
+    portionCalories: int
+    caloriesPer100g: int
+    calorieLevel: str | None = None
+    protein: float = 0
+    carbs: float = 0
+    fat: float = 0
+
+
+class CreateCustomFoodResponse(BaseModel):
+    """添加自定义食物响应"""
+    code: int = 200
+    message: str = "添加成功"
+    data: dict

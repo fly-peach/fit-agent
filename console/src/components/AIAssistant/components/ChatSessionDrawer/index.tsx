@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Drawer, Button } from "antd"
-import { CloseOutlined } from "@ant-design/icons"
+import { CloseOutlined, PlusOutlined } from "@ant-design/icons"
 import {
   useChatAnywhereSessionsState,
   useChatAnywhereSessions,
@@ -175,9 +175,10 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
       }}
       className="fitagent-chat-drawer"
     >
+      {/* Header — matches main layout Sider */}
       <div className="drawer-header">
         <div className="drawer-header-left">
-          <span className="drawer-title">All Chats</span>
+          <span className="drawer-logo-text">FitAgent</span>
         </div>
         <div className="drawer-header-right">
           <Button
@@ -188,12 +189,19 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
         </div>
       </div>
 
+      {/* New Chat section — matches main layout menu style */}
       <div className="create-section">
-        <div className="create-button" onClick={handleCreateSession}>
-          New Chat
-        </div>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          className="create-button"
+          onClick={handleCreateSession}
+        >
+          新对话
+        </Button>
       </div>
 
+      {/* Session list */}
       <div className="list-wrapper">
         <div className="top-gradient" />
         <div className="list">
@@ -202,7 +210,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
             return (
               <ChatSessionItem
                 key={session.id}
-                name={session.name || "New Chat"}
+                name={session.name || "新对话"}
                 time={formatCreatedAt(ext.createdAt ?? null)}
                 pinned={ext.pinned}
                 active={session.id === currentSessionId}
@@ -212,7 +220,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
                 }
                 onClick={() => handleSessionClick(session.id!)}
                 onEdit={() =>
-                  handleEditStart(session.id!, session.name || "New Chat")
+                  handleEditStart(session.id!, session.name || "新对话")
                 }
                 onDelete={() => handleDelete(session.id!)}
                 onPin={() => handlePinToggle(session.id!)}

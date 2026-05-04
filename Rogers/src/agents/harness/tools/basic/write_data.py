@@ -18,6 +18,7 @@ from src.fitme.models import (
     UserSettings,
     StreakStats,
     DailyDietSummary,
+    FoodItem,
 )
 
 from .read_data import get_db, require_user
@@ -414,6 +415,71 @@ def delete_meal(meal_id: int) -> ToolResponse:
         db.delete(meal)
         db.commit()
         return ToolResponse(content=[{"type": "text", "text": f"已删除饮食记录：{meal_name}"}])
+    finally:
+        from .read_data import _current_db
+        if _current_db.get() is None:
+            db.close()
+
+
+def add_custom_food(name: str, category: str,
+                    portion_calories: int, calories_per_100g: int,
+                    portion_unit: str | None = None,
+                    portion_grams: float | None = None,
+                    calorie_level: str | None = None,
+                    protein: float = 0, carbs: float = 0, fat: float = 0,
+                    suitable_meals: str = "breakfast,lunch,dinner") -> ToolResponse:
+    """添加自定义食物到用户个人食物库。
+
+    Args:
+        name: 食物名称（必填）。
+        category: 食物分类（必填，如"蔬菜""水果""肉类""主食"等）。
+        portion_calories: 单份热量（必填，整数 kcal）。
+        calories_per_100g: 每100克热量（必填，整数 kcal）。
+        portion_unit: 单份单位（如"个""碗""勺"）。
+        portion_grams: 单份克数。
+        calorie_level: 热量等级（如"低""中""高"）。
+        protein: 蛋白质含量（g），默认 0。
+        carbs: 碳水化合物含量（g），默认 0。
+        fat: 脂肪含量（g），默认 0。
+        suitable_meals: 适合餐次，逗号分隔（breakfast/lunch/dinner），默认三餐皆可。
+    """
+    user_id = _resolve_user()
+    if user_id is None:
+        return ToolResponse(content=[{"type": "text", "text": "请先登录"}])
+    db = get_db()
+    try:
+        if not name:
+            return ToolResponse(content=[{"type": "text", "text": "请提供食物名称"}])
+        if not category:
+            return ToolResponse(content=[{"type": "text", "text": "请提供食物分类"}])
+        if portion_calories <= 0:
+            return ToolResponse(content=[{"type": "text", "text": "单份热量需大于 0"}])
+        if calories_per_100g <= 0:
+            return ToolResponse(content=[{"type": "text", "text": "每100克热量需大于 0"}])
+
+        food = FoodItem(
+            user_id=user_id,
+            source="custom",
+            name=name,
+            category=category,
+            portion_unit=portion_unit,
+            portion_grams=portion_grams,
+            portion_calories=portion_calories,
+            calories_per_100g=calories_per_100g,
+            calorie_level=calorie_level,
+            protein=protein,
+            carbs=carbs,
+            fat=fat,
+            suitable_meals=suitable_meals,
+        )
+        db.add(food)
+        db.commit()
+
+        macros = f"蛋白 {protein}g | 碳水 {carbs}g | 脂肪 {fat}g"
+        return ToolResponse(content=[{"type": "text", "text": (
+            f"已添加自定义食物：{name}\n"
+            f"  分类：{category} | {calories_per_100g}kcal/100g | {macros}"
+        )}])
     finally:
         from .read_data import _current_db
         if _current_db.get() is None:

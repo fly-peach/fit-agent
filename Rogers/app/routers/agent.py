@@ -1,7 +1,9 @@
 import os
 import logging
+import base64
 from contextvars import ContextVar
 from pathlib import Path
+from typing import Any
 
 from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
@@ -16,6 +18,7 @@ from pydantic import BaseModel
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
 from src.agents.config import get_config
+from src.agents.harness.tools.basic.read_data import get_db as harness_get_db
 from src.fitme.utils.database import get_db
 from src.fitme.models import UserImage
 
@@ -29,6 +32,76 @@ agent_app = AgentApp(
     app_name="MyAssistant",
     app_description="A helpful assistant agent",
 )
+
+# ---------------------------------------------------------------------------
+# Image URL → base64 conversion for vision models
+# ---------------------------------------------------------------------------
+
+def _resolve_images_to_base64(msgs: Any, db: Session) -> Any:
+    """将消息中相对路径的图片 URL（如 /api/agent/images/123）替换为 base64。
+
+    视觉模型无法访问本地 URL，需要将图片数据内嵌到消息中。
+    """
+    if isinstance(msgs, Msg):
+        _convert_msg_content(msgs, db)
+        return msgs
+
+    if isinstance(msgs, list):
+        for msg in msgs:
+            if isinstance(msg, Msg):
+                _convert_msg_content(msg, db)
+        return msgs
+
+    return msgs
+
+
+def _convert_msg_content(msg: Msg, db: Session) -> None:
+    """转换单条消息内容中的图片 URL 为 base64。"""
+    content = getattr(msg, "content", None)
+    if not content or not isinstance(content, list):
+        return
+
+    for i, block in enumerate(content):
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") != "image":
+            continue
+        source = block.get("source", {})
+        if source.get("type") != "url":
+            continue
+        url = source.get("url", "")
+        if not url or not url.startswith("/"):
+            continue  # 已经是完整 URL 或无效
+
+        # 从数据库加载图片
+        image_id = _extract_image_id(url)
+        if image_id is None:
+            continue
+        image = db.query(UserImage).filter(UserImage.image_id == image_id).first()
+        if not image:
+            continue
+
+        # 替换为 base64
+        content[i] = {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": image.content_type or "image/jpeg",
+                "data": base64.b64encode(image.data).decode(),
+            },
+        }
+
+
+def _extract_image_id(url: str) -> int | None:
+    """从 /api/agent/images/123 提取 image_id。"""
+    prefix = "/api/agent/images/"
+    if url.startswith(prefix):
+        try:
+            return int(url[len(prefix):].rstrip("/"))
+        except (ValueError, IndexError):
+            return None
+    return None
+
 
 @agent_app.query(framework="agentscope")
 async def query_func(
@@ -59,6 +132,10 @@ async def query_func(
             agent=agent,
         )
 
+        # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
+        with harness_get_db() as db:
+            msgs = _resolve_images_to_base64(msgs, db)
+
         async for msg, last, *_ in stream_printing_messages(
             agents=[agent],
             coroutine_task=agent(msgs),
@@ -81,6 +158,9 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 # 默认配置路径
 DEFAULT_AGENT_JSON = Path(__file__).resolve().parent.parent.parent / "agent_db" / "agent.json"
+
+# 模板路径
+TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace" / "templates"
 
 
 def _get_default_api_key() -> str:
@@ -115,8 +195,6 @@ class AgentConfigUpdate(BaseModel):
     soul_md: str | None = None
     api_key: str | None = None
     model_name: str | None = None
-    enable_thinking: bool | None = None
-    multimodality: bool | None = None
 
 
 class AgentConfigResponse(BaseModel):
@@ -125,8 +203,6 @@ class AgentConfigResponse(BaseModel):
     api_key: str
     api_key_masked: str
     model_name: str
-    enable_thinking: bool
-    multimodality: bool
     is_custom_api_key: bool  # 是否使用自定义 API Key
 
 
@@ -134,8 +210,6 @@ class DefaultConfigResponse(BaseModel):
     agents_md: str
     soul_md: str
     model_name: str
-    enable_thinking: bool
-    multimodality: bool
 
 
 @router.get("/config", response_model=AgentConfigResponse)
@@ -163,9 +237,7 @@ async def get_agent_config(
     # 加载用户级 agent.json
     user_config_path = user_dir / "agent.json"
     user_api_key = ""
-    model_name = "qwen-turbo"
-    enable_thinking = True
-    multimodality = False
+    model_name = "qwen3.5-flash"
     is_custom_api_key = False
 
     if user_config_path.exists():
@@ -174,9 +246,7 @@ async def get_agent_config(
         model_config = user_config.get("model", {})
         if isinstance(model_config, dict):
             user_api_key = model_config.get("api_key", "")
-            model_name = model_config.get("model_name", "qwen-turbo")
-            enable_thinking = model_config.get("enable_thinking", True)
-            multimodality = model_config.get("multimodality", False)
+            model_name = model_config.get("model_name", "qwen3.5-flash")
 
     # 判断 API Key 来源
     if user_api_key:
@@ -194,8 +264,6 @@ async def get_agent_config(
         api_key=api_key,
         api_key_masked=_mask_api_key(api_key),
         model_name=model_name,
-        enable_thinking=enable_thinking,
-        multimodality=multimodality,
         is_custom_api_key=is_custom_api_key,
     )
 
@@ -208,9 +276,7 @@ async def get_default_config():
     # 从 agents 配置中获取默认 sys_prompt
     agents_md = ""
     soul_md = ""
-    model_name = "qwen-turbo"
-    enable_thinking = True
-    multimodality = False
+    model_name = "qwen3.5-flash"
 
     if "agents" in default_config and "default" in default_config["agents"]:
         agent_cfg = default_config["agents"]["default"]
@@ -218,16 +284,17 @@ async def get_default_config():
 
     if "models" in default_config and "primary" in default_config["models"]:
         model_cfg = default_config["models"]["primary"]
-        model_name = model_cfg.get("model_name", "qwen-turbo")
-        enable_thinking = model_cfg.get("enable_thinking", True)
-        multimodality = model_cfg.get("multimodality", False)
+        model_name = model_cfg.get("model_name", "qwen3.5-flash")
+
+    # 从模板文件读取默认的 soul.md
+    soul_template = TEMPLATE_DIR / "soul.md"
+    if soul_template.exists():
+        soul_md = soul_template.read_text(encoding="utf-8")
 
     return DefaultConfigResponse(
         agents_md=agents_md,
         soul_md=soul_md,
         model_name=model_name,
-        enable_thinking=enable_thinking,
-        multimodality=multimodality,
     )
 
 
@@ -269,13 +336,9 @@ async def update_agent_config(
         user_config["model"]["api_key"] = body.api_key
     if body.model_name is not None:
         user_config["model"]["model_name"] = body.model_name
-    if body.enable_thinking is not None:
-        user_config["model"]["enable_thinking"] = body.enable_thinking
-    if body.multimodality is not None:
-        user_config["model"]["multimodality"] = body.multimodality
 
     # 只有在有模型配置更新时才写入
-    if body.api_key is not None or body.model_name is not None or body.enable_thinking is not None or body.multimodality is not None:
+    if body.api_key is not None or body.model_name is not None:
         with open(user_config_path, "w", encoding="utf-8") as f:
             json.dump(user_config, f, indent=2, ensure_ascii=False)
 

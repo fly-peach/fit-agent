@@ -1,0 +1,16 @@
+diff --git a/node_modules/@agentscope-ai/chat/components/AgentScopeRuntimeWebUI/core/Chat/hooks/useChatRequest.tsx b/node_modules/@agentscope-ai/chat/components/AgentScopeRuntimeWebUI/core/Chat/hooks/useChatRequest.tsx
+index c9fa157..6b678fe 100644
+--- a/node_modules/@agentscope-ai/chat/components/AgentScopeRuntimeWebUI/core/Chat/hooks/useChatRequest.tsx
++++ b/node_modules/@agentscope-ai/chat/components/AgentScopeRuntimeWebUI/core/Chat/hooks/useChatRequest.tsx
+@@ -122,7 +122,10 @@ export default function useChatRequest(options: UseChatRequestOptions) {
+         const chunkData = responseParser(chunk.data);
+         const res = agentScopeRuntimeResponseBuilder.handle(chunkData);
+ 
+-        if (res.status !== AgentScopeRuntimeRunStatus.Failed && !res.output?.[0]?.content?.length) continue;
++        // Only skip truly empty responses (heartbeats already filtered by builder).
++        // Original check `!res.output?.[0]?.content?.length` dropped reasoning
++        // messages that arrive first with empty content, breaking the thinking UI.
++        if (res.status !== AgentScopeRuntimeRunStatus.Failed && res.output?.length === 0) continue;
+ 
+         if (currentQARef.current.response) {
+           currentQARef.current.response.cards = [

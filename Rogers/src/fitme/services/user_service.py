@@ -1,6 +1,7 @@
 """User Service"""
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import time as dt_time
 from ..models import User, UserSettings
 from ..schemas.user import UpdateProfileRequest, UpdateSettingsRequest
 
@@ -53,7 +54,11 @@ class UserService:
             if data.notificationEnabled is not None:
                 settings.notification_enabled = data.notificationEnabled
             if data.reminderTime is not None:
-                settings.reminder_time = data.reminderTime
+                t = data.reminderTime
+                if isinstance(t, str) and ':' in t:
+                    parts = t.split(':')
+                    t = dt_time(int(parts[0]), int(parts[1]))
+                settings.reminder_time = t
             db.commit()
             db.refresh(settings)
         return settings

@@ -12,6 +12,7 @@ from .tools.basic.read_data import (
     get_food_recommendations,
     get_user_settings,
     get_full_overview,
+    search_foods,
     get_db,
     require_user,
     _current_user_id,
@@ -27,6 +28,7 @@ from .tools.basic.write_data import (
     update_meal,
     delete_meal,
     update_settings,
+    add_custom_food,
 )
 from .tools.memory_search import create_memory_search_tool
 from .memory.reme_light import ReMeLightMemoryManager
@@ -58,6 +60,7 @@ __all__ = [
     "get_food_recommendations",
     "get_user_settings",
     "get_full_overview",
+    "search_foods",
     "get_db",
     "require_user",
     "_current_user_id",
@@ -72,6 +75,7 @@ __all__ = [
     "update_meal",
     "delete_meal",
     "update_settings",
+    "add_custom_food",
     # 记忆
     "create_memory_search_tool",
     "ReMeLightMemoryManager",

@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import date
 
 from src.fitme.utils.database import get_db
 from src.fitme.services.training_service import TrainingService
@@ -14,6 +15,7 @@ from src.fitme.schemas.training import (
     CreateTrainingPlanResponse,
     UpdateTrainingPlanRequest,
     CompleteTrainingRequest,
+    DateRangeTrainingTrendResponse,
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
@@ -85,6 +87,20 @@ def get_recommendations(
             for r in recommendations
         ]
     )
+
+
+@router.get("/trend/range", response_model=DateRangeTrainingTrendResponse)
+def get_date_range_trend(
+    start_date: date = Query(..., description="开始日期 YYYY-MM-DD"),
+    end_date: date = Query(..., description="结束日期 YYYY-MM-DD"),
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取指定日期范围的训练趋势"""
+    if start_date > end_date:
+        raise HTTPException(status_code=400, detail="开始日期不能大于结束日期")
+    trend = TrainingService.get_date_range_trend(db, current_user.user_id, start_date, end_date)
+    return DateRangeTrainingTrendResponse(data=trend)
 
 
 @router.post("/plans", response_model=CreateTrainingPlanResponse)

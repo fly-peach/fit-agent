@@ -27,9 +27,7 @@ class ModelProvider(BaseModel):
     api_key: str = ""
     base_url: Optional[str] = None
     model_name: str = "qwen-turbo"
-    enable_thinking: bool = True
     stream: bool = True
-    multimodality: bool = False  # 是否启用多模态（支持图片输入）
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +64,7 @@ class ContextCompactConfig(BaseModel):
     context_compact_enabled: bool = True
     memory_compact_ratio: float = 0.75
     memory_reserve_ratio: float = 0.1
-    compact_with_thinking_block: bool = True
+    compact_with_thinking_block: bool = False
 
 
 class ToolResultCompactConfig(BaseModel):

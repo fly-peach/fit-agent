@@ -23,6 +23,7 @@ from .harness.tools.basic.read_data import (
     get_food_recommendations,
     get_user_settings,
     get_full_overview,
+    search_foods,
 )
 from .harness.tools.basic.write_data import (
     update_profile,
@@ -34,6 +35,7 @@ from .harness.tools.basic.write_data import (
     update_meal,
     delete_meal,
     update_settings,
+    add_custom_food,
 )
 from .harness.tools.basic.image_view import view_image
 
@@ -60,6 +62,7 @@ _READ_TOOL_MAP = {
     "get_food_recommendations": get_food_recommendations,
     "get_user_settings": get_user_settings,
     "get_full_overview": get_full_overview,
+    "search_foods": search_foods,
 }
 
 _WRITE_TOOL_MAP = {
@@ -72,6 +75,7 @@ _WRITE_TOOL_MAP = {
     "update_meal": update_meal,
     "delete_meal": delete_meal,
     "update_settings": update_settings,
+    "add_custom_food": add_custom_food,
 }
 
 _MULTIMODAL_TOOL_MAP = {
@@ -122,15 +126,44 @@ def _build_toolkit(agent_cfg: AgentConfig) -> Toolkit:
     return toolkit
 
 
+# 内置支持思考模式的模型列表（DashScope 官方支持 enable_thinking=True 的模型）
+_THINKING_MODELS = {
+    # Qwen3.5 系列
+    "qwen3.5-plus", "qwen3.5-flash",
+    # Qwen3.6 系列
+    "qwen3.6-plus", "qwen3.6-max-preview",
+    # Qwen3 系列
+    "qwen3-max", "qwen3-plus", "qwen3-turbo",
+    # QwQ 系列
+    "qwq-plus", "qwq-32b",
+    # Qwen2.5 指令系列
+    "qwen2.5-72b-instruct", "qwen2.5-32b-instruct",
+    "qwen2.5-14b-instruct", "qwen2.5-7b-instruct",
+    # Qwen-Max / Plus / Turbo 系列
+    "qwen-max", "qwen-max-longcontext", "qwen-plus", "qwen-turbo",
+}
+
+
+def _model_supportes_thinking(model_name: str) -> bool:
+    """根据模型名称判断是否支持思考模式。"""
+    name = model_name.lower().strip()
+    return name in _THINKING_MODELS
+
+
 def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
     """根据 Agent 的模型配置创建模型实例。"""
+    import os
     model_cfg = agent_cfg.model
+    # 空字符串时回退到环境变量
+    api_key = model_cfg.api_key or os.getenv("DASHSCOPE_API_KEY", "")
+    # qwen3.5-flash 是视觉+文本模型，但不含 -vl 后缀，需要显式启用多模态 API
     return DashScopeChatModel(
         model_cfg.model_name,
-        api_key=model_cfg.api_key,
-        enable_thinking=model_cfg.enable_thinking,
+        api_key=api_key,
+        # enable_thinking=_model_supportes_thinking(model_cfg.model_name),
+        enable_thinking=True,
         stream=model_cfg.stream,
-        multimodality=model_cfg.multimodality if model_cfg.multimodality else None,
+        multimodality=True,
     )
 
 
@@ -185,8 +218,8 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
     """
     ensure_user_workspace(user_id)
 
-    app_cfg = get_config()
-    agent_cfg = app_cfg.get_active_agent()
+    # 使用 load_agent_config 以合并用户级 agent.json 覆盖
+    agent_cfg = load_agent_config(user_id)
 
     # 从静态 Markdown 文件构建基础提示词
     custom_prompt = load_user_sys_prompt(user_id)
@@ -200,7 +233,6 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
         sys_prompt = base_prompt
 
     model = _build_model(agent_cfg)
-    toolkit = _get_shared_toolkit()
 
     # --- ReMe 内存集成 ---
     from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
@@ -211,6 +243,9 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
         agent_id=str(user_id),
     )
     reme_memory = memory_manager.get_in_memory_memory()
+
+    # 为每个用户构建独立的 toolkit，避免 memory_search 共享冲突
+    toolkit = _build_toolkit(agent_cfg)
 
     # 注册 memory_search 工具
     from src.agents.harness.tools.memory_search import create_memory_search_tool

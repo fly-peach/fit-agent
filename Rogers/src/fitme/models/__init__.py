@@ -12,6 +12,7 @@ from .models import (
     RecommendedTraining,
     RecommendedFood,
     UserImage,
+    FoodItem,
 )
 
 __all__ = [
@@ -27,4 +28,5 @@ __all__ = [
     "RecommendedTraining",
     "RecommendedFood",
     "UserImage",
+    "FoodItem",
 ]

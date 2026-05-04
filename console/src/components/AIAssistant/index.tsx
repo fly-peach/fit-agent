@@ -72,14 +72,16 @@ const AIAssistant: React.FC = () => {
             formData.append('file', file)
             const token = localStorage.getItem('token')
             try {
-              const resp = await fetch(`${BASE_URL}/api/agent/upload`, {
+              // Use /api/... path (matched by Vite '/api' proxy) instead of ${BASE_URL}/api/...
+              // which becomes /process/api/... (not a valid backend route)
+              const resp = await fetch('/api/agent/upload', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,
               })
               if (!resp.ok) throw new Error('Upload failed')
               const data = await resp.json()
-              onSuccess({ url: `${BASE_URL}${data.url}` })
+              onSuccess({ url: data.url })
             } catch (e: any) {
               onError(e)
             }

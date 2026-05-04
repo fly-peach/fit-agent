@@ -179,7 +179,7 @@ const MainLayout: React.FC = () => {
             height: 'calc(100vh - 64px)',
             position: 'relative',
             background: '#fff',
-            borderLeft: rightDrawerOpen ? '1px solid #f0f0f0' : 'none',
+            borderLeft: rightDrawerOpen ? '1px solid #F0EDE8' : 'none',
             overflow: 'hidden',
             transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-left 0.3s ease',
           }}>

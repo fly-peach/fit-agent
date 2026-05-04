@@ -233,3 +233,30 @@ class UserImage(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="images")
+
+
+class FoodItem(Base):
+    """食物数据库（食材 + 菜品）"""
+    __tablename__ = "food_items"
+    __table_args__ = (
+        Index("idx_food_category", "category"),
+        Index("idx_food_name", "name"),
+    )
+
+    food_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    category = Column(String(20), nullable=False)  # 主食/肉类/蔬菜/水果/豆制品/水产/蛋类/调料/坚果/火锅/汤类/海鲜/鱼虾/牛肉/羊肉/鸡肉/猪肉/蔬菜/蛋类/其他
+    source = Column(String(10), nullable=False, default="system")  # system/custom
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)  # 自定义食物归属用户
+    portion_unit = Column(String(20))  # 一份维度，如"1 碗"
+    portion_grams = Column(Integer)  # 一份 g 数
+    portion_calories = Column(Integer, nullable=False)  # 一份热量
+    calories_per_100g = Column(Integer, nullable=False)  # 每 100g 热量
+    calorie_level = Column(String(4))  # 热量等级：低/中/高/超高
+    suitable_meals = Column(String(50), default="breakfast,lunch,dinner")  # 适合餐次：breakfast,lunch,dinner 组合
+    protein = Column(DECIMAL(6, 2), default=0)
+    carbs = Column(DECIMAL(6, 2), default=0)
+    fat = Column(DECIMAL(6, 2), default=0)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User")
