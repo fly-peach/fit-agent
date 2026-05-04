@@ -1,14 +1,69 @@
 """Training Service"""
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import Optional, List
 from datetime import date, timedelta, datetime, timezone
-from ..models import TrainingPlan, TrainingRecord, RecommendedTraining, StreakStats
+import time
+from ..models import TrainingPlan, TrainingRecord, RecommendedTraining, StreakStats, PlanExerciseItem
 from ..schemas.training import CreateTrainingPlanRequest, UpdateTrainingPlanRequest, CompleteTrainingRequest
+from ..schemas.exercise import PlanExerciseItemOutput, UpdatePlanExerciseItem
 
 
 class TrainingService:
     """训练计划服务"""
+
+    @staticmethod
+    def _copy_exercises(db: Session, from_plan_id: int, to_plan_id: int) -> None:
+        """复制一个计划的所有动作到另一个计划"""
+        items = db.query(PlanExerciseItem).filter(PlanExerciseItem.plan_id == from_plan_id).all()
+        for item in items:
+            db.add(PlanExerciseItem(
+                plan_id=to_plan_id,
+                exercise_id=item.exercise_id,
+                custom_name=item.custom_name or "",
+                sets=item.sets,
+                reps=item.reps,
+                weight=item.weight,
+                duration=item.duration,
+                notes=item.notes,
+            ))
+
+    @staticmethod
+    def _generate_plans(db: Session, user_id: int, data: CreateTrainingPlanRequest, start_date: date, weeks: int = 8) -> List[int]:
+        """从起始日期开始，按指定星期几生成 N 周的真实计划记录，返回 plan_id 列表"""
+        plan_ids = []
+        for week in range(weeks):
+            plan_date = start_date + timedelta(weeks=week)
+            plan = TrainingPlan(
+                user_id=user_id,
+                plan_name=data.planName,
+                plan_type=data.planType,
+                target_intensity=data.targetIntensity,
+                estimated_duration=data.estimatedDuration,
+                scheduled_date=plan_date,
+                day_of_week=data.scheduledDate.isoweekday(),
+                note=data.note,
+                is_recurring=False,
+                recurring_group_id=data.recurringGroupId,
+                status="pending",
+            )
+            db.add(plan)
+            db.flush()
+            plan_ids.append(plan.plan_id)
+            if data.exercises:
+                for ex_data in data.exercises:
+                    db.add(PlanExerciseItem(
+                        plan_id=plan.plan_id,
+                        exercise_id=ex_data.exerciseId,
+                        custom_name=ex_data.customName or "",
+                        sets=ex_data.sets,
+                        reps=ex_data.reps,
+                        weight=ex_data.weight,
+                        duration=ex_data.duration,
+                        notes=ex_data.notes,
+                    ))
+        db.commit()
+        return plan_ids
 
     @staticmethod
     def get_weekly_stats(db: Session, user_id: int) -> dict:
@@ -16,7 +71,6 @@ class TrainingService:
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
 
-        # 本周训练计划
         plans = db.query(TrainingPlan).filter(
             TrainingPlan.user_id == user_id,
             TrainingPlan.scheduled_date >= week_start,
@@ -26,7 +80,6 @@ class TrainingService:
         completed = [p for p in plans if p.status == "completed"]
         pending = [p for p in plans if p.status == "pending"]
 
-        # 本周训练时长和卡路里
         records = db.query(TrainingRecord).filter(
             TrainingRecord.user_id == user_id,
             TrainingRecord.completed_at >= week_start
@@ -35,7 +88,6 @@ class TrainingService:
         total_hours = sum(r.actual_duration or 0 for r in records) / 60
         total_calories = sum(r.calories_burned or 0 for r in records)
 
-        # 连续训练天数
         streak = db.query(StreakStats).filter(StreakStats.user_id == user_id).first()
         streak_days = streak.training_streak if streak else 0
 
@@ -71,10 +123,115 @@ class TrainingService:
                 "duration": p.estimated_duration,
                 "intensity": p.target_intensity,
                 "status": p.status,
-                "completedAt": None,  # 可从 TrainingRecord 获取
+                "isRecurring": bool(p.recurring_group_id),
+                "completedAt": None,
             }
             for p in plans
         ]
+
+    @staticmethod
+    def get_monthly_schedule(db: Session, user_id: int, year: int, month: int) -> List[dict]:
+        """获取指定月份的训练安排"""
+        month_start = date(year, month, 1)
+        if month == 12:
+            month_end = date(year, 12, 31)
+        else:
+            month_end = date(year, month + 1, 1) - timedelta(days=1)
+
+        plans = db.query(TrainingPlan).filter(
+            TrainingPlan.user_id == user_id,
+            TrainingPlan.scheduled_date >= month_start,
+            TrainingPlan.scheduled_date <= month_end
+        ).order_by(TrainingPlan.scheduled_date).all()
+
+        # 找出同一组中日期最晚的计划，标记为 isLastInGroup
+        group_last = {}
+        for p in plans:
+            gid = p.recurring_group_id
+            if gid:
+                if gid not in group_last or p.scheduled_date > group_last[gid]:
+                    group_last[gid] = p.scheduled_date
+
+        return [
+            {
+                "planId": p.plan_id,
+                "date": p.scheduled_date.isoformat(),
+                "planName": p.plan_name,
+                "planType": p.plan_type,
+                "duration": p.estimated_duration,
+                "intensity": p.target_intensity,
+                "status": p.status,
+                "isRecurring": bool(p.recurring_group_id),
+                "isLastInGroup": bool(p.recurring_group_id and p.scheduled_date == group_last.get(p.recurring_group_id)),
+            }
+            for p in plans
+        ]
+
+    @staticmethod
+    def renew_recurring(db: Session, plan_id: int, user_id: int, weeks: int = 8) -> List[int]:
+        """为循环计划续期：从该组最晚日期之后再生成 N 周"""
+        plan = db.query(TrainingPlan).filter(
+            TrainingPlan.plan_id == plan_id,
+            TrainingPlan.user_id == user_id
+        ).first()
+        if not plan or not plan.recurring_group_id:
+            return []
+
+        gid = plan.recurring_group_id
+        # 找到同组最晚的日期
+        latest = db.query(func.max(TrainingPlan.scheduled_date)).filter(
+            TrainingPlan.user_id == user_id,
+            TrainingPlan.recurring_group_id == gid
+        ).scalar()
+
+        if not latest:
+            return []
+
+        # 从最晚日期的下一周开始生成
+        start_date = latest + timedelta(weeks=1)
+
+        # 读取该组任意一个计划的动作配置
+        ref_plan = db.query(TrainingPlan).filter(
+            TrainingPlan.user_id == user_id,
+            TrainingPlan.recurring_group_id == gid
+        ).first()
+        if not ref_plan:
+            return []
+
+        ref_exercises = db.query(PlanExerciseItem).filter(PlanExerciseItem.plan_id == ref_plan.plan_id).all()
+
+        plan_ids = []
+        for week in range(weeks):
+            plan_date = start_date + timedelta(weeks=week)
+            new_plan = TrainingPlan(
+                user_id=user_id,
+                plan_name=ref_plan.plan_name,
+                plan_type=ref_plan.plan_type,
+                target_intensity=ref_plan.target_intensity,
+                estimated_duration=ref_plan.estimated_duration,
+                scheduled_date=plan_date,
+                day_of_week=ref_plan.day_of_week,
+                note=ref_plan.note,
+                is_recurring=False,
+                recurring_group_id=gid,
+                status="pending",
+            )
+            db.add(new_plan)
+            db.flush()
+            plan_ids.append(new_plan.plan_id)
+            for ex in ref_exercises:
+                db.add(PlanExerciseItem(
+                    plan_id=new_plan.plan_id,
+                    exercise_id=ex.exercise_id,
+                    custom_name=ex.custom_name or "",
+                    sets=ex.sets,
+                    reps=ex.reps,
+                    weight=ex.weight,
+                    duration=ex.duration,
+                    notes=ex.notes,
+                ))
+        db.commit()
+        return plan_ids
 
     @staticmethod
     def get_weekly_progress(db: Session, user_id: int) -> dict:
@@ -114,22 +271,52 @@ class TrainingService:
 
     @staticmethod
     def create_plan(db: Session, user_id: int, data: CreateTrainingPlanRequest) -> TrainingPlan:
-        """创建训练计划"""
-        plan = TrainingPlan(
-            user_id=user_id,
-            plan_name=data.planName,
-            plan_type=data.planType,
-            target_intensity=data.targetIntensity,
-            estimated_duration=data.estimatedDuration,
-            scheduled_date=data.scheduledDate,
-            day_of_week=data.scheduledDate.isoweekday(),
-            note=data.note,
-            status="pending",
-        )
-        db.add(plan)
-        db.commit()
-        db.refresh(plan)
-        return plan
+        """创建训练计划（循环计划自动生成未来 2 个月）"""
+        if data.isRecurring:
+            # 生成循环组 ID（用时间戳保证唯一）
+            group_id = int(time.time() * 1000)
+            data.recurringGroupId = group_id
+            # 生成 8 周的计划
+            plan_ids = TrainingService._generate_plans(db, user_id, data, data.scheduledDate, weeks=8)
+            # 返回第一个计划作为代表
+            return db.query(TrainingPlan).filter(
+                TrainingPlan.plan_id == plan_ids[0],
+                TrainingPlan.user_id == user_id
+            ).first()
+        else:
+            plan = TrainingPlan(
+                user_id=user_id,
+                plan_name=data.planName,
+                plan_type=data.planType,
+                target_intensity=data.targetIntensity,
+                estimated_duration=data.estimatedDuration,
+                scheduled_date=data.scheduledDate,
+                day_of_week=data.scheduledDate.isoweekday(),
+                note=data.note,
+                is_recurring=False,
+                recurring_group_id=None,
+                status="pending",
+            )
+            db.add(plan)
+            db.flush()
+
+            if data.exercises:
+                for ex_data in data.exercises:
+                    plan_item = PlanExerciseItem(
+                        plan_id=plan.plan_id,
+                        exercise_id=ex_data.exerciseId,
+                        custom_name=ex_data.customName or "",
+                        sets=ex_data.sets,
+                        reps=ex_data.reps,
+                        weight=ex_data.weight,
+                        duration=ex_data.duration,
+                        notes=ex_data.notes,
+                    )
+                    db.add(plan_item)
+
+            db.commit()
+            db.refresh(plan)
+            return plan
 
     @staticmethod
     def update_plan(db: Session, plan_id: int, user_id: int, data: UpdateTrainingPlanRequest) -> Optional[TrainingPlan]:
@@ -184,34 +371,91 @@ class TrainingService:
 
     @staticmethod
     def delete_plan(db: Session, plan_id: int, user_id: int) -> bool:
-        """删除训练计划"""
+        """删除训练计划（先删关联记录，再删计划本身）"""
         plan = db.query(TrainingPlan).filter(
             TrainingPlan.plan_id == plan_id,
             TrainingPlan.user_id == user_id
         ).first()
         if plan:
+            db.query(TrainingRecord).filter(TrainingRecord.plan_id == plan_id).delete()
+            db.query(PlanExerciseItem).filter(PlanExerciseItem.plan_id == plan_id).delete()
             db.delete(plan)
             db.commit()
             return True
         return False
 
     @staticmethod
+    def get_plan_by_id(db: Session, plan_id: int, user_id: int) -> Optional[TrainingPlan]:
+        """获取训练计划详情"""
+        return db.query(TrainingPlan).filter(
+            TrainingPlan.plan_id == plan_id,
+            TrainingPlan.user_id == user_id
+        ).first()
+
+    @staticmethod
+    def get_plan_exercises(db: Session, plan_id: int) -> List[PlanExerciseItemOutput]:
+        """获取计划关联的动作列表"""
+        items = db.query(PlanExerciseItem).options(
+            joinedload(PlanExerciseItem.exercise)
+        ).filter(PlanExerciseItem.plan_id == plan_id).all()
+
+        result = []
+        for item in items:
+            output = PlanExerciseItemOutput(
+                id=item.id,
+                exerciseId=item.exercise_id,
+                customName=item.custom_name,
+                sets=item.sets,
+                reps=item.reps,
+                weight=float(item.weight) if item.weight else None,
+                duration=item.duration,
+                notes=item.notes,
+            )
+            if item.exercise:
+                output.nameCn = item.exercise.name_cn
+                output.targetMuscle = item.exercise.target_muscle
+                output.helperMuscles = item.exercise.helper_muscles or ""
+                output.difficulty = item.exercise.difficulty
+                output.forceType = item.exercise.force_type
+                output.mechanics = item.exercise.mechanics
+                output.equipment = item.exercise.equipment
+            result.append(output)
+        return result
+
+    @staticmethod
+    def update_plan_exercise(db: Session, exercise_item_id: int, user_id: int, data: UpdatePlanExerciseItem) -> Optional[PlanExerciseItem]:
+        """更新计划中动作的组数/次数/重量"""
+        item = db.query(PlanExerciseItem).join(TrainingPlan).filter(
+            PlanExerciseItem.id == exercise_item_id,
+            TrainingPlan.user_id == user_id
+        ).first()
+        if item:
+            if data.sets is not None:
+                item.sets = data.sets
+            if data.reps is not None:
+                item.reps = data.reps
+            if data.weight is not None:
+                item.weight = data.weight
+            if data.duration is not None:
+                item.duration = data.duration
+            db.commit()
+            db.refresh(item)
+        return item
+
+    @staticmethod
     def get_date_range_trend(db: Session, user_id: int, start_date: date, end_date: date) -> dict:
         """获取日期范围内的每日训练趋势"""
-        # 按日期分组聚合训练记录
         records = db.query(TrainingRecord).filter(
             TrainingRecord.user_id == user_id,
             TrainingRecord.completed_at >= datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc),
             TrainingRecord.completed_at <= datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc),
         ).order_by(TrainingRecord.completed_at).all()
 
-        # 按日期分组
         daily_map: dict[date, list] = {}
         for r in records:
             day = r.completed_at.date()
             daily_map.setdefault(day, []).append(r)
 
-        # 填充所有日期（包括没有记录的日期）
         daily_stats = []
         current = start_date
         while current <= end_date:

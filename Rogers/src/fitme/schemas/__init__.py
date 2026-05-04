@@ -52,6 +52,18 @@ from .auth import (
     LoginResponse,
     LogoutResponse,
 )
+from .exercise import (
+    ExerciseItem,
+    ExerciseDetail,
+    ExercisesResponse,
+    ExerciseDetailResponse,
+    PlanExerciseItemInput,
+    PlanExerciseItemOutput,
+    PinnedExerciseSchema,
+    PinnedExercisesResponse,
+    PinExerciseRequest,
+    ReorderPinnedRequest,
+)
 
 __all__ = [
     "BaseResponse",
@@ -98,4 +110,14 @@ __all__ = [
     "LoginRequest",
     "LoginResponse",
     "LogoutResponse",
+    "ExerciseItem",
+    "ExerciseDetail",
+    "ExercisesResponse",
+    "ExerciseDetailResponse",
+    "PlanExerciseItemInput",
+    "PlanExerciseItemOutput",
+    "PinnedExerciseSchema",
+    "PinnedExercisesResponse",
+    "PinExerciseRequest",
+    "ReorderPinnedRequest",
 ]

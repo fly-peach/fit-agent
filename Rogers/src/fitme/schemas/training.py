@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date, datetime
+from .exercise import PlanExerciseItemInput, PlanExerciseItemOutput
 
 
 class WeeklyStats(BaseModel):
@@ -22,6 +23,7 @@ class WeeklyStatsResponse(BaseModel):
 
 class TrainingSchedule(BaseModel):
     """训练安排"""
+    planId: Optional[int] = None
     dayOfWeek: int
     date: date
     planName: str
@@ -29,6 +31,7 @@ class TrainingSchedule(BaseModel):
     duration: int
     intensity: str
     status: str
+    isRecurring: bool = False
     completedAt: Optional[datetime] = None
 
 
@@ -36,6 +39,25 @@ class WeeklyScheduleResponse(BaseModel):
     """本周训练安排响应"""
     code: int = 200
     data: List[TrainingSchedule]
+
+
+class MonthlyScheduleItem(BaseModel):
+    """月度训练安排"""
+    planId: Optional[int] = None
+    date: str
+    planName: str
+    planType: str
+    duration: int
+    intensity: str
+    status: str
+    isRecurring: bool = False
+    isLastInGroup: bool = False
+
+
+class MonthlyScheduleResponse(BaseModel):
+    """月度训练安排响应"""
+    code: int = 200
+    data: List[MonthlyScheduleItem]
 
 
 class DayProgress(BaseModel):
@@ -83,6 +105,9 @@ class CreateTrainingPlanRequest(BaseModel):
     estimatedDuration: Optional[int] = 60
     scheduledDate: date
     note: Optional[str] = None
+    isRecurring: bool = False
+    recurringGroupId: Optional[int] = None
+    exercises: Optional[List[PlanExerciseItemInput]] = None
 
 
 class CreateTrainingPlanResponse(BaseModel):

@@ -93,6 +93,7 @@ class RunningConfig(BaseModel):
     history_max_length: int = 50
     max_input_length: int = 131072  # 128K 令牌
     compact_token_threshold: int = 6000
+    context_enabled: bool = True  # 是否启用上下文管理（生命周期钩子、压缩等）
     embedding_config: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     context_compact: ContextCompactConfig = Field(default_factory=ContextCompactConfig)
     tool_result_compact: ToolResultCompactConfig = Field(default_factory=ToolResultCompactConfig)
@@ -278,8 +279,8 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
     """
     config = get_config()
     agent_cfg = config.get_active_agent()
-    # 检查每个用户的配置文件
-    workspace_root = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace"
+    # 使用与 user_workspace.py 一致的 workspace 根路径
+    workspace_root = Path(__file__).resolve().parent / "agent_db" / "workspace"
     user_config_path = workspace_root / "users" / str(user_id) / "agent.json"
     if user_config_path.exists():
         with open(user_config_path, encoding="utf-8") as f:

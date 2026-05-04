@@ -1,4 +1,7 @@
 import api from '../utils/request'
+import { PlanExerciseInput, PlanExerciseItemOutput } from './exercise'
+
+export type { PlanExerciseInput, PlanExerciseItemOutput }
 
 export interface WeeklyStats {
   weeklyCount: number
@@ -18,6 +21,7 @@ export interface TrainingSchedule {
   duration: number
   intensity: string
   status: string
+  isRecurring?: boolean
   completedAt: string | null
 }
 
@@ -46,6 +50,20 @@ export interface TrainingPlan {
   estimatedDuration?: number
   scheduledDate: string
   note?: string
+  isRecurring?: boolean
+  exercises?: PlanExerciseInput[]
+}
+
+export interface PlanDetail {
+  planId: number
+  planName: string
+  planType: string
+  targetIntensity: string | null
+  estimatedDuration: number | null
+  scheduledDate: string | null
+  status: string
+  note: string | null
+  exercises: PlanExerciseItemOutput[]
 }
 
 export const trainingApi = {
@@ -54,6 +72,18 @@ export const trainingApi = {
 
   getWeeklySchedule: (): Promise<TrainingSchedule[]> =>
     api.get('/training/schedule/weekly'),
+
+  getMonthlySchedule: (year: number, month: number): Promise<{
+    planId?: number
+    date: string
+    planName: string
+    planType: string
+    duration: number
+    intensity: string
+    status: string
+    isRecurring?: boolean
+  }[]> =>
+    api.get('/training/schedule/monthly', { params: { year, month } }),
 
   getWeeklyProgress: (): Promise<WeeklyProgress> =>
     api.get('/training/progress/weekly'),
@@ -82,4 +112,10 @@ export const trainingApi = {
     }[]
   }> =>
     api.get('/training/trend/range', { params: { start_date: startDate, end_date: endDate } }),
+
+  getPlanDetail: (planId: number): Promise<PlanDetail> =>
+    api.get(`/training/plans/${planId}/detail`),
+
+  updatePlanExercise: (exerciseId: number, data: { sets?: number; reps?: number; weight?: number; duration?: number }): Promise<void> =>
+    api.put(`/training/plans/exercise/${exerciseId}`, data),
 }

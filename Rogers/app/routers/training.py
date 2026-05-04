@@ -6,6 +6,7 @@ from datetime import date
 
 from src.fitme.utils.database import get_db
 from src.fitme.services.training_service import TrainingService
+from src.fitme.schemas.exercise import UpdatePlanExerciseItem
 from src.fitme.schemas.training import (
     WeeklyStatsResponse,
     WeeklyScheduleResponse,
@@ -16,6 +17,7 @@ from src.fitme.schemas.training import (
     UpdateTrainingPlanRequest,
     CompleteTrainingRequest,
     DateRangeTrainingTrendResponse,
+    MonthlyScheduleResponse,
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
@@ -55,6 +57,18 @@ def get_weekly_schedule(
     """获取本周训练安排"""
     schedule = TrainingService.get_weekly_schedule(db, current_user.user_id)
     return WeeklyScheduleResponse(data=schedule)
+
+
+@router.get("/schedule/monthly", response_model=MonthlyScheduleResponse)
+def get_monthly_schedule(
+    year: int = Query(..., ge=2020, le=2030),
+    month: int = Query(..., ge=1, le=12),
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取指定月份的训练安排"""
+    schedule = TrainingService.get_monthly_schedule(db, current_user.user_id, year, month)
+    return MonthlyScheduleResponse(data=schedule)
 
 
 @router.get("/progress/weekly", response_model=WeeklyProgressResponse)
@@ -139,6 +153,12 @@ def complete_plan(
     db: Session = Depends(get_db)
 ):
     """完成训练记录"""
+    from datetime import date as _date
+    # 循环计划直接通过，普通计划检查日期
+    if planId > 0:
+        plan = TrainingService.get_plan_by_id(db, planId, current_user.user_id)
+        if plan and plan.scheduled_date and plan.scheduled_date > _date.today():
+            raise HTTPException(status_code=400, detail="日期未到")
     record = TrainingService.complete_plan(db, planId, current_user.user_id, data)
     if not record:
         raise HTTPException(status_code=404, detail="计划不存在")
@@ -156,3 +176,57 @@ def delete_plan(
     if not success:
         raise HTTPException(status_code=404, detail="计划不存在")
     return BaseResponse(message="删除成功")
+
+
+@router.get("/plans/{planId}/detail")
+def get_plan_detail(
+    planId: int = Path(...),
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """获取训练计划详情（含动作列表）"""
+    plan = TrainingService.get_plan_by_id(db, planId, current_user.user_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    exercises = TrainingService.get_plan_exercises(db, planId)
+    return {
+        "code": 200,
+        "data": {
+            "planId": plan.plan_id,
+            "planName": plan.plan_name,
+            "planType": plan.plan_type,
+            "targetIntensity": plan.target_intensity,
+            "estimatedDuration": plan.estimated_duration,
+            "scheduledDate": plan.scheduled_date.isoformat() if plan.scheduled_date else None,
+            "status": plan.status,
+            "note": plan.note,
+            "exercises": [e.model_dump() for e in exercises],
+        }
+    }
+
+
+@router.put("/plans/exercise/{exerciseId}", response_model=BaseResponse)
+def update_plan_exercise(
+    exerciseId: int = Path(...),
+    data: UpdatePlanExerciseItem = Body(...),
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """更新计划中动作的组数/次数/重量"""
+    item = TrainingService.update_plan_exercise(db, exerciseId, current_user.user_id, data)
+    if not item:
+        raise HTTPException(status_code=404, detail="动作不存在")
+    return BaseResponse(message="更新成功")
+
+
+@router.post("/plans/{planId}/renew", response_model=BaseResponse)
+def renew_recurring_plan(
+    planId: int = Path(...),
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """循环计划续期：从该组最晚日期之后再生成 8 周"""
+    plan_ids = TrainingService.renew_recurring(db, planId, current_user.user_id)
+    if not plan_ids:
+        raise HTTPException(status_code=404, detail="计划不存在或不是循环计划")
+    return BaseResponse(message=f"续期成功，已生成 {len(plan_ids)} 周计划")

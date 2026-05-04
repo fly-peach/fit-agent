@@ -29,6 +29,7 @@ class User(Base):
     diet_meals = relationship("DietMeal", back_populates="user")
     streak_stats = relationship("StreakStats", back_populates="user", uselist=False)
     images = relationship("UserImage", back_populates="user")
+    pinned_exercises = relationship("UserPinnedExercise", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSettings(Base):
@@ -89,11 +90,14 @@ class TrainingPlan(Base):
     scheduled_date = Column(Date, nullable=False)
     day_of_week = Column(Integer)
     status = Column(String(20), default="pending")  # pending/completed/cancelled
+    is_recurring = Column(Boolean, default=False)  # 是否为循环模板
+    recurring_group_id = Column(Integer, default=None)  # 循环组ID，同一组的计划共享
     note = Column(Text)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="training_plans")
+    plan_exercise_items = relationship("PlanExerciseItem", back_populates="plan", cascade="all, delete-orphan")
     records = relationship("TrainingRecord", back_populates="plan")
 
 
@@ -260,3 +264,69 @@ class FoodItem(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User")
+
+
+class Exercise(Base):
+    """健身动作库"""
+    __tablename__ = "exercises"
+    __table_args__ = (
+        Index("idx_exercise_target_muscle", "target_muscle"),
+        Index("idx_exercise_type_equipment", "exercise_type", "equipment"),
+        Index("idx_exercise_difficulty", "difficulty"),
+        Index("idx_exercise_name", "name_cn"),
+    )
+
+    exercise_id = Column(Integer, primary_key=True, autoincrement=True)
+    name_cn = Column(String(100), nullable=False)  # 动作名称（中文）
+    name_en = Column(String(150))  # 动作名称（英文）
+    difficulty = Column(String(10))  # 初级/中级/专家级
+    force_type = Column(String(10))  # 推/拉/静力
+    mechanics = Column(String(20))  # 复合动作/孤立动作/无
+    equipment = Column(String(30))  # 所需器械
+    exercise_type = Column(String(20))  # 力量训练/力量举/增强式训练/奥林匹克举重/大力士/有氧运动/拉伸
+    target_muscle = Column(String(30), nullable=False)  # 目标肌肉
+    helper_muscles = Column(String(200), default="")  # 辅助肌肉，逗号分隔
+    instructions = Column(Text, nullable=False)  # 动作说明，JSON 数组字符串
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class UserPinnedExercise(Base):
+    """用户收藏的健身动作"""
+    __tablename__ = "user_pinned_exercises"
+    __table_args__ = (
+        Index("idx_pinned_user", "user_id"),
+        Index("idx_pinned_exercise", "exercise_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercises.exercise_id"), nullable=False)
+    sort_order = Column(Integer, default=0)  # 排序，越小越靠前
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", back_populates="pinned_exercises")
+    exercise = relationship("Exercise")
+
+
+class PlanExerciseItem(Base):
+    """训练计划-动作项（支持库动作和自定义动作）"""
+    __tablename__ = "plan_exercise_items"
+    __table_args__ = (
+        Index("idx_plan_item_plan", "plan_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    plan_id = Column(Integer, ForeignKey("training_plans.plan_id", ondelete="CASCADE"), nullable=False)
+    exercise_id = Column(Integer, ForeignKey("exercises.exercise_id"), nullable=True)  # 库动作引用，可为空
+    custom_name = Column(String(100), default="")  # 自定义动作名称
+    sets = Column(Integer, default=3)
+    reps = Column(Integer, default=10)
+    weight = Column(DECIMAL(5, 2), default=None)
+    duration = Column(Integer, default=None)
+    notes = Column(Text, default=None)
+    created_at = Column(DateTime, server_default=func.now())
+
+    plan = relationship("TrainingPlan", back_populates="plan_exercise_items")
+    exercise = relationship("Exercise")

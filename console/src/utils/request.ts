@@ -37,7 +37,9 @@ api.interceptors.response.use(
       localStorage.removeItem('token')
       window.location.href = '/login'
     } else {
-      console.error(error.message || '网络错误')
+      const msg = error.response?.data?.detail || error.message || '网络错误'
+      console.error(msg)
+      return Promise.reject(new Error(msg))
     }
     return Promise.reject(error)
   }

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Tooltip, Modal } from 'antd'
+import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Tooltip, Modal, Table, Switch, Statistic, Spin, Popconfirm } from 'antd'
 import { Bot, Key, Cpu, Info, Sparkles } from 'lucide-react'
+import { EyeOutlined, ReloadOutlined, DeleteOutlined, ExperimentOutlined } from '@ant-design/icons'
 import { agentApi } from '../../services/user'
+import { contextApi, ContextStats, CacheEntry } from '../../services/context'
 
 const modelOptions = [
   { value: 'qwen3.5-flash', label: 'Qwen3.5-Flash (多模态推荐，支持思考)', recommended: true },
@@ -184,8 +186,70 @@ const AgentConfig: React.FC = () => {
   const [savingModel, setSavingModel] = useState(false)
   const isMobile = useIsMobile()
 
+  // 上下文管理状态
+  const [contextStats, setContextStats] = useState<ContextStats | null>(null)
+  const [cacheList, setCacheList] = useState<CacheEntry[]>([])
+  const [contextLoading, setContextLoading] = useState(false)
+  const [compactLoading, setCompactLoading] = useState(false)
+  const [cacheContent, setCacheContent] = useState<string | null>(null)
+  const [cacheModalVisible, setCacheModalVisible] = useState(false)
+
+  const fetchContextData = async () => {
+    setContextLoading(true)
+    try {
+      const [statsData, cacheData] = await Promise.all([
+        contextApi.getStats(),
+        contextApi.listCache(),
+      ])
+      setContextStats(statsData)
+      setCacheList(cacheData)
+    } catch {
+      message.error('获取上下文数据失败')
+    } finally {
+      setContextLoading(false)
+    }
+  }
+
+  const handleClearCache = async () => {
+    try {
+      const result = await contextApi.clearCache()
+      message.success(`已清理 ${result.cleared} 个缓存文件`)
+      fetchContextData()
+    } catch {
+      message.error('清理失败')
+    }
+  }
+
+  const handleCompact = async () => {
+    setCompactLoading(true)
+    try {
+      const result = await contextApi.triggerCompact()
+      if (result.success) {
+        message.success('上下文压缩完成')
+      } else {
+        message.warning(`压缩未生效: ${result.reason}`)
+      }
+      fetchContextData()
+    } catch {
+      message.error('压缩失败')
+    } finally {
+      setCompactLoading(false)
+    }
+  }
+
+  const handleViewCache = async (id: string) => {
+    try {
+      const data = await contextApi.getCache(id)
+      setCacheContent(data.content)
+      setCacheModalVisible(true)
+    } catch {
+      message.error('获取缓存失败')
+    }
+  }
+
   useEffect(() => {
     fetchConfig()
+    fetchContextData()
   }, [])
 
   const fetchConfig = async () => {
@@ -478,11 +542,151 @@ const AgentConfig: React.FC = () => {
             </Form.Item>
           </Card>
 
+          {/* 上下文管理 */}
+          <Card
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Cpu size={16} style={{ color: '#F59E0B' }} />
+                <span>上下文管理</span>
+              </div>
+            }
+            extra={
+              <Space>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  onClick={fetchContextData}
+                >
+                  刷新
+                </Button>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<ExperimentOutlined />}
+                  onClick={handleCompact}
+                  loading={compactLoading}
+                >
+                  压缩上下文
+                </Button>
+                <Popconfirm
+                  title="确认清理"
+                  description="确定要清理所有工具结果缓存吗？"
+                  onConfirm={handleClearCache}
+                >
+                  <Button type="text" size="small" danger icon={<DeleteOutlined />}>
+                    清理缓存
+                  </Button>
+                </Popconfirm>
+              </Space>
+            }
+            style={{ border: 'none' }}
+          >
+            <Spin spinning={contextLoading}>
+              <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                <Col xs={12} sm={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="缓存文件"
+                      value={contextStats?.cache_file_count || 0}
+                      valueStyle={{ fontSize: 20 }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="缓存大小"
+                      value={(contextStats?.cache_total_size_bytes || 0) / 1024}
+                      precision={1}
+                      suffix="KB"
+                      valueStyle={{ fontSize: 20 }}
+                    />
+                  </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="压缩次数"
+                      value={`${contextStats?.compaction_count_today || 0} / ${contextStats?.compaction_count_total || 0}`}
+                      valueStyle={{ fontSize: 20 }}
+                    />
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>今日 / 总计</Typography.Text>
+                  </Card>
+                </Col>
+                <Col xs={12} sm={6}>
+                  <Card size="small">
+                    <Statistic
+                      title="平均响应"
+                      value={contextStats?.avg_response_tokens || 0}
+                      suffix="tokens"
+                      valueStyle={{ fontSize: 20 }}
+                    />
+                  </Card>
+                </Col>
+              </Row>
+
+              <Table
+                dataSource={cacheList}
+                columns={[
+                  {
+                    title: '工具名称',
+                    dataIndex: 'tool_name',
+                    key: 'tool_name',
+                  },
+                  {
+                    title: '大小',
+                    dataIndex: 'size_bytes',
+                    key: 'size_bytes',
+                    render: (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`,
+                  },
+                  {
+                    title: '时间',
+                    dataIndex: 'created_at',
+                    key: 'created_at',
+                  },
+                  {
+                    title: '操作',
+                    key: 'action',
+                    render: (_: unknown, record: CacheEntry) => (
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewCache(record.id)}
+                      >
+                        查看
+                      </Button>
+                    ),
+                  },
+                ]}
+                rowKey="id"
+                pagination={{ pageSize: 5 }}
+                locale={{ emptyText: '暂无缓存' }}
+                size="small"
+              />
+            </Spin>
+          </Card>
+
           <Button type="primary" loading={saving} htmlType="submit" size="large">
             保存配置
           </Button>
         </Space>
       </Form>
+
+      {/* 缓存内容弹窗 */}
+      <Modal
+        title="缓存内容"
+        open={cacheModalVisible}
+        onCancel={() => setCacheModalVisible(false)}
+        footer={null}
+        width={800}
+        style={{ maxHeight: '80vh', overflow: 'auto' }}
+      >
+        <pre className="cache-content">
+          {cacheContent}
+        </pre>
+      </Modal>
     </div>
   )
 }

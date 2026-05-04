@@ -45,6 +45,7 @@ from .harness.workspace.user_workspace import (
     load_user_sys_prompt,
     load_user_context,
 )
+from .harness.skills.skill_manager import SkillManager
 
 # ---------------------------------------------------------------------------
 # 工具注册表 — 映射工具名称到可调用函数
@@ -221,9 +222,28 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
     # 使用 load_agent_config 以合并用户级 agent.json 覆盖
     agent_cfg = load_agent_config(user_id)
 
+    # --- ReMe 内存集成 ---
+    from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
+
+    working_dir = str(ensure_user_workspace(user_id))
+
+    skill_manager = SkillManager(working_dir)
+    skill_manager.scan_skills()
+    skills_content = skill_manager.get_enabled_skills_content()
+
+    memory_manager = ReMeLightMemoryManager(
+        working_dir=working_dir,
+        agent_id=str(user_id),
+    )
+    reme_memory = memory_manager.get_in_memory_memory()
+
     # 从静态 Markdown 文件构建基础提示词
     custom_prompt = load_user_sys_prompt(user_id)
     base_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
+
+    # 追加技能内容
+    if skills_content:
+        base_prompt = base_prompt + skills_content
 
     # 从数据库获取用户上下文（姓名、目标、健康指标、连续记录）并前置
     user_context = load_user_context(user_id)
@@ -233,16 +253,6 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
         sys_prompt = base_prompt
 
     model = _build_model(agent_cfg)
-
-    # --- ReMe 内存集成 ---
-    from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
-
-    working_dir = str(ensure_user_workspace(user_id))
-    memory_manager = ReMeLightMemoryManager(
-        working_dir=working_dir,
-        agent_id=str(user_id),
-    )
-    reme_memory = memory_manager.get_in_memory_memory()
 
     # 为每个用户构建独立的 toolkit，避免 memory_search 共享冲突
     toolkit = _build_toolkit(agent_cfg)
@@ -263,16 +273,37 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
     )
 
     # 注册上下文压缩钩子
-    from src.agents.harness.hooks.memory_compaction import create_memory_compaction_hook
-    hook = create_memory_compaction_hook(memory_manager)
+    from src.agents.harness.context.lifecycle_hooks import LifecycleHooksManager
+    lifecycle_hooks = LifecycleHooksManager(
+        agent_cfg=agent_cfg,
+        memory_manager=memory_manager,
+        working_dir=working_dir,
+    )
+    agent.register_instance_hook(
+        hook_type="pre_reply",
+        hook_name="pre_reply_hook",
+        hook=lifecycle_hooks.pre_reply,
+    )
     agent.register_instance_hook(
         hook_type="pre_reasoning",
         hook_name="memory_compaction_hook",
-        hook=hook,
+        hook=lifecycle_hooks.pre_reasoning,
+    )
+    agent.register_instance_hook(
+        hook_type="post_acting",
+        hook_name="post_acting_hook",
+        hook=lifecycle_hooks.post_acting,
+    )
+    agent.register_instance_hook(
+        hook_type="post_reply",
+        hook_name="post_reply_hook",
+        hook=lifecycle_hooks.post_reply,
     )
 
-    # 在 Agent 上保存 memory_manager 引用，用于生命周期管理
+    # 在 Agent 上保存 lifecycle_hooks 引用，用于生命周期管理
+    agent._lifecycle_hooks = lifecycle_hooks  # type: ignore[attr-defined]
     agent._memory_manager = memory_manager  # type: ignore[attr-defined]
+    agent._skill_manager = skill_manager  # type: ignore[attr-defined]
 
     return agent
 

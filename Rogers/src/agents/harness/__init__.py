@@ -1,5 +1,6 @@
 """Agent 工具集 — 工具、记忆、钩子、工作区、会话和上下文。"""
 from .context import agent_context, NotAuthenticatedError, get_user_id_from_token
+from .context.lifecycle_hooks import LifecycleHooksManager
 from .tools.basic.read_data import (
     get_user_profile,
     get_health_summary,
@@ -48,6 +49,7 @@ __all__ = [
     "agent_context",
     "NotAuthenticatedError",
     "get_user_id_from_token",
+    "LifecycleHooksManager",
     # 读取工具
     "get_user_profile",
     "get_health_summary",

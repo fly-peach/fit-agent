@@ -1,4 +1,4 @@
-"""用户工作区管理器 — 每个用户的 agents.md、soul.md 和会话存储。"""
+"""用户工作区管理器 — 每个用户的 agents.md、soul.md、技能与会话存储。"""
 from __future__ import annotations
 
 import shutil
@@ -7,6 +7,7 @@ from pathlib import Path
 
 _WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace"
 _TEMPLATE_DIR = _WORKSPACE_ROOT / "templates"
+_SKILLS_TEMPLATE_DIR = _TEMPLATE_DIR / "skills"
 _USERS_DIR = _WORKSPACE_ROOT / "users"
 
 
@@ -36,6 +37,16 @@ def ensure_user_workspace(user_id: int | str) -> Path:
         for template_file in _TEMPLATE_DIR.iterdir():
             if template_file.is_file() and template_file.suffix == ".md":
                 shutil.copy2(template_file, user_dir / template_file.name)
+
+    # 复制默认技能（从 templates/skills/ 目录）
+    if _SKILLS_TEMPLATE_DIR.exists():
+        user_skills_dir = user_dir / "skills"
+        user_skills_dir.mkdir(parents=True, exist_ok=True)
+        for skill_dir in _SKILLS_TEMPLATE_DIR.iterdir():
+            if skill_dir.is_dir():
+                dest = user_skills_dir / skill_dir.name
+                if not dest.exists():
+                    shutil.copytree(skill_dir, dest)
 
     # 创建会话目录
     get_user_sessions_dir(user_id).mkdir(parents=True, exist_ok=True)
@@ -73,7 +84,7 @@ def load_user_context(user_id: int | str) -> str:
 
     from decimal import Decimal
 
-    from fitme.utils.database import SessionLocal
+    from src.fitme.utils.database import SessionLocal
     from src.fitme.models.models import HealthMetric, StreakStats, User, UserSettings
 
     db = SessionLocal()

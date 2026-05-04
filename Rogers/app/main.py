@@ -16,14 +16,26 @@ from src.fitme.core.config import settings
 from src.fitme.models import Base
 from src.fitme.utils.database import engine
 
-from .routers import auth_router, user_router, health_router, training_router, diet_router
+from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router
 from .routers.agent import agent_app, router as agent_router, _auth_token
+from .routers import skills, memory, context
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """初始化服务。"""
     # 创建数据库表并创建测试账户
     Base.metadata.create_all(bind=engine)
+
+    # 迁移：为新列添加 ALTER TABLE
+    import sqlalchemy as sa
+    with engine.connect() as conn:
+        for col, col_type in [("recurring_group_id", "INTEGER")]:
+            try:
+                conn.execute(sa.text(f"ALTER TABLE training_plans ADD COLUMN {col} {col_type}"))
+                conn.commit()
+            except Exception:
+                pass  # 列已存在
+
     from .seed import seed_test_accounts
     seed_test_accounts()
 
@@ -111,8 +123,12 @@ app.include_router(user_router)
 app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
+app.include_router(exercise_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
 app.include_router(agent_router)
+app.include_router(skills.router)
+app.include_router(memory.router)
+app.include_router(context.router)
 
 
 
