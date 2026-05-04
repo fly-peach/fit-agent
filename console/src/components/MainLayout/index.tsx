@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Layout,
   Menu,
@@ -6,6 +6,7 @@ import {
   Dropdown,
   Button,
   Typography,
+  Drawer,
 } from 'antd'
 import {
   MenuFoldOutlined,
@@ -13,6 +14,7 @@ import {
   DownOutlined,
   UserOutlined,
   LogoutOutlined,
+  MenuOutlined,
 } from '@ant-design/icons'
 import { LayoutDashboard, Heart, Dumbbell, Utensils, User, Bot } from 'lucide-react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
@@ -54,12 +56,33 @@ const navItems: NavItem[] = [
 
 const menuItems: MenuProps['items'] = navItems.map(item => ({ ...item }))
 
+// Mobile bottom nav icons (no wrapper for compactness)
+const mobileNavItems = [
+  { key: '/', icon: <LayoutDashboard size={20} />, label: '概览', color: '#0EA5E9' },
+  { key: '/health', icon: <Heart size={20} />, label: '健康', color: '#10B981' },
+  { key: '/training', icon: <Dumbbell size={20} />, label: '训练', color: '#F59E0B' },
+  { key: '/diet', icon: <Utensils size={20} />, label: '饮食', color: '#06B6D4' },
+  { key: '/user', icon: <User size={20} />, label: '我的', color: '#8B5CF6' },
+]
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  return isMobile
+}
+
 const MainLayout: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const [collapsed, setCollapsed] = useState(false)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -72,7 +95,7 @@ const MainLayout: React.FC = () => {
       key: 'profile',
       icon: <UserOutlined />,
       label: '个人中心',
-      onClick: () => navigate('/user'),
+      onClick: () => { navigate('/user'); setMobileMenuOpen(false) },
     },
     {
       key: 'logout',
@@ -82,6 +105,117 @@ const MainLayout: React.FC = () => {
     },
   ]
 
+  const handleNav = (key: string) => {
+    navigate(key)
+    setMobileMenuOpen(false)
+  }
+
+  // Mobile bottom navigation
+  if (isMobile) {
+    return (
+      <Layout style={{ minHeight: '100vh' }}>
+        <Header
+          style={{
+            padding: '0 16px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            borderBottom: '1px solid #F0EDE8',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Title level={5} style={{
+              margin: 0,
+              color: '#0EA5E9',
+              fontWeight: 800,
+              fontFamily: "'Nunito', 'Noto Sans SC', sans-serif",
+            }}>
+              FitAgent
+            </Title>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Button
+              type="text"
+              icon={<Bot size={18} />}
+              onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+              size="small"
+            />
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <Avatar style={{ backgroundColor: '#0EA5E9', cursor: 'pointer' }}>
+                {user.name?.charAt(0) || 'U'}
+              </Avatar>
+            </Dropdown>
+          </div>
+        </Header>
+        <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+          <Content style={{ flex: 1, background: 'transparent', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+            <Outlet />
+          </Content>
+          <div style={{
+            width: rightDrawerOpen ? '100%' : 0,
+            height: 'calc(100vh - 56px)',
+            position: 'fixed',
+            right: 0,
+            top: 56,
+            zIndex: 99,
+            background: '#fff',
+            overflow: 'hidden',
+            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}>
+            {rightDrawerOpen && <AIAssistant />}
+          </div>
+        </Layout>
+        {/* Mobile bottom navigation */}
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 56,
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(12px)',
+          borderTop: '1px solid #F0EDE8',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          zIndex: 100,
+          paddingLeft: 4,
+          paddingRight: 4,
+        }}>
+          {mobileNavItems.map(item => (
+            <div
+              key={item.key}
+              onClick={() => handleNav(item.key)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                cursor: 'pointer',
+                padding: '4px 12px',
+                borderRadius: 8,
+                background: location.pathname === item.key ? `${item.color}12` : 'transparent',
+                color: location.pathname === item.key ? item.color : '#999',
+                transition: 'all 0.2s',
+                flex: 1,
+              }}
+            >
+              {item.icon}
+              <span style={{ fontSize: 10, lineHeight: 1 }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </Layout>
+    )
+  }
+
+  // Desktop layout
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
@@ -187,6 +321,23 @@ const MainLayout: React.FC = () => {
           </div>
         </Layout>
       </Layout>
+      {/* Mobile menu drawer for tablet */}
+      <Drawer
+        title="菜单"
+        placement="left"
+        onClose={() => setMobileMenuOpen(false)}
+        open={mobileMenuOpen}
+        width={240}
+        styles={{ body: { padding: 0 } }}
+      >
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
+          onClick={({ key }) => handleNav(key)}
+        />
+      </Drawer>
     </Layout>
   )
 }

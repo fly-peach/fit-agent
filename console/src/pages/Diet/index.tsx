@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, TimePicker, DatePicker, Table, Tag, Space, message, Progress, AutoComplete, Divider, Radio, Checkbox } from 'antd'
+import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, TimePicker, DatePicker, Table, Tag, Space, message, Progress, AutoComplete, Divider, Radio, Checkbox, List, Avatar } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { Utensils, Sun, Moon, Sunrise } from 'lucide-react'
+import { Utensils, Sun, Moon, Sunrise, EditOutlined, DeleteOutlined } from 'lucide-react'
 import dayjs from 'dayjs'
 import { dietApi, type DietStats, DietMeal, type FoodItem } from '../../services/diet'
 import type { ColumnsType } from 'antd/es/table'
@@ -27,6 +27,16 @@ const MEAL_FILTERS = [
   { key: 'lunch', label: '午餐', icon: <Sun size={14} />, color: '#10B981' },
   { key: 'dinner', label: '晚餐', icon: <Moon size={14} />, color: '#6366F1' },
 ] as const
+
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  return isMobile
+}
 
 const Diet: React.FC = () => {
   const [stats, setStats] = useState<DietStats | null>(null)
@@ -57,6 +67,8 @@ const Diet: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [dayMeals, setDayMeals] = useState<DietMeal[]>([])
   const [dayMealsLoading, setDayMealsLoading] = useState(false)
+
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     fetchData()
@@ -149,11 +161,10 @@ const Diet: React.FC = () => {
       carbs: food.carbs,
       fat: food.fat,
     })
-    // Auto-set meal type based on food's suitable meals
     if (food.suitableMeals) {
-      const meals = food.suitableMeals.split(',').filter((m: string) => m !== 'dinner')
-      if (meals.length > 0) {
-        addForm.setFieldsValue({ mealType: meals[0] })
+      const m = food.suitableMeals.split(',').filter((m: string) => m !== 'dinner')
+      if (m.length > 0) {
+        addForm.setFieldsValue({ mealType: m[0] })
       }
     }
   }
@@ -210,7 +221,6 @@ const Diet: React.FC = () => {
     }
   }
 
-  // Edit food autocomplete
   const [editFoodOptions, setEditFoodOptions] = useState<FoodItem[]>([])
   const [editFoodLoading, setEditFoodLoading] = useState(false)
 
@@ -279,15 +289,15 @@ const Diet: React.FC = () => {
       title: '操作',
       render: (_, record) => (
         <Space>
-          <Button size="small" onClick={() => openEditDialog(record)}>编辑</Button>
-          <Button size="small" danger onClick={() => handleDeleteMeal(record.mealId)}>删除</Button>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openEditDialog(record)} />
+          <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteMeal(record.mealId)} />
         </Space>
       ),
     },
   ]
 
   return (
-    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+    <div className="fitagent-page-enter" style={{ padding: isMobile ? 12 : 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <span className="fitagent-icon-badge" style={{ background: '#ECFEFF', color: '#06B6D4' }}>
           <Utensils size={18} />
@@ -295,7 +305,7 @@ const Diet: React.FC = () => {
         <Typography.Title level={4} style={{ margin: 0 }}>饮食管理</Typography.Title>
       </div>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[isMobile ? 12 : 16, isMobile ? 12 : 16]}>
         <Col xs={24} sm={12} md={8}>
           <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%)' }}>
             <Typography.Text type="secondary">今日热量</Typography.Text>
@@ -327,20 +337,20 @@ const Diet: React.FC = () => {
         </Col>
       </Row>
 
-      <Card style={{ marginTop: 24, border: 'none' }}>
+      <Card style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
         <Typography.Title level={5}>今日营养摄入</Typography.Title>
-        <Row gutter={16} style={{ marginTop: 8 }}>
-          <Col span={8}>
+        <Row gutter={isMobile ? 12 : 16} style={{ marginTop: 8 }}>
+          <Col xs={24} sm={8}>
             <Typography.Text>蛋白质</Typography.Text>
             <Progress percent={getProgressPercent(stats?.protein || 0, stats?.proteinGoal || 150)} strokeColor="#10B981" />
             <Typography.Text type="secondary">{stats?.protein || 0}/{stats?.proteinGoal || 150}g</Typography.Text>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Typography.Text>碳水</Typography.Text>
             <Progress percent={getProgressPercent(stats?.carbs || 0, stats?.carbsGoal || 250)} strokeColor="#F59E0B" />
             <Typography.Text type="secondary">{stats?.carbs || 0}/{stats?.carbsGoal || 250}g</Typography.Text>
           </Col>
-          <Col span={8}>
+          <Col xs={24} sm={8}>
             <Typography.Text>脂肪</Typography.Text>
             <Progress percent={getProgressPercent(stats?.fat || 0, stats?.fatGoal || 65)} strokeColor="#EF4444" />
             <Typography.Text type="secondary">{stats?.fat || 0}/{stats?.fatGoal || 65}g</Typography.Text>
@@ -349,7 +359,7 @@ const Diet: React.FC = () => {
       </Card>
 
       {/* 饮食趋势图表 */}
-      <Card style={{ marginTop: 24, border: 'none' }}>
+      <Card style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <Typography.Title level={5} style={{ margin: 0 }}>饮食趋势</Typography.Title>
           <Radio.Group value={trendDays} onChange={e => setTrendDays(e.target.value)} size="small">
@@ -372,22 +382,19 @@ const Diet: React.FC = () => {
           </Space>
         </Checkbox.Group>
 
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
           <LineChart data={trendLoading ? [] : trendData} onClick={(e: any) => {
             if (e?.activePayload?.[0]?.payload?.date) {
-              // Map back to full date from trendData
               const idx = trendData.findIndex(d => d.date === e.activePayload[0].payload.date)
               if (idx >= 0) {
-                const fullDate = trendData[idx].date // MM/DD format already
-                // We need the actual date - use trendData item's raw date
-                fetchDayMeals(trendData[idx].fullDate || fullDate)
+                fetchDayMeals(trendData[idx].fullDate || trendData[idx].date)
               }
             }
           }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+            <XAxis dataKey="date" tick={{ fontSize: isMobile ? 10 : 12 }} />
+            <YAxis yAxisId="left" tick={{ fontSize: isMobile ? 10 : 12 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: isMobile ? 10 : 12 }} />
             <Tooltip
               formatter={(value: any, name: any) => {
                 const labels: Record<string, string> = { calories: '热量', protein: '蛋白质', carbs: '碳水', fat: '脂肪', water: '饮水' }
@@ -420,32 +427,90 @@ const Diet: React.FC = () => {
               <Typography.Text strong>{dayjs(selectedDate).format('YYYY-MM-DD')} 饮食记录</Typography.Text>
               <Button size="small" onClick={() => { setSelectedDate(null); setDayMeals([]) }}>关闭</Button>
             </div>
-            <Table
-              columns={mealColumns}
-              dataSource={dayMeals}
-              rowKey="mealId"
-              size="small"
-              pagination={false}
-              loading={dayMealsLoading}
-              locale={{ emptyText: '暂无记录' }}
-            />
+            {isMobile ? (
+              <List
+                dataSource={dayMeals}
+                loading={dayMealsLoading}
+                locale={{ emptyText: '暂无记录' }}
+                renderItem={(item) => (
+                  <List.Item
+                    actions={[
+                      <Button size="small" icon={<EditOutlined />} onClick={() => { setSelectedDate(null); setDayMeals([]); openEditDialog(item) }} />,
+                      <Button size="small" danger icon={<DeleteOutlined />} onClick={() => { handleDeleteMeal(item.mealId); fetchDayMeals(selectedDate) }} />,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={<Avatar style={{ backgroundColor: CALORIE_LEVEL_COLORS[item.mealType] || '#0EA5E9' }}>
+                        {item.mealName.charAt(0)}
+                      </Avatar>}
+                      title={
+                        <Space>
+                          {getMealTypeTag(item.mealType)}
+                          <span>{item.mealName}</span>
+                        </Space>
+                      }
+                      description={`${item.calories} kcal · 蛋白质${item.protein}g · 碳水${item.carbs}g · 脂肪${item.fat}g · ${item.time}`}
+                    />
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Table
+                columns={mealColumns}
+                dataSource={dayMeals}
+                rowKey="mealId"
+                size="small"
+                pagination={false}
+                loading={dayMealsLoading}
+                locale={{ emptyText: '暂无记录' }}
+              />
+            )}
           </div>
         )}
       </Card>
 
-      <Card style={{ marginTop: 24, border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+      <Card style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <Typography.Title level={5} style={{ margin: 0 }}>今日饮食记录</Typography.Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddOpen(true)}>添加记录</Button>
         </div>
-        <Table
-          columns={mealColumns}
-          dataSource={meals}
-          rowKey="mealId"
-          size="small"
-          pagination={false}
-          loading={loading}
-        />
+        {isMobile ? (
+          <List
+            dataSource={meals}
+            loading={loading}
+            locale={{ emptyText: '暂无记录' }}
+            renderItem={(item) => (
+              <List.Item
+                actions={[
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEditDialog(item)} />,
+                  <Button size="small" danger icon={<DeleteOutlined />} onClick={() => handleDeleteMeal(item.mealId)} />,
+                ]}
+              >
+                <List.Item.Meta
+                  avatar={<Avatar style={{ backgroundColor: CALORIE_LEVEL_COLORS[item.mealType] || '#0EA5E9' }}>
+                    {item.mealName.charAt(0)}
+                  </Avatar>}
+                  title={
+                    <Space>
+                      {getMealTypeTag(item.mealType)}
+                      <span>{item.mealName}</span>
+                    </Space>
+                  }
+                  description={`${item.calories} kcal · 蛋白质${item.protein}g · 碳水${item.carbs}g · 脂肪${item.fat}g · ${item.time}`}
+                />
+              </List.Item>
+            )}
+          />
+        ) : (
+          <Table
+            columns={mealColumns}
+            dataSource={meals}
+            rowKey="mealId"
+            size="small"
+            pagination={false}
+            loading={loading}
+          />
+        )}
       </Card>
 
       {/* Add Meal Modal */}
@@ -456,7 +521,8 @@ const Diet: React.FC = () => {
         onOk={handleAddMeal}
         okText="提交"
         cancelText="取消"
-        width={600}
+        width={isMobile ? '100%' : 600}
+        style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}
       >
         <Form form={addForm} layout="vertical" style={{ marginTop: 16 }} initialValues={{ mealDate: dayjs() }}>
           <Form.Item name="mealType" label="餐次类型" rules={[{ required: true }]}>
@@ -480,7 +546,7 @@ const Diet: React.FC = () => {
               }}
               dropdownRender={(menu) => (
                 <div>
-                  <div style={{ padding: '8px 12px', display: 'flex', gap: 8 }}>
+                  <div style={{ padding: '8px 12px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {MEAL_FILTERS.map(m => (
                       <Button
                         key={m.key}
@@ -517,7 +583,6 @@ const Diet: React.FC = () => {
             />
           </Form.Item>
 
-          {/* Selected food info */}
           {selectedFood && (
             <div style={{ marginBottom: 16, padding: 10, background: '#F0FDF4', borderRadius: 8 }}>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -535,12 +600,12 @@ const Diet: React.FC = () => {
           )}
 
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="calories" label="热量" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="kcal" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="calories" label="热量" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="kcal" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="g" /></Form.Item></Col>
           </Row>
           <Form.Item name="water" label="饮水"><InputNumber style={{ width: '100%' }} defaultValue={0} addonAfter="ml" /></Form.Item>
           <Form.Item name="mealDate" label="日期" rules={[{ required: true }]}>
@@ -560,7 +625,8 @@ const Diet: React.FC = () => {
         onOk={handleEditMeal}
         okText="更新"
         cancelText="取消"
-        width={600}
+        width={isMobile ? '100%' : 600}
+        style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}
       >
         <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="mealName" label="食物名称" rules={[{ required: true }]}>
@@ -596,9 +662,9 @@ const Diet: React.FC = () => {
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
           <Row gutter={16}>
-            <Col span={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
           </Row>
         </Form>
       </Modal>
@@ -611,6 +677,8 @@ const Diet: React.FC = () => {
         onOk={handleAddCustomFood}
         okText="添加"
         cancelText="取消"
+        width={isMobile ? '100%' : undefined}
+        style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}
       >
         <Form form={customFoodForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="name" label="食物名称" rules={[{ required: true }]}>
@@ -620,8 +688,8 @@ const Diet: React.FC = () => {
             <Select placeholder="选择分类" options={foodCategories.map(c => ({ label: c, value: c }))} />
           </Form.Item>
           <Row gutter={16}>
-            <Col span={12}><Form.Item name="portionUnit" label="一份单位"><Input placeholder="如：1 块" /></Form.Item></Col>
-            <Col span={12}><Form.Item name="portionGrams" label="一份克数"><InputNumber style={{ width: '100%' }} addonAfter="g" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="portionUnit" label="一份单位"><Input placeholder="如：1 块" /></Form.Item></Col>
+            <Col xs={12}><Form.Item name="portionGrams" label="一份克数"><InputNumber style={{ width: '100%' }} addonAfter="g" /></Form.Item></Col>
           </Row>
           <Form.Item name="portionCalories" label="一份热量" rules={[{ required: true }]}>
             <InputNumber style={{ width: '100%' }} addonAfter="kcal" />
@@ -638,9 +706,9 @@ const Diet: React.FC = () => {
             ]} />
           </Form.Item>
           <Row gutter={16}>
-            <Col span={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
-            <Col span={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="protein" label="蛋白质"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="carbs" label="碳水"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
+            <Col xs={8}><Form.Item name="fat" label="脂肪"><InputNumber style={{ width: '100%' }} addonAfter="g" defaultValue={0} /></Form.Item></Col>
           </Row>
         </Form>
       </Modal>

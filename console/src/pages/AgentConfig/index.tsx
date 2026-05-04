@@ -163,6 +163,16 @@ const personalityPresets: PersonalityPreset[] = [
   },
 ]
 
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  return isMobile
+}
+
 const AgentConfig: React.FC = () => {
   const [agentForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
@@ -172,6 +182,7 @@ const AgentConfig: React.FC = () => {
   const [selectedPreset, setSelectedPreset] = useState<string>('')
 
   const [savingModel, setSavingModel] = useState(false)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     fetchConfig()
@@ -258,7 +269,7 @@ const AgentConfig: React.FC = () => {
   }
 
   return (
-    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+    <div className="fitagent-page-enter" style={{ padding: isMobile ? 12 : 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <span className="fitagent-icon-badge" style={{ background: '#F5F3FF', color: '#A78BFA' }}>
           <Bot size={18} />
@@ -267,7 +278,7 @@ const AgentConfig: React.FC = () => {
       </div>
 
       <Form form={agentForm} layout="vertical" onFinish={handleSave}>
-        <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <Space direction="vertical" size={isMobile ? 16 : 24} style={{ width: '100%' }}>
           {/* 模型配置卡片 */}
           <Card
             title={
@@ -412,7 +423,7 @@ const AgentConfig: React.FC = () => {
             style={{ border: 'none' }}
           >
             {/* 人格预设选择器 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 12, marginBottom: 20 }}>
               <Typography.Text strong>
                 <Sparkles size={14} style={{ marginRight: 4, color: '#A78BFA' }} />
                 人格预设
@@ -427,7 +438,7 @@ const AgentConfig: React.FC = () => {
                     handleApplyPersonality(preset)
                   }
                 }}
-                style={{ flex: 1, maxWidth: 320, borderRadius: 10 }}
+                style={{ flex: 1, maxWidth: isMobile ? '100%' : 320, borderRadius: 10 }}
                 options={personalityPresets.map(p => ({
                   value: p.key,
                   label: `${p.emoji} ${p.label}`,
@@ -455,7 +466,7 @@ const AgentConfig: React.FC = () => {
               定义 Agent 的主要功能、使用工具的方式以及回答风格。
             </Typography.Paragraph>
             <Form.Item name="agents_md" style={{ marginBottom: 16 }}>
-              <Input.TextArea rows={10} placeholder="例如：你是 Rogers，一个专业的健身和健康管理助手..." />
+              <Input.TextArea rows={isMobile ? 6 : 10} placeholder="例如：你是 Rogers，一个专业的健身和健康管理助手..." />
             </Form.Item>
 
             {/* 性格设定 */}
@@ -463,7 +474,7 @@ const AgentConfig: React.FC = () => {
               定义 Agent 的个性、语气和沟通风格。
             </Typography.Paragraph>
             <Form.Item name="soul_md" style={{ marginBottom: 0 }}>
-              <Input.TextArea rows={6} placeholder="例如：温暖、专业、鼓励型，用简洁的语言回答问题..." />
+              <Input.TextArea rows={isMobile ? 4 : 6} placeholder="例如：温暖、专业、鼓励型，用简洁的语言回答问题..." />
             </Form.Item>
           </Card>
 

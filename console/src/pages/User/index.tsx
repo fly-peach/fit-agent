@@ -5,11 +5,22 @@ import { User } from 'lucide-react'
 import dayjs from 'dayjs'
 import { userApi, type UserProfile } from '../../services/user'
 
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+  return isMobile
+}
+
 const UserPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileForm] = Form.useForm()
   const [settingsForm] = Form.useForm()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     fetchData()
@@ -32,9 +43,7 @@ const UserPage: React.FC = () => {
         weightGoal: settingsData.weightGoal,
         weeklyTrainingGoal: settingsData.weeklyTrainingGoal,
       })
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   const handleUpdateProfile = async () => {
@@ -43,9 +52,7 @@ const UserPage: React.FC = () => {
       await userApi.updateProfile(values)
       message.success('更新成功')
       fetchData()
-    } catch {
-      message.error('更新失败')
-    }
+    } catch { message.error('更新失败') }
   }
 
   const handleUpdateSettings = async () => {
@@ -54,9 +61,7 @@ const UserPage: React.FC = () => {
       await userApi.updateSettings(values)
       message.success('设置已保存')
       fetchData()
-    } catch {
-      message.error('保存失败')
-    }
+    } catch { message.error('保存失败') }
   }
 
   const handleLogout = () => {
@@ -66,7 +71,7 @@ const UserPage: React.FC = () => {
   }
 
   return (
-    <div className="fitagent-page-enter" style={{ padding: 24 }}>
+    <div className="fitagent-page-enter" style={{ padding: isMobile ? 12 : 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <span className="fitagent-icon-badge" style={{ background: '#F5F3FF', color: '#8B5CF6' }}>
           <User size={18} />
@@ -74,7 +79,7 @@ const UserPage: React.FC = () => {
         <Typography.Title level={4} style={{ margin: 0 }}>个人中心</Typography.Title>
       </div>
 
-      <Row gutter={[24, 24]}>
+      <Row gutter={[isMobile ? 12 : 24, isMobile ? 12 : 24]}>
         <Col xs={24} md={8}>
           <Card style={{ border: 'none', background: 'linear-gradient(135deg, #E0F2FE 0%, #F5F3FF 100%)' }}>
             <div style={{ textAlign: 'center' }}>
@@ -105,39 +110,33 @@ const UserPage: React.FC = () => {
           <Card title="编辑个人信息" style={{ border: 'none' }}>
             <Form form={profileForm} layout="vertical" onFinish={handleUpdateProfile}>
               <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
-                    <Input />
-                  </Form.Item>
+                <Col xs={12}>
+                  <Form.Item name="name" label="姓名" rules={[{ required: true }]}><Input /></Form.Item>
                 </Col>
-                <Col span={12}>
-                  <Form.Item name="avatar" label="头像字母">
-                    <Input maxLength={2} />
-                  </Form.Item>
+                <Col xs={12}>
+                  <Form.Item name="avatar" label="头像字母"><Input maxLength={2} /></Form.Item>
                 </Col>
               </Row>
               <Button type="primary" htmlType="submit">保存</Button>
             </Form>
           </Card>
 
-          <Card title="健身目标设置" style={{ marginTop: 24, border: 'none' }}>
+          <Card title="健身目标设置" style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
             <Form form={settingsForm} layout="vertical" onFinish={handleUpdateSettings}>
               <Typography.Text type="secondary">饮食目标</Typography.Text>
-              <Row gutter={16} style={{ marginTop: 8 }}>
-                <Col span={8}><Form.Item name="calorieGoal" label="每日热量"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="proteinGoal" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="carbsGoal" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+              <Row gutter={isMobile ? 12 : 16} style={{ marginTop: 8 }}>
+                <Col xs={12} sm={8}><Form.Item name="calorieGoal" label="每日热量"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={8}><Form.Item name="proteinGoal" label="蛋白质"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={8}><Form.Item name="carbsGoal" label="碳水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
               </Row>
-              <Row gutter={16}>
-                <Col span={8}><Form.Item name="fatGoal" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="waterGoal" label="饮水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
-                <Col span={8}><Form.Item name="weightGoal" label="目标体重"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+              <Row gutter={isMobile ? 12 : 16}>
+                <Col xs={12} sm={8}><Form.Item name="fatGoal" label="脂肪"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={8}><Form.Item name="waterGoal" label="饮水"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
+                <Col xs={12} sm={8}><Form.Item name="weightGoal" label="目标体重"><InputNumber style={{ width: '100%' }} /></Form.Item></Col>
               </Row>
 
               <Typography.Text type="secondary" style={{ marginTop: 8, display: 'block' }}>训练目标</Typography.Text>
-              <Form.Item name="weeklyTrainingGoal" label="每周训练目标">
-                <InputNumber style={{ width: '100%' }} />
-              </Form.Item>
+              <Form.Item name="weeklyTrainingGoal" label="每周训练目标"><InputNumber style={{ width: '100%' }} /></Form.Item>
 
               <Button type="primary" htmlType="submit">保存设置</Button>
             </Form>
