@@ -96,7 +96,7 @@ async def delete_log(date: str, authorization: str | None = Header(default=None)
 
 @router.post("/optimize", response_model=OptimizationResponse)
 async def optimize_memory(authorization: str | None = Header(default=None)):
-    from src.agents.agent import agent_cache
+    from src.agents.agent import create_user_agent
 
     token = ""
     if authorization and authorization.startswith("Bearer "):
@@ -110,7 +110,7 @@ async def optimize_memory(authorization: str | None = Header(default=None)):
     ltm = LongTermMemory(user_dir)
     ltm.init_memory_file()
 
-    agent = await agent_cache.get_or_create(user_id)
+    agent = create_user_agent(user_id)
     model = getattr(agent, "model", None)
 
     optimizer = MemoryOptimizer(ltm, model)

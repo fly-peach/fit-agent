@@ -1,0 +1,2657 @@
+[
+  {
+    "name": "大米",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 150,
+    "portion_calories": 519,
+    "calories_per_100g": 346,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "米饭 (熟)",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 150,
+    "portion_calories": 174,
+    "calories_per_100g": 116,
+    "calorie_level": "中"
+  },
+  {
+    "name": "面条 (干)",
+    "category": "主食",
+    "portion_unit": "1 把",
+    "portion_grams": 100,
+    "portion_calories": 355,
+    "calories_per_100g": 355,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "馒头",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 223,
+    "calories_per_100g": 223,
+    "calorie_level": "高"
+  },
+  {
+    "name": "粥 (白)",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 115,
+    "calories_per_100g": 46,
+    "calorie_level": "低"
+  },
+  {
+    "name": "玉米",
+    "category": "主食",
+    "portion_unit": "1 根",
+    "portion_grams": 200,
+    "portion_calories": 224,
+    "calories_per_100g": 112,
+    "calorie_level": "中"
+  },
+  {
+    "name": "红薯",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 129,
+    "calories_per_100g": 86,
+    "calorie_level": "低"
+  },
+  {
+    "name": "土豆",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 116,
+    "calories_per_100g": 77,
+    "calorie_level": "低"
+  },
+  {
+    "name": "山药",
+    "category": "水果",
+    "portion_unit": "1 根",
+    "portion_grams": 100,
+    "portion_calories": 57,
+    "calories_per_100g": 57,
+    "calorie_level": "低"
+  },
+  {
+    "name": "黄豆",
+    "category": "豆制品",
+    "portion_unit": "1 把",
+    "portion_grams": 50,
+    "portion_calories": 195,
+    "calories_per_100g": 390,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "豆腐 (北)",
+    "category": "豆制品",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 98,
+    "calories_per_100g": 98,
+    "calorie_level": "低"
+  },
+  {
+    "name": "豆腐 (南)",
+    "category": "豆制品",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 86,
+    "calories_per_100g": 57,
+    "calorie_level": "低"
+  },
+  {
+    "name": "豆腐干",
+    "category": "豆制品",
+    "portion_unit": "1 块",
+    "portion_grams": 50,
+    "portion_calories": 70,
+    "calories_per_100g": 140,
+    "calorie_level": "中"
+  },
+  {
+    "name": "豆浆",
+    "category": "豆制品",
+    "portion_unit": "1 杯",
+    "portion_grams": 250,
+    "portion_calories": 78,
+    "calories_per_100g": 31,
+    "calorie_level": "低"
+  },
+  {
+    "name": "腐竹",
+    "category": "豆制品",
+    "portion_unit": "1 根",
+    "portion_grams": 20,
+    "portion_calories": 92,
+    "calories_per_100g": 461,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "猪肉 (瘦)",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 143,
+    "calories_per_100g": 143,
+    "calorie_level": "中"
+  },
+  {
+    "name": "猪肉 (五花)",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 508,
+    "calories_per_100g": 508,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "猪里脊",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 155,
+    "calories_per_100g": 155,
+    "calorie_level": "中"
+  },
+  {
+    "name": "猪肝",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 129,
+    "calories_per_100g": 129,
+    "calorie_level": "中"
+  },
+  {
+    "name": "猪蹄",
+    "category": "肉类",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 388,
+    "calories_per_100g": 259,
+    "calorie_level": "高"
+  },
+  {
+    "name": "排骨",
+    "category": "其他",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 278,
+    "calories_per_100g": 278,
+    "calorie_level": "高"
+  },
+  {
+    "name": "牛肉 (瘦)",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 106,
+    "calories_per_100g": 106,
+    "calorie_level": "中"
+  },
+  {
+    "name": "牛里脊",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 120,
+    "calories_per_100g": 120,
+    "calorie_level": "中"
+  },
+  {
+    "name": "牛腩",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 168,
+    "calories_per_100g": 168,
+    "calorie_level": "中"
+  },
+  {
+    "name": "牛腱子",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 98,
+    "calories_per_100g": 98,
+    "calorie_level": "低"
+  },
+  {
+    "name": "羊肉 (瘦)",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 118,
+    "calories_per_100g": 118,
+    "calorie_level": "中"
+  },
+  {
+    "name": "羊排",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 203,
+    "calories_per_100g": 203,
+    "calorie_level": "高"
+  },
+  {
+    "name": "羊腿肉",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 111,
+    "calories_per_100g": 111,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸡肉 (胸)",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 200,
+    "calories_per_100g": 133,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸡肉 (腿)",
+    "category": "肉类",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 272,
+    "calories_per_100g": 181,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸡翅",
+    "category": "肉类",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 97,
+    "calories_per_100g": 194,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸡爪",
+    "category": "肉类",
+    "portion_unit": "1 只",
+    "portion_grams": 30,
+    "portion_calories": 76,
+    "calories_per_100g": 254,
+    "calorie_level": "高"
+  },
+  {
+    "name": "鸭肉",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 240,
+    "calories_per_100g": 240,
+    "calorie_level": "高"
+  },
+  {
+    "name": "鸭胸",
+    "category": "肉类",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 230,
+    "calories_per_100g": 153,
+    "calorie_level": "中"
+  },
+  {
+    "name": "草鱼",
+    "category": "水产",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 113,
+    "calories_per_100g": 113,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鲫鱼",
+    "category": "水产",
+    "portion_unit": "1 条",
+    "portion_grams": 300,
+    "portion_calories": 324,
+    "calories_per_100g": 108,
+    "calorie_level": "中"
+  },
+  {
+    "name": "带鱼",
+    "category": "水产",
+    "portion_unit": "1 段",
+    "portion_grams": 100,
+    "portion_calories": 127,
+    "calories_per_100g": 127,
+    "calorie_level": "中"
+  },
+  {
+    "name": "三文鱼",
+    "category": "水产",
+    "portion_unit": "1 片",
+    "portion_grams": 100,
+    "portion_calories": 208,
+    "calories_per_100g": 208,
+    "calorie_level": "高"
+  },
+  {
+    "name": "虾",
+    "category": "水产",
+    "portion_unit": "10 只",
+    "portion_grams": 100,
+    "portion_calories": 93,
+    "calories_per_100g": 93,
+    "calorie_level": "低"
+  },
+  {
+    "name": "基围虾",
+    "category": "水产",
+    "portion_unit": "10 只",
+    "portion_grams": 100,
+    "portion_calories": 101,
+    "calories_per_100g": 101,
+    "calorie_level": "中"
+  },
+  {
+    "name": "小龙虾",
+    "category": "水产",
+    "portion_unit": "10 只",
+    "portion_grams": 150,
+    "portion_calories": 135,
+    "calories_per_100g": 90,
+    "calorie_level": "低"
+  },
+  {
+    "name": "螃蟹",
+    "category": "水产",
+    "portion_unit": "1 只",
+    "portion_grams": 200,
+    "portion_calories": 206,
+    "calories_per_100g": 103,
+    "calorie_level": "中"
+  },
+  {
+    "name": "大闸蟹",
+    "category": "水产",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 210,
+    "calories_per_100g": 140,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蛤蜊",
+    "category": "其他",
+    "portion_unit": "10 个",
+    "portion_grams": 100,
+    "portion_calories": 62,
+    "calories_per_100g": 62,
+    "calorie_level": "低"
+  },
+  {
+    "name": "牡蛎",
+    "category": "其他",
+    "portion_unit": "5 个",
+    "portion_grams": 100,
+    "portion_calories": 73,
+    "calories_per_100g": 73,
+    "calorie_level": "低"
+  },
+  {
+    "name": "扇贝",
+    "category": "水产",
+    "portion_unit": "5 个",
+    "portion_grams": 100,
+    "portion_calories": 84,
+    "calories_per_100g": 84,
+    "calorie_level": "低"
+  },
+  {
+    "name": "鱿鱼",
+    "category": "水产",
+    "portion_unit": "1 只",
+    "portion_grams": 100,
+    "portion_calories": 92,
+    "calories_per_100g": 92,
+    "calorie_level": "低"
+  },
+  {
+    "name": "墨鱼",
+    "category": "水产",
+    "portion_unit": "1 只",
+    "portion_grams": 100,
+    "portion_calories": 83,
+    "calories_per_100g": 83,
+    "calorie_level": "低"
+  },
+  {
+    "name": "海参",
+    "category": "水产",
+    "portion_unit": "1 根",
+    "portion_grams": 50,
+    "portion_calories": 14,
+    "calories_per_100g": 28,
+    "calorie_level": "低"
+  },
+  {
+    "name": "鲍鱼",
+    "category": "水产",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 42,
+    "calories_per_100g": 84,
+    "calorie_level": "低"
+  },
+  {
+    "name": "鸡蛋",
+    "category": "肉类",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 72,
+    "calories_per_100g": 144,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸭蛋",
+    "category": "肉类",
+    "portion_unit": "1 个",
+    "portion_grams": 60,
+    "portion_calories": 108,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "皮蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 60,
+    "portion_calories": 103,
+    "calories_per_100g": 171,
+    "calorie_level": "中"
+  },
+  {
+    "name": "咸蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 60,
+    "portion_calories": 114,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鹌鹑蛋",
+    "category": "蛋类",
+    "portion_unit": "5 个",
+    "portion_grams": 50,
+    "portion_calories": 80,
+    "calories_per_100g": 160,
+    "calorie_level": "中"
+  },
+  {
+    "name": "白菜",
+    "category": "蔬菜",
+    "portion_unit": "1 碗",
+    "portion_grams": 100,
+    "portion_calories": 17,
+    "calories_per_100g": 17,
+    "calorie_level": "低"
+  },
+  {
+    "name": "菠菜",
+    "category": "蔬菜",
+    "portion_unit": "1 碗",
+    "portion_grams": 100,
+    "portion_calories": 23,
+    "calories_per_100g": 23,
+    "calorie_level": "低"
+  },
+  {
+    "name": "生菜",
+    "category": "蔬菜",
+    "portion_unit": "1 碗",
+    "portion_grams": 100,
+    "portion_calories": 15,
+    "calories_per_100g": 15,
+    "calorie_level": "低"
+  },
+  {
+    "name": "芹菜",
+    "category": "蔬菜",
+    "portion_unit": "1 根",
+    "portion_grams": 50,
+    "portion_calories": 8,
+    "calories_per_100g": 16,
+    "calorie_level": "低"
+  },
+  {
+    "name": "韭菜",
+    "category": "蔬菜",
+    "portion_unit": "1 把",
+    "portion_grams": 50,
+    "portion_calories": 13,
+    "calories_per_100g": 26,
+    "calorie_level": "低"
+  },
+  {
+    "name": "油麦菜",
+    "category": "蔬菜",
+    "portion_unit": "1 碗",
+    "portion_grams": 100,
+    "portion_calories": 15,
+    "calories_per_100g": 15,
+    "calorie_level": "低"
+  },
+  {
+    "name": "娃娃菜",
+    "category": "蔬菜",
+    "portion_unit": "1 棵",
+    "portion_grams": 150,
+    "portion_calories": 21,
+    "calories_per_100g": 14,
+    "calorie_level": "低"
+  },
+  {
+    "name": "胡萝卜",
+    "category": "蔬菜",
+    "portion_unit": "1 根",
+    "portion_grams": 100,
+    "portion_calories": 39,
+    "calories_per_100g": 39,
+    "calorie_level": "低"
+  },
+  {
+    "name": "白萝卜",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 21,
+    "calories_per_100g": 21,
+    "calorie_level": "低"
+  },
+  {
+    "name": "莲藕",
+    "category": "其他",
+    "portion_unit": "1 节",
+    "portion_grams": 100,
+    "portion_calories": 73,
+    "calories_per_100g": 73,
+    "calorie_level": "低"
+  },
+  {
+    "name": "竹笋",
+    "category": "蔬菜",
+    "portion_unit": "1 根",
+    "portion_grams": 100,
+    "portion_calories": 27,
+    "calories_per_100g": 27,
+    "calorie_level": "低"
+  },
+  {
+    "name": "洋葱",
+    "category": "其他",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 40,
+    "calories_per_100g": 40,
+    "calorie_level": "低"
+  },
+  {
+    "name": "大蒜",
+    "category": "其他",
+    "portion_unit": "1 瓣",
+    "portion_grams": 5,
+    "portion_calories": 6,
+    "calories_per_100g": 129,
+    "calorie_level": "中"
+  },
+  {
+    "name": "黄瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 根",
+    "portion_grams": 150,
+    "portion_calories": 24,
+    "calories_per_100g": 16,
+    "calorie_level": "低"
+  },
+  {
+    "name": "西红柿",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 27,
+    "calories_per_100g": 18,
+    "calorie_level": "低"
+  },
+  {
+    "name": "茄子",
+    "category": "其他",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 38,
+    "calories_per_100g": 25,
+    "calorie_level": "低"
+  },
+  {
+    "name": "青椒",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 12,
+    "calories_per_100g": 23,
+    "calorie_level": "低"
+  },
+  {
+    "name": "冬瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 18,
+    "calories_per_100g": 12,
+    "calorie_level": "低"
+  },
+  {
+    "name": "南瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 23,
+    "calories_per_100g": 23,
+    "calorie_level": "低"
+  },
+  {
+    "name": "苦瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 根",
+    "portion_grams": 150,
+    "portion_calories": 28,
+    "calories_per_100g": 19,
+    "calorie_level": "低"
+  },
+  {
+    "name": "香菇",
+    "category": "蔬菜",
+    "portion_unit": "5 朵",
+    "portion_grams": 50,
+    "portion_calories": 13,
+    "calories_per_100g": 26,
+    "calorie_level": "低"
+  },
+  {
+    "name": "金针菇",
+    "category": "蔬菜",
+    "portion_unit": "1 把",
+    "portion_grams": 50,
+    "portion_calories": 16,
+    "calories_per_100g": 32,
+    "calorie_level": "低"
+  },
+  {
+    "name": "杏鲍菇",
+    "category": "水产",
+    "portion_unit": "1 根",
+    "portion_grams": 100,
+    "portion_calories": 31,
+    "calories_per_100g": 31,
+    "calorie_level": "低"
+  },
+  {
+    "name": "木耳",
+    "category": "水果",
+    "portion_unit": "1 把",
+    "portion_grams": 50,
+    "portion_calories": 14,
+    "calories_per_100g": 27,
+    "calorie_level": "低"
+  },
+  {
+    "name": "苹果",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 104,
+    "calories_per_100g": 52,
+    "calorie_level": "低"
+  },
+  {
+    "name": "香蕉",
+    "category": "水果",
+    "portion_unit": "1 根",
+    "portion_grams": 120,
+    "portion_calories": 107,
+    "calories_per_100g": 89,
+    "calorie_level": "低"
+  },
+  {
+    "name": "梨",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 88,
+    "calories_per_100g": 44,
+    "calorie_level": "低"
+  },
+  {
+    "name": "橙子",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 70,
+    "calories_per_100g": 47,
+    "calorie_level": "低"
+  },
+  {
+    "name": "葡萄",
+    "category": "水果",
+    "portion_unit": "1 串",
+    "portion_grams": 150,
+    "portion_calories": 100,
+    "calories_per_100g": 67,
+    "calorie_level": "低"
+  },
+  {
+    "name": "西瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 200,
+    "portion_calories": 60,
+    "calories_per_100g": 30,
+    "calorie_level": "低"
+  },
+  {
+    "name": "草莓",
+    "category": "其他",
+    "portion_unit": "10 颗",
+    "portion_grams": 100,
+    "portion_calories": 32,
+    "calories_per_100g": 32,
+    "calorie_level": "低"
+  },
+  {
+    "name": "猕猴桃",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 61,
+    "calories_per_100g": 61,
+    "calorie_level": "低"
+  },
+  {
+    "name": "芒果",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 120,
+    "calories_per_100g": 60,
+    "calorie_level": "低"
+  },
+  {
+    "name": "菠萝",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 75,
+    "calories_per_100g": 50,
+    "calorie_level": "低"
+  },
+  {
+    "name": "桃子",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 58,
+    "calories_per_100g": 39,
+    "calorie_level": "低"
+  },
+  {
+    "name": "李子",
+    "category": "水果",
+    "portion_unit": "5 个",
+    "portion_grams": 100,
+    "portion_calories": 46,
+    "calories_per_100g": 46,
+    "calorie_level": "低"
+  },
+  {
+    "name": "樱桃",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 100,
+    "portion_calories": 63,
+    "calories_per_100g": 63,
+    "calorie_level": "低"
+  },
+  {
+    "name": "蓝莓",
+    "category": "水果",
+    "portion_unit": "1 盒",
+    "portion_grams": 100,
+    "portion_calories": 57,
+    "calories_per_100g": 57,
+    "calorie_level": "低"
+  },
+  {
+    "name": "火龙果",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 300,
+    "portion_calories": 150,
+    "calories_per_100g": 50,
+    "calorie_level": "低"
+  },
+  {
+    "name": "木瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 个",
+    "portion_grams": 300,
+    "portion_calories": 117,
+    "calories_per_100g": 39,
+    "calorie_level": "低"
+  },
+  {
+    "name": "柚子",
+    "category": "水果",
+    "portion_unit": "2 瓣",
+    "portion_grams": 150,
+    "portion_calories": 63,
+    "calories_per_100g": 42,
+    "calorie_level": "低"
+  },
+  {
+    "name": "柠檬",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 14,
+    "calories_per_100g": 29,
+    "calorie_level": "低"
+  },
+  {
+    "name": "榴莲",
+    "category": "水果",
+    "portion_unit": "1 块",
+    "portion_grams": 100,
+    "portion_calories": 147,
+    "calories_per_100g": 147,
+    "calorie_level": "中"
+  },
+  {
+    "name": "荔枝",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 100,
+    "portion_calories": 66,
+    "calories_per_100g": 66,
+    "calorie_level": "低"
+  },
+  {
+    "name": "龙眼",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 50,
+    "portion_calories": 30,
+    "calories_per_100g": 60,
+    "calorie_level": "低"
+  },
+  {
+    "name": "山竹",
+    "category": "水果",
+    "portion_unit": "5 个",
+    "portion_grams": 100,
+    "portion_calories": 69,
+    "calories_per_100g": 69,
+    "calorie_level": "低"
+  },
+  {
+    "name": "石榴",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 166,
+    "calories_per_100g": 83,
+    "calorie_level": "低"
+  },
+  {
+    "name": "柿子",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 106,
+    "calories_per_100g": 71,
+    "calorie_level": "低"
+  },
+  {
+    "name": "冬枣",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 100,
+    "portion_calories": 125,
+    "calories_per_100g": 125,
+    "calorie_level": "中"
+  },
+  {
+    "name": "红枣",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 50,
+    "portion_calories": 132,
+    "calories_per_100g": 264,
+    "calorie_level": "高"
+  },
+  {
+    "name": "牛油果",
+    "category": "肉类",
+    "portion_unit": "1 个",
+    "portion_grams": 150,
+    "portion_calories": 240,
+    "calories_per_100g": 160,
+    "calorie_level": "中"
+  },
+  {
+    "name": "椰子",
+    "category": "水果",
+    "portion_unit": "1 个",
+    "portion_grams": 300,
+    "portion_calories": 1062,
+    "calories_per_100g": 354,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "花生",
+    "category": "坚果",
+    "portion_unit": "1 把",
+    "portion_grams": 30,
+    "portion_calories": 170,
+    "calories_per_100g": 567,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "瓜子",
+    "category": "蔬菜",
+    "portion_unit": "1 把",
+    "portion_grams": 30,
+    "portion_calories": 179,
+    "calories_per_100g": 597,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "核桃",
+    "category": "水果",
+    "portion_unit": "3 个",
+    "portion_grams": 30,
+    "portion_calories": 196,
+    "calories_per_100g": 654,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "杏仁",
+    "category": "水果",
+    "portion_unit": "10 颗",
+    "portion_grams": 30,
+    "portion_calories": 174,
+    "calories_per_100g": 579,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "腰果",
+    "category": "蔬菜",
+    "portion_unit": "10 颗",
+    "portion_grams": 30,
+    "portion_calories": 166,
+    "calories_per_100g": 553,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "开心果",
+    "category": "蔬菜",
+    "portion_unit": "20 颗",
+    "portion_grams": 30,
+    "portion_calories": 169,
+    "calories_per_100g": 562,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "松子",
+    "category": "坚果",
+    "portion_unit": "1 把",
+    "portion_grams": 30,
+    "portion_calories": 186,
+    "calories_per_100g": 619,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "芝麻",
+    "category": "坚果",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 53,
+    "calories_per_100g": 531,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "食用油",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 90,
+    "calories_per_100g": 899,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "猪油",
+    "category": "肉类",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 90,
+    "calories_per_100g": 897,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "黄油",
+    "category": "蔬菜",
+    "portion_unit": "1 块",
+    "portion_grams": 10,
+    "portion_calories": 72,
+    "calories_per_100g": 717,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "白糖",
+    "category": "蔬菜",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 40,
+    "calories_per_100g": 400,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "红糖",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 39,
+    "calories_per_100g": 389,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "蜂蜜",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 20,
+    "portion_calories": 64,
+    "calories_per_100g": 321,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "酱油",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 5,
+    "calories_per_100g": 52,
+    "calorie_level": "低"
+  },
+  {
+    "name": "醋",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 3,
+    "calories_per_100g": 31,
+    "calorie_level": "低"
+  },
+  {
+    "name": "料酒",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 9,
+    "calories_per_100g": 89,
+    "calorie_level": "低"
+  },
+  {
+    "name": "蚝油",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 10,
+    "portion_calories": 12,
+    "calories_per_100g": 117,
+    "calorie_level": "中"
+  },
+  {
+    "name": "豆瓣酱",
+    "category": "豆制品",
+    "portion_unit": "1 勺",
+    "portion_grams": 20,
+    "portion_calories": 36,
+    "calories_per_100g": 178,
+    "calorie_level": "中"
+  },
+  {
+    "name": "芝麻酱",
+    "category": "坚果",
+    "portion_unit": "1 勺",
+    "portion_grams": 20,
+    "portion_calories": 126,
+    "calories_per_100g": 630,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "花生酱",
+    "category": "坚果",
+    "portion_unit": "1 勺",
+    "portion_grams": 20,
+    "portion_calories": 118,
+    "calories_per_100g": 588,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "沙拉酱",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 15,
+    "portion_calories": 93,
+    "calories_per_100g": 623,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "番茄酱",
+    "category": "调料",
+    "portion_unit": "1 勺",
+    "portion_grams": 15,
+    "portion_calories": 17,
+    "calories_per_100g": 112,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蛋黄酱",
+    "category": "蛋类",
+    "portion_unit": "1 勺",
+    "portion_grams": 15,
+    "portion_calories": 102,
+    "calories_per_100g": 680,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "白米饭",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 150,
+    "portion_calories": 174,
+    "calories_per_100g": 116,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炒饭",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 516,
+    "calories_per_100g": 172,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蛋炒饭",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 495,
+    "calories_per_100g": 165,
+    "calorie_level": "中"
+  },
+  {
+    "name": "扬州炒饭",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 350,
+    "portion_calories": 640,
+    "calories_per_100g": 183,
+    "calorie_level": "中"
+  },
+  {
+    "name": "白粥",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 115,
+    "calories_per_100g": 46,
+    "calorie_level": "低"
+  },
+  {
+    "name": "皮蛋瘦肉粥",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 234,
+    "calories_per_100g": 78,
+    "calorie_level": "低"
+  },
+  {
+    "name": "小米粥",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 115,
+    "calories_per_100g": 46,
+    "calorie_level": "低"
+  },
+  {
+    "name": "八宝粥",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 204,
+    "calories_per_100g": 68,
+    "calorie_level": "低"
+  },
+  {
+    "name": "馒头",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 223,
+    "calories_per_100g": 223,
+    "calorie_level": "高"
+  },
+  {
+    "name": "花卷",
+    "category": "其他",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 217,
+    "calories_per_100g": 217,
+    "calorie_level": "高"
+  },
+  {
+    "name": "包子 (肉)",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 80,
+    "portion_calories": 187,
+    "calories_per_100g": 234,
+    "calorie_level": "高"
+  },
+  {
+    "name": "包子 (素)",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 80,
+    "portion_calories": 156,
+    "calories_per_100g": 195,
+    "calorie_level": "中"
+  },
+  {
+    "name": "饺子 (猪肉)",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 25,
+    "portion_calories": 59,
+    "calories_per_100g": 235,
+    "calorie_level": "高"
+  },
+  {
+    "name": "饺子 (韭菜鸡蛋)",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 25,
+    "portion_calories": 54,
+    "calories_per_100g": 218,
+    "calorie_level": "高"
+  },
+  {
+    "name": "馄饨",
+    "category": "其他",
+    "portion_unit": "1 碗",
+    "portion_grams": 200,
+    "portion_calories": 420,
+    "calories_per_100g": 210,
+    "calorie_level": "高"
+  },
+  {
+    "name": "面条 (汤)",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 336,
+    "calories_per_100g": 112,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炸酱面",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 350,
+    "portion_calories": 553,
+    "calories_per_100g": 158,
+    "calorie_level": "中"
+  },
+  {
+    "name": "热干面",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 567,
+    "calories_per_100g": 189,
+    "calorie_level": "中"
+  },
+  {
+    "name": "凉面",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 405,
+    "calories_per_100g": 135,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炒面",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 585,
+    "calories_per_100g": 195,
+    "calorie_level": "中"
+  },
+  {
+    "name": "米粉",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 345,
+    "calories_per_100g": 115,
+    "calorie_level": "中"
+  },
+  {
+    "name": "螺蛳粉",
+    "category": "主食",
+    "portion_unit": "1 碗",
+    "portion_grams": 400,
+    "portion_calories": 552,
+    "calories_per_100g": 138,
+    "calorie_level": "中"
+  },
+  {
+    "name": "肠粉",
+    "category": "主食",
+    "portion_unit": "1 份",
+    "portion_grams": 200,
+    "portion_calories": 250,
+    "calories_per_100g": 125,
+    "calorie_level": "中"
+  },
+  {
+    "name": "春卷",
+    "category": "其他",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 144,
+    "calories_per_100g": 289,
+    "calorie_level": "高"
+  },
+  {
+    "name": "油条",
+    "category": "主食",
+    "portion_unit": "1 根",
+    "portion_grams": 60,
+    "portion_calories": 233,
+    "calories_per_100g": 388,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "煎饼果子",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 490,
+    "calories_per_100g": 245,
+    "calorie_level": "高"
+  },
+  {
+    "name": "烧饼",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 365,
+    "calories_per_100g": 365,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "手抓饼",
+    "category": "主食",
+    "portion_unit": "1 张",
+    "portion_grams": 150,
+    "portion_calories": 480,
+    "calories_per_100g": 320,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "肉夹馍",
+    "category": "其他",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 560,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "鸡蛋灌饼",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 200,
+    "portion_calories": 530,
+    "calories_per_100g": 265,
+    "calorie_level": "高"
+  },
+  {
+    "name": "红烧肉",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1290,
+    "calories_per_100g": 430,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "回锅肉",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1260,
+    "calories_per_100g": 420,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "鱼香肉丝",
+    "category": "鱼虾",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 750,
+    "calories_per_100g": 250,
+    "calorie_level": "高"
+  },
+  {
+    "name": "糖醋里脊",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1140,
+    "calories_per_100g": 380,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "梅菜扣肉",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1560,
+    "calories_per_100g": 520,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "红烧排骨",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 400,
+    "portion_calories": 1400,
+    "calories_per_100g": 350,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "糖醋排骨",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 400,
+    "portion_calories": 1520,
+    "calories_per_100g": 380,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "东坡肉",
+    "category": "猪肉",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 720,
+    "calories_per_100g": 480,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "狮子头",
+    "category": "猪肉",
+    "portion_unit": "1 个",
+    "portion_grams": 100,
+    "portion_calories": 450,
+    "calories_per_100g": 450,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "卤猪蹄",
+    "category": "猪肉",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 705,
+    "calories_per_100g": 470,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "青椒肉片",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 690,
+    "calories_per_100g": 230,
+    "calorie_level": "高"
+  },
+  {
+    "name": "蒜苗炒肉片",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 840,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "农家小炒肉",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 840,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "干锅肥肠",
+    "category": "火锅",
+    "portion_unit": "1 锅",
+    "portion_grams": 400,
+    "portion_calories": 1480,
+    "calories_per_100g": 370,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "蒜泥白肉",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 990,
+    "calories_per_100g": 330,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "蚂蚁上树",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 780,
+    "calories_per_100g": 260,
+    "calorie_level": "高"
+  },
+  {
+    "name": "锅包肉",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1290,
+    "calories_per_100g": 430,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "咕噜肉",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1080,
+    "calories_per_100g": 360,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "脆皮五花肉",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1350,
+    "calories_per_100g": 450,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "粉蒸排骨",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 400,
+    "portion_calories": 1480,
+    "calories_per_100g": 370,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "红烧猪尾",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1230,
+    "calories_per_100g": 410,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "凉拌猪耳朵",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 640,
+    "calories_per_100g": 320,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "爆炒猪肝",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 1020,
+    "calories_per_100g": 340,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "红烧牛肉",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 780,
+    "calories_per_100g": 260,
+    "calorie_level": "高"
+  },
+  {
+    "name": "番茄炖牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 570,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "黑椒牛柳",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "酱牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 360,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "水煮牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 400,
+    "portion_calories": 1200,
+    "calories_per_100g": 300,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "青椒炒牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 600,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "洋葱炒牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "土豆烧牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 350,
+    "portion_calories": 700,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "酸汤肥牛",
+    "category": "牛肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 400,
+    "portion_calories": 1000,
+    "calories_per_100g": 250,
+    "calorie_level": "高"
+  },
+  {
+    "name": "清煮牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 300,
+    "calories_per_100g": 150,
+    "calorie_level": "中"
+  },
+  {
+    "name": "牛肉干",
+    "category": "牛肉",
+    "portion_unit": "1 包",
+    "portion_grams": 50,
+    "portion_calories": 175,
+    "calories_per_100g": 350,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "凉拌牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 360,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清炖羊肉",
+    "category": "羊肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 570,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "红烧羊肉",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "孜然羊肉",
+    "category": "羊肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 750,
+    "calories_per_100g": 250,
+    "calorie_level": "高"
+  },
+  {
+    "name": "葱爆羊肉",
+    "category": "羊肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "烤羊肉串",
+    "category": "羊肉",
+    "portion_unit": "1 串",
+    "portion_grams": 50,
+    "portion_calories": 40,
+    "calories_per_100g": 80,
+    "calorie_level": "低"
+  },
+  {
+    "name": "手抓羊肉",
+    "category": "羊肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 630,
+    "calories_per_100g": 210,
+    "calorie_level": "高"
+  },
+  {
+    "name": "羊肉泡馍",
+    "category": "羊肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 400,
+    "portion_calories": 920,
+    "calories_per_100g": 230,
+    "calorie_level": "高"
+  },
+  {
+    "name": "白切羊肉",
+    "category": "羊肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 360,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "羊杂汤",
+    "category": "羊肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 270,
+    "calories_per_100g": 90,
+    "calorie_level": "低"
+  },
+  {
+    "name": "煎羊排",
+    "category": "羊肉",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 450,
+    "calories_per_100g": 300,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "白切鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 480,
+    "calories_per_100g": 160,
+    "calorie_level": "中"
+  },
+  {
+    "name": "宫保鸡丁",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "辣子鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 570,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "黄焖鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 400,
+    "portion_calories": 720,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "三杯鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 690,
+    "calories_per_100g": 230,
+    "calorie_level": "高"
+  },
+  {
+    "name": "口水鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "可乐鸡翅",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 720,
+    "calories_per_100g": 240,
+    "calorie_level": "高"
+  },
+  {
+    "name": "炸鸡翅",
+    "category": "鸡肉",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 160,
+    "calories_per_100g": 320,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "炸鸡排",
+    "category": "鸡肉",
+    "portion_unit": "1 块",
+    "portion_grams": 150,
+    "portion_calories": 450,
+    "calories_per_100g": 300,
+    "calorie_level": "超高"
+  },
+  {
+    "name": "鸡公煲",
+    "category": "鸡肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 500,
+    "portion_calories": 1050,
+    "calories_per_100g": 210,
+    "calorie_level": "高"
+  },
+  {
+    "name": "大盘鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 500,
+    "portion_calories": 1050,
+    "calories_per_100g": 210,
+    "calorie_level": "高"
+  },
+  {
+    "name": "香菇炖鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 350,
+    "portion_calories": 525,
+    "calories_per_100g": 150,
+    "calorie_level": "中"
+  },
+  {
+    "name": "手撕鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 475,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "咖喱鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 350,
+    "portion_calories": 700,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "蒸冬瓜鸡胸肉",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 225,
+    "calories_per_100g": 90,
+    "calorie_level": "低"
+  },
+  {
+    "name": "老母鸡汤",
+    "category": "鸡肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 300,
+    "calories_per_100g": 100,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鸡米花",
+    "category": "鸡肉",
+    "portion_unit": "1 份",
+    "portion_grams": 100,
+    "portion_calories": 290,
+    "calories_per_100g": 290,
+    "calorie_level": "高"
+  },
+  {
+    "name": "卤鸡腿",
+    "category": "鸡肉",
+    "portion_unit": "1 只",
+    "portion_grams": 100,
+    "portion_calories": 200,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "凉拌凤爪",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 150,
+    "portion_calories": 180,
+    "calories_per_100g": 120,
+    "calorie_level": "中"
+  },
+  {
+    "name": "虎皮凤爪",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 150,
+    "portion_calories": 420,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "爆炒鸡胗",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 360,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "叫花鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 只",
+    "portion_grams": 800,
+    "portion_calories": 2240,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "啤酒鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 500,
+    "portion_calories": 950,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "葱油鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 600,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "泡椒炒鸡杂",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 425,
+    "calories_per_100g": 170,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清蒸鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 条",
+    "portion_grams": 500,
+    "portion_calories": 600,
+    "calories_per_100g": 120,
+    "calorie_level": "中"
+  },
+  {
+    "name": "红烧鱼",
+    "category": "猪肉",
+    "portion_unit": "1 条",
+    "portion_grams": 500,
+    "portion_calories": 1000,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "水煮鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 碗",
+    "portion_grams": 500,
+    "portion_calories": 1100,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "酸菜鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 碗",
+    "portion_grams": 500,
+    "portion_calories": 900,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "糖醋鱼",
+    "category": "猪肉",
+    "portion_unit": "1 条",
+    "portion_grams": 500,
+    "portion_calories": 1250,
+    "calories_per_100g": 250,
+    "calorie_level": "高"
+  },
+  {
+    "name": "烤鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 条",
+    "portion_grams": 600,
+    "portion_calories": 1260,
+    "calories_per_100g": 210,
+    "calorie_level": "高"
+  },
+  {
+    "name": "剁椒鱼头",
+    "category": "鱼虾",
+    "portion_unit": "1 个",
+    "portion_grams": 400,
+    "portion_calories": 680,
+    "calories_per_100g": 170,
+    "calorie_level": "中"
+  },
+  {
+    "name": "油焖大虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "白灼虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 300,
+    "calories_per_100g": 100,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蒜蓉虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 540,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炸虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 560,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "椒盐虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 690,
+    "calories_per_100g": 230,
+    "calorie_level": "高"
+  },
+  {
+    "name": "麻辣小龙虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 500,
+    "portion_calories": 900,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清蒸小龙虾",
+    "category": "鱼虾",
+    "portion_unit": "1 盘",
+    "portion_grams": 500,
+    "portion_calories": 450,
+    "calories_per_100g": 90,
+    "calorie_level": "低"
+  },
+  {
+    "name": "蒜蓉小龙虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 500,
+    "portion_calories": 800,
+    "calories_per_100g": 160,
+    "calorie_level": "中"
+  },
+  {
+    "name": "爆炒鱿鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 450,
+    "calories_per_100g": 150,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炸鱿鱼圈",
+    "category": "鱼虾",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 560,
+    "calories_per_100g": 280,
+    "calorie_level": "高"
+  },
+  {
+    "name": "烤鱿鱼",
+    "category": "鱼虾",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 195,
+    "calories_per_100g": 130,
+    "calorie_level": "中"
+  },
+  {
+    "name": "红烧鲍鱼",
+    "category": "猪肉",
+    "portion_unit": "5 个",
+    "portion_grams": 250,
+    "portion_calories": 400,
+    "calories_per_100g": 160,
+    "calorie_level": "中"
+  },
+  {
+    "name": "大闸蟹",
+    "category": "海鲜",
+    "portion_unit": "1 只",
+    "portion_grams": 150,
+    "portion_calories": 210,
+    "calories_per_100g": 140,
+    "calorie_level": "中"
+  },
+  {
+    "name": "葱烧海参",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 260,
+    "calories_per_100g": 130,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蒜蓉粉丝扇贝",
+    "category": "主食",
+    "portion_unit": "5 个",
+    "portion_grams": 200,
+    "portion_calories": 360,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "椒盐皮皮虾",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "西红柿炒鸡蛋",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 300,
+    "calories_per_100g": 120,
+    "calorie_level": "中"
+  },
+  {
+    "name": "韭菜炒鸡蛋",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 275,
+    "calories_per_100g": 110,
+    "calorie_level": "中"
+  },
+  {
+    "name": "青椒炒蛋",
+    "category": "蛋类",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 450,
+    "calories_per_100g": 180,
+    "calorie_level": "中"
+  },
+  {
+    "name": "蒸蛋",
+    "category": "鱼虾",
+    "portion_unit": "1 碗",
+    "portion_grams": 200,
+    "portion_calories": 160,
+    "calories_per_100g": 80,
+    "calorie_level": "低"
+  },
+  {
+    "name": "茶叶蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 72,
+    "calories_per_100g": 145,
+    "calorie_level": "中"
+  },
+  {
+    "name": "荷包蛋",
+    "category": "主食",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 100,
+    "calories_per_100g": 200,
+    "calorie_level": "高"
+  },
+  {
+    "name": "卤蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 75,
+    "calories_per_100g": 150,
+    "calorie_level": "中"
+  },
+  {
+    "name": "皮蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 60,
+    "portion_calories": 102,
+    "calories_per_100g": 170,
+    "calorie_level": "中"
+  },
+  {
+    "name": "咸鸭蛋",
+    "category": "蛋类",
+    "portion_unit": "1 个",
+    "portion_grams": 60,
+    "portion_calories": 114,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "虎皮鸡蛋",
+    "category": "鸡肉",
+    "portion_unit": "1 个",
+    "portion_grams": 50,
+    "portion_calories": 95,
+    "calories_per_100g": 190,
+    "calorie_level": "中"
+  },
+  {
+    "name": "炒青菜",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 134,
+    "calories_per_100g": 67,
+    "calorie_level": "低"
+  },
+  {
+    "name": "蒜蓉菠菜",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 156,
+    "calories_per_100g": 78,
+    "calorie_level": "低"
+  },
+  {
+    "name": "手撕包菜",
+    "category": "主食",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 222,
+    "calories_per_100g": 89,
+    "calorie_level": "低"
+  },
+  {
+    "name": "酸辣土豆丝",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 245,
+    "calories_per_100g": 98,
+    "calorie_level": "低"
+  },
+  {
+    "name": "地三鲜",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 402,
+    "calories_per_100g": 134,
+    "calorie_level": "中"
+  },
+  {
+    "name": "鱼香茄子",
+    "category": "鱼虾",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 336,
+    "calories_per_100g": 112,
+    "calorie_level": "中"
+  },
+  {
+    "name": "干煸豆角",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 308,
+    "calories_per_100g": 123,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清炒西兰花",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 112,
+    "calories_per_100g": 56,
+    "calorie_level": "低"
+  },
+  {
+    "name": "凉拌黄瓜",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 68,
+    "calories_per_100g": 34,
+    "calorie_level": "低"
+  },
+  {
+    "name": "红烧冬瓜",
+    "category": "猪肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 112,
+    "calories_per_100g": 45,
+    "calorie_level": "低"
+  },
+  {
+    "name": "干锅花菜",
+    "category": "蔬菜",
+    "portion_unit": "1 锅",
+    "portion_grams": 300,
+    "portion_calories": 435,
+    "calories_per_100g": 145,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清炒藕片",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 245,
+    "calories_per_100g": 98,
+    "calorie_level": "低"
+  },
+  {
+    "name": "紫菜蛋花汤",
+    "category": "蛋类",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 85,
+    "calories_per_100g": 34,
+    "calorie_level": "低"
+  },
+  {
+    "name": "西红柿蛋汤",
+    "category": "蛋类",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 112,
+    "calories_per_100g": 45,
+    "calorie_level": "低"
+  },
+  {
+    "name": "冬瓜排骨汤",
+    "category": "汤类",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 201,
+    "calories_per_100g": 67,
+    "calorie_level": "低"
+  },
+  {
+    "name": "玉米排骨汤",
+    "category": "汤类",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 267,
+    "calories_per_100g": 89,
+    "calorie_level": "低"
+  },
+  {
+    "name": "鸡汤",
+    "category": "鸡肉",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 140,
+    "calories_per_100g": 56,
+    "calorie_level": "低"
+  },
+  {
+    "name": "鱼头豆腐汤",
+    "category": "鱼虾",
+    "portion_unit": "1 碗",
+    "portion_grams": 300,
+    "portion_calories": 267,
+    "calories_per_100g": 89,
+    "calorie_level": "低"
+  },
+  {
+    "name": "酸辣汤",
+    "category": "汤类",
+    "portion_unit": "1 碗",
+    "portion_grams": 250,
+    "portion_calories": 140,
+    "calories_per_100g": 56,
+    "calorie_level": "低"
+  },
+  {
+    "name": "凉拌木耳",
+    "category": "蔬菜",
+    "portion_unit": "1 盘",
+    "portion_grams": 150,
+    "portion_calories": 100,
+    "calories_per_100g": 67,
+    "calorie_level": "低"
+  },
+  {
+    "name": "凉拌海带丝",
+    "category": "海鲜",
+    "portion_unit": "1 盘",
+    "portion_grams": 150,
+    "portion_calories": 68,
+    "calories_per_100g": 45,
+    "calorie_level": "低"
+  },
+  {
+    "name": "凉拌皮蛋",
+    "category": "蛋类",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 312,
+    "calories_per_100g": 156,
+    "calorie_level": "中"
+  },
+  {
+    "name": "夫妻肺片",
+    "category": "其他",
+    "portion_unit": "1 盘",
+    "portion_grams": 250,
+    "portion_calories": 468,
+    "calories_per_100g": 187,
+    "calorie_level": "中"
+  },
+  {
+    "name": "口水鸡",
+    "category": "鸡肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 300,
+    "portion_calories": 660,
+    "calories_per_100g": 220,
+    "calorie_level": "高"
+  },
+  {
+    "name": "卤牛肉",
+    "category": "牛肉",
+    "portion_unit": "1 盘",
+    "portion_grams": 200,
+    "portion_calories": 290,
+    "calories_per_100g": 145,
+    "calorie_level": "中"
+  },
+  {
+    "name": "清汤火锅",
+    "category": "汤类",
+    "portion_unit": "1 锅",
+    "portion_grams": 1000,
+    "portion_calories": 120,
+    "calories_per_100g": 12,
+    "calorie_level": "低"
+  },
+  {
+    "name": "麻辣火锅",
+    "category": "火锅",
+    "portion_unit": "1 锅",
+    "portion_grams": 1000,
+    "portion_calories": 2340,
+    "calories_per_100g": 234,
+    "calorie_level": "高"
+  },
+  {
+    "name": "番茄火锅",
+    "category": "火锅",
+    "portion_unit": "1 锅",
+    "portion_grams": 1000,
+    "portion_calories": 450,
+    "calories_per_100g": 45,
+    "calorie_level": "低"
+  },
+  {
+    "name": "菌菇火锅",
+    "category": "火锅",
+    "portion_unit": "1 锅",
+    "portion_grams": 1000,
+    "portion_calories": 340,
+    "calories_per_100g": 34,
+    "calorie_level": "低"
+  },
+  {
+    "name": "羊肉火锅",
+    "category": "羊肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 800,
+    "portion_calories": 1424,
+    "calories_per_100g": 178,
+    "calorie_level": "中"
+  },
+  {
+    "name": "牛肉火锅",
+    "category": "牛肉",
+    "portion_unit": "1 锅",
+    "portion_grams": 800,
+    "portion_calories": 1336,
+    "calories_per_100g": 167,
+    "calorie_level": "中"
+  }
+]

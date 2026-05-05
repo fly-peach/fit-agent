@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from src.fitme.utils.database import get_db
+from src.fitme.utils.database import get_user_db
 from src.fitme.services.health_service import HealthService
 from src.fitme.services.user_service import UserService
 from src.fitme.schemas.health import (
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/health", tags=["Health"])
 
 def get_current_user(
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """获取当前用户"""
     if not authorization:
@@ -36,7 +36,7 @@ def get_current_user(
 @router.get("/metrics", response_model=HealthMetricsResponse)
 def get_metrics(
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """获取用户基础指标"""
     metric = HealthService.get_metrics(db, current_user.user_id)
@@ -70,7 +70,7 @@ def get_metrics(
 def create_metric(
     data: CreateHealthMetricRequest,
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """创建健康指标记录"""
     metric = HealthService.create_metric(db, current_user.user_id, data)
@@ -84,7 +84,7 @@ def create_metric(
 def get_measurements(
     limit: int = Query(default=10, ge=1, le=100),
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """获取历史测量记录"""
     metrics = HealthService.get_measurements(db, current_user.user_id, limit)
@@ -107,7 +107,7 @@ def get_measurements(
 def get_report(
     period: str = Query(default="week", pattern="^(week|month|year)$"),
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """获取健康数据报表"""
     report = HealthService.get_report(db, current_user.user_id, period)
@@ -119,7 +119,7 @@ def export_health(
     period: str = Query(default="week"),
     format: str = Query(default="csv", pattern="^csv$"),
     current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_user_db)
 ):
     """导出健康数据"""
     from fastapi.responses import StreamingResponse

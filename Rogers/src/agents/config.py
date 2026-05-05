@@ -6,15 +6,23 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
+
+_logger = logging.getLogger("fitagent.config")
+
+_DEFAULT_JWT_SECRET = "your-secret-key-change-in-production"
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, model_validator
 
 # 确保在调用任何 os.getenv 之前加载 .env
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env")
+
+# 导入统一配置
+from src.fitme.core.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -38,6 +46,85 @@ class ToolGroupConfig(BaseModel):
     """可被每个智能体启用/禁用的命名工具组。"""
     enabled: bool = True
     tool_names: list[str] = Field(default_factory=list)
+
+
+class BuiltinToolConfig(BaseModel):
+    """内置工具配置。"""
+
+    name: str
+    enabled: bool = True
+    description: str = ""
+
+
+def _default_builtin_tools() -> dict[str, BuiltinToolConfig]:
+    return {
+        "execute_python_code": BuiltinToolConfig(
+            name="execute_python_code",
+            enabled=True,
+            description="执行 Python 代码",
+        ),
+        "execute_shell_command": BuiltinToolConfig(
+            name="execute_shell_command",
+            enabled=True,
+            description="执行 shell/bash 命令",
+        ),
+        "memory_search": BuiltinToolConfig(
+            name="memory_search",
+            enabled=True,
+            description="搜索长期记忆内容",
+        ),
+        "read_skill_resource": BuiltinToolConfig(
+            name="read_skill_resource",
+            enabled=True,
+            description="按需读取技能 references/scripts 文件",
+        ),
+        "get_user_profile": BuiltinToolConfig(name="get_user_profile", enabled=True),
+        "get_health_summary": BuiltinToolConfig(name="get_health_summary", enabled=True),
+        "get_health_history": BuiltinToolConfig(name="get_health_history", enabled=True),
+        "get_training_today": BuiltinToolConfig(name="get_training_today", enabled=True),
+        "get_training_weekly": BuiltinToolConfig(name="get_training_weekly", enabled=True),
+        "get_training_recommendations": BuiltinToolConfig(
+            name="get_training_recommendations", enabled=True,
+        ),
+        "get_diet_today": BuiltinToolConfig(name="get_diet_today", enabled=True),
+        "get_diet_weekly_trend": BuiltinToolConfig(
+            name="get_diet_weekly_trend", enabled=True,
+        ),
+        "get_food_recommendations": BuiltinToolConfig(
+            name="get_food_recommendations", enabled=True,
+        ),
+        "get_user_settings": BuiltinToolConfig(name="get_user_settings", enabled=True),
+        "get_full_overview": BuiltinToolConfig(name="get_full_overview", enabled=True),
+        "search_foods": BuiltinToolConfig(name="search_foods", enabled=True),
+        "update_profile": BuiltinToolConfig(name="update_profile", enabled=True),
+        "add_health_metric": BuiltinToolConfig(name="add_health_metric", enabled=True),
+        "add_training_plan": BuiltinToolConfig(name="add_training_plan", enabled=True),
+        "complete_training": BuiltinToolConfig(name="complete_training", enabled=True),
+        "delete_training_plan": BuiltinToolConfig(
+            name="delete_training_plan", enabled=True,
+        ),
+        "add_meal": BuiltinToolConfig(name="add_meal", enabled=True),
+        "update_meal": BuiltinToolConfig(name="update_meal", enabled=True),
+        "delete_meal": BuiltinToolConfig(name="delete_meal", enabled=True),
+        "update_settings": BuiltinToolConfig(name="update_settings", enabled=True),
+        "add_custom_food": BuiltinToolConfig(name="add_custom_food", enabled=True),
+    }
+
+
+class ToolsConfig(BaseModel):
+    """智能体内置工具配置。"""
+
+    builtin_tools: dict[str, BuiltinToolConfig] = Field(
+        default_factory=_default_builtin_tools,
+    )
+
+    @model_validator(mode="after")
+    def _merge_default_tools(self) -> "ToolsConfig":
+        defaults = _default_builtin_tools()
+        for name, tool in defaults.items():
+            if name not in self.builtin_tools:
+                self.builtin_tools[name] = tool
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -126,16 +213,19 @@ class AgentConfig(BaseModel):
     sys_prompt: str = ""
     sys_prompt_files: list[str] = Field(default_factory=list)
     model: Union[str, ModelProvider] = Field(default_factory=ModelProvider)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
     tool_groups: dict[str, ToolGroupConfig] = Field(default_factory=dict)
     running: RunningConfig = Field(default_factory=RunningConfig)
 
     # 已启用工具的派生列表
     def get_enabled_tools(self) -> list[str]:
-        tools: list[str] = []
+        tools = [
+            name for name, config in self.tools.builtin_tools.items() if config.enabled
+        ]
         for group in self.tool_groups.values():
             if group.enabled:
                 tools.extend(group.tool_names)
-        return tools
+        return list(dict.fromkeys(tools))
 
 
 # ---------------------------------------------------------------------------
@@ -148,8 +238,8 @@ class AppConfig(BaseModel):
     app_name: str = "FitAgent"
     app_version: str = "1.0.0"
     debug: bool = True
-    database_url: str = "sqlite:///./db/fitagent.db"
-    jwt_secret_key: str = "your-secret-key-change-in-production"
+    database_url: str = "sqlite:///./data/fituser.db"
+    jwt_secret_key: str = _DEFAULT_JWT_SECRET
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 24
 
@@ -183,36 +273,41 @@ class AppConfig(BaseModel):
         # 确保 active_agent 指向有效的智能体
         if self.active_agent not in self.agents:
             self.active_agent = "default"
+        # 检查不安全的 JWT 密钥
+        if self.jwt_secret_key == _DEFAULT_JWT_SECRET:
+            raise ValueError(
+                "必须设置 JWT_SECRET_KEY！请在 .env 中配置"
+            )
         return self
 
     @classmethod
     def from_env(cls) -> "AppConfig":
-        """纯从环境变量构建配置（向后兼容）。"""
-        models: dict[str, ModelProvider] = {}
+        """纯从环境变量构建配置。
 
-        dashscope_key = os.getenv("DASHSCOPE_API_KEY", "")
-        if dashscope_key:
-            models["primary"] = ModelProvider(
+        API Key 不再从环境变量读取，只能通过 Agent 配置页面由用户自行设置。
+        """
+        # 注册默认模型（不含 API Key，需用户在配置页面填入）
+        models: dict[str, ModelProvider] = {
+            "primary": ModelProvider(
                 provider="dashscope",
-                api_key=dashscope_key,
                 model_name=os.getenv("DASHSCOPE_MODEL", "qwen-turbo"),
-            )
+            ),
+        }
 
-        openai_key = os.getenv("OPENAI_API_KEY", "")
-        if openai_key:
+        openai_base_url = os.getenv("OPENAI_BASE_URL", "")
+        if openai_base_url:
             models["fallback"] = ModelProvider(
                 provider="openai",
-                api_key=openai_key,
-                base_url=os.getenv("OPENAI_BASE_URL") or None,
+                base_url=openai_base_url or None,
                 model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
             )
 
         return cls(
             app_name=os.getenv("APP_NAME", "FitAgent"),
             app_version=os.getenv("APP_VERSION", "1.0.0"),
-            debug=os.getenv("DEBUG", "true").lower() in ("true", "1"),
+            debug=False,
             database_url=os.getenv("DATABASE_URL", "sqlite:///./db/fitagent.db"),
-            jwt_secret_key=os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production"),
+            jwt_secret_key=os.getenv("JWT_SECRET_KEY", _DEFAULT_JWT_SECRET),
             server_host=os.getenv("SERVER_HOST", "127.0.0.1"),
             server_port=int(os.getenv("SERVER_PORT", "8000")),
             redis_url=os.getenv("REDIS_URL") or None,
@@ -265,8 +360,8 @@ def get_config() -> AppConfig:
     """返回全局 AppConfig 单例，如未加载则先加载。"""
     global _config
     if _config is None:
-        # 尝试从默认配置路径加载，失败则回退到环境变量
-        config_path = Path(__file__).resolve().parent.parent.parent / "agent_db" / "agent.json"
+        # 使用统一配置的路径
+        config_path = settings.AGENT_DB_DIR / "agent.json"
         _config = AppConfig.from_file(config_path)
     return _config
 
@@ -279,13 +374,34 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
     """
     config = get_config()
     agent_cfg = config.get_active_agent()
-    # 使用与 user_workspace.py 一致的 workspace 根路径
-    workspace_root = Path(__file__).resolve().parent / "agent_db" / "workspace"
+    # 使用统一配置的 workspace 根路径
+    workspace_root = settings.AGENT_DB_DIR / "workspace"
     user_config_path = workspace_root / "users" / str(user_id) / "agent.json"
     if user_config_path.exists():
         with open(user_config_path, encoding="utf-8") as f:
             user_data = json.load(f)
         merged = agent_cfg.model_dump()
+
+        # 特殊处理 model 字段：
+        # 如果用户配置中有 model 且是字典，只合并其中的特定字段，
+        # 避免覆盖掉整个 model 结构
+        if "model" in user_data and isinstance(user_data["model"], dict):
+            # 如果 merged['model'] 是字符串（引用），先解析成对象
+            if isinstance(merged.get("model"), str):
+                model_key = merged["model"]
+                if model_key in config.models:
+                    merged["model"] = config.models[model_key].model_dump()
+
+            # 现在合并用户的 model 配置（只合并允许的字段）
+            if isinstance(merged.get("model"), dict):
+                user_model = user_data["model"]
+                # 只允许覆盖这些字段
+                for key in ["api_key", "model_name"]:
+                    if key in user_model:
+                        merged["model"][key] = user_model[key]
+                # 用户配置中删除 model，避免后面 _deep_merge 再次处理
+                del user_data["model"]
+
         _deep_merge(merged, user_data)
         return AgentConfig(**merged)
     return agent_cfg

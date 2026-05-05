@@ -1,4 +1,3 @@
-import os
 import logging
 import base64
 from contextvars import ContextVar
@@ -7,7 +6,7 @@ from typing import Any
 
 from agentscope.message import Msg
 from agentscope.pipeline import stream_printing_messages
-from src.agents.agent import agent_cache
+from src.agents.agent import create_user_agent
 from agentscope_runtime.engine.app import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 from fastapi import APIRouter, HTTPException, Header, Depends, UploadFile
@@ -17,9 +16,8 @@ from pydantic import BaseModel
 
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
-from src.agents.config import get_config
 from src.agents.harness.tools.basic.read_data import get_db as harness_get_db
-from src.fitme.utils.database import get_db
+from src.fitme.utils.database import get_user_db
 from src.fitme.models import UserImage
 
 logger = logging.getLogger("fitagent")
@@ -32,6 +30,17 @@ agent_app = AgentApp(
     app_name="MyAssistant",
     app_description="A helpful assistant agent",
 )
+
+
+def _get_user_id_from_auth(authorization: str | None) -> int:
+    """从 Authorization header 提取并验证用户 ID。"""
+    token = ""
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    try:
+        return get_user_id_from_token(token)
+    except NotAuthenticatedError:
+        raise HTTPException(status_code=401, detail="请先登录")
 
 # ---------------------------------------------------------------------------
 # Image URL → base64 conversion for vision models
@@ -122,31 +131,40 @@ async def query_func(
         yield Msg(name="Rogers", content="请先登录后再使用助手。", role="assistant"), True
         return
 
-    agent = await agent_cache.get_or_create(user_id)
+    # 每次创建全新的 agent 实例，确保用户间完全独立
+    agent = create_user_agent(user_id)
     agent.set_console_output_enabled(False)
+    memory_manager = getattr(agent, "_memory_manager", None)
 
     async with agent_context(user_id):
-        await agent_app.state.session.load_session_state(
-            session_id=session_id,
-            user_id=str(user_id),
-            agent=agent,
-        )
+        try:
+            if memory_manager is not None:
+                await memory_manager.start()
 
-        # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
-        with harness_get_db() as db:
-            msgs = _resolve_images_to_base64(msgs, db)
+            await agent_app.state.session.load_session_state(
+                session_id=session_id,
+                user_id=str(user_id),
+                agent=agent,
+            )
 
-        async for msg, last, *_ in stream_printing_messages(
-            agents=[agent],
-            coroutine_task=agent(msgs),
-        ):
-            yield msg, last
+            # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
+            with harness_get_db() as db:
+                msgs = _resolve_images_to_base64(msgs, db)
 
-        await agent_app.state.session.save_session_state(
-            session_id=session_id,
-            user_id=str(user_id),
-            agent=agent,
-        )
+            async for msg, last, *_ in stream_printing_messages(
+                agents=[agent],
+                coroutine_task=agent(msgs),
+            ):
+                yield msg, last
+
+            await agent_app.state.session.save_session_state(
+                session_id=session_id,
+                user_id=str(user_id),
+                agent=agent,
+            )
+        finally:
+            if memory_manager is not None:
+                await memory_manager.close()
 
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -156,16 +174,12 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 # Per-user agent configuration management
 # ---------------------------------------------------------------------------
 
+# 使用统一配置
+from src.fitme.core.config import settings
+from src.agents.harness.templates.templates import get_template_path, get_soul_template_path
+
 # 默认配置路径
-DEFAULT_AGENT_JSON = Path(__file__).resolve().parent.parent.parent / "agent_db" / "agent.json"
-
-# 模板路径
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace" / "templates"
-
-
-def _get_default_api_key() -> str:
-    """从环境变量获取默认 API Key。"""
-    return os.getenv("DASHSCOPE_API_KEY", "")
+DEFAULT_AGENT_JSON = settings.AGENT_DB_DIR / "agent.json"
 
 
 def _get_default_config() -> dict:
@@ -200,7 +214,6 @@ class AgentConfigUpdate(BaseModel):
 class AgentConfigResponse(BaseModel):
     agents_md: str
     soul_md: str
-    api_key: str
     api_key_masked: str
     model_name: str
     is_custom_api_key: bool  # 是否使用自定义 API Key
@@ -218,27 +231,16 @@ async def get_agent_config(
 ):
     """获取当前用户的 agent 配置。"""
     import json
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
+    user_id = _get_user_id_from_auth(authorization)
 
     user_dir = get_user_workspace(user_id)
     agents_md = (user_dir / "agents.md").read_text(encoding="utf-8") if (user_dir / "agents.md").exists() else ""
     soul_md = (user_dir / "soul.md").read_text(encoding="utf-8") if (user_dir / "soul.md").exists() else ""
 
-    # 从环境变量获取默认 API Key
-    default_api_key = _get_default_api_key()
-
     # 加载用户级 agent.json
     user_config_path = user_dir / "agent.json"
     user_api_key = ""
-    model_name = "qwen3.5-flash"
-    is_custom_api_key = False
+    model_name = "qwen-turbo"
 
     if user_config_path.exists():
         with open(user_config_path, encoding="utf-8") as f:
@@ -246,23 +248,15 @@ async def get_agent_config(
         model_config = user_config.get("model", {})
         if isinstance(model_config, dict):
             user_api_key = model_config.get("api_key", "")
-            model_name = model_config.get("model_name", "qwen3.5-flash")
+            model_name = model_config.get("model_name", "qwen-turbo")
 
-    # 判断 API Key 来源
-    if user_api_key:
-        # 用户有自定义 API Key
-        is_custom_api_key = True
-        api_key = user_api_key
-    else:
-        # 使用环境变量中的默认 API Key
-        api_key = default_api_key
-        is_custom_api_key = False
+    # API Key 只从用户配置读取，不再从环境变量读取
+    is_custom_api_key = bool(user_api_key)
 
     return AgentConfigResponse(
         agents_md=agents_md,
         soul_md=soul_md,
-        api_key=api_key,
-        api_key_masked=_mask_api_key(api_key),
+        api_key_masked=_mask_api_key(user_api_key),
         model_name=model_name,
         is_custom_api_key=is_custom_api_key,
     )
@@ -276,7 +270,7 @@ async def get_default_config():
     # 从 agents 配置中获取默认 sys_prompt
     agents_md = ""
     soul_md = ""
-    model_name = "qwen3.5-flash"
+    model_name = "qwen-turbo"
 
     if "agents" in default_config and "default" in default_config["agents"]:
         agent_cfg = default_config["agents"]["default"]
@@ -284,10 +278,10 @@ async def get_default_config():
 
     if "models" in default_config and "primary" in default_config["models"]:
         model_cfg = default_config["models"]["primary"]
-        model_name = model_cfg.get("model_name", "qwen3.5-flash")
+        model_name = model_cfg.get("model_name", "qwen-turbo")
 
     # 从模板文件读取默认的 soul.md
-    soul_template = TEMPLATE_DIR / "soul.md"
+    soul_template = get_soul_template_path()
     if soul_template.exists():
         soul_md = soul_template.read_text(encoding="utf-8")
 
@@ -305,14 +299,7 @@ async def update_agent_config(
 ):
     """更新当前用户的 agent 配置。"""
     import json
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
+    user_id = _get_user_id_from_auth(authorization)
 
     user_dir = ensure_user_workspace(user_id)
 
@@ -332,8 +319,17 @@ async def update_agent_config(
     if "model" not in user_config or not isinstance(user_config.get("model"), dict):
         user_config["model"] = {}
 
+    # 只有在提供了新的 api_key 且不是占位符时才更新
+    # 空字符串表示清除自定义 api_key
     if body.api_key is not None:
-        user_config["model"]["api_key"] = body.api_key
+        if body.api_key.strip() == "" or body.api_key.startswith("sk-****"):
+            # 清除自定义 api_key
+            if "api_key" in user_config["model"]:
+                del user_config["model"]["api_key"]
+        else:
+            # 设置新的自定义 api_key
+            user_config["model"]["api_key"] = body.api_key
+
     if body.model_name is not None:
         user_config["model"]["model_name"] = body.model_name
 
@@ -341,9 +337,6 @@ async def update_agent_config(
     if body.api_key is not None or body.model_name is not None:
         with open(user_config_path, "w", encoding="utf-8") as f:
             json.dump(user_config, f, indent=2, ensure_ascii=False)
-
-    # Evict cached agent so next request picks up new config
-    await agent_cache.evict(user_id)
 
     return {"status": "ok"}
 
@@ -357,14 +350,7 @@ async def delete_session(
     import re
     if not re.match(r'^[a-zA-Z0-9_\-]+$', session_id):
         raise HTTPException(status_code=400, detail="session_id 仅支持字母、数字、下划线、短横线")
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
+    user_id = _get_user_id_from_auth(authorization)
 
     user_dir = get_user_workspace(user_id)
     session_file = user_dir / "sessions" / f"{session_id}.json"
@@ -380,25 +366,14 @@ async def delete_session(
 # Image upload / retrieval / deletion
 # ---------------------------------------------------------------------------
 
-def _get_user_id(authorization: str | None) -> int:
-    """从 Authorization header 提取并验证用户 ID。"""
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    try:
-        return get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
-
-
 @router.post("/upload")
 async def upload_image(
     file: UploadFile,
     authorization: str | None = Header(default=None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ):
     """上传图片，存入数据库，返回 URL。"""
-    user_id = _get_user_id(authorization)
+    user_id = _get_user_id_from_auth(authorization)
 
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="仅支持图片文件")
@@ -424,7 +399,7 @@ async def upload_image(
 @router.get("/images/{image_id}")
 async def get_image(
     image_id: int,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ):
     """从数据库读取图片并返回。"""
     image = db.query(UserImage).filter(UserImage.image_id == image_id).first()
@@ -442,10 +417,10 @@ async def get_image(
 async def delete_image(
     image_id: int,
     authorization: str | None = Header(default=None),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_user_db),
 ):
     """删除图片。"""
-    user_id = _get_user_id(authorization)
+    user_id = _get_user_id_from_auth(authorization)
     image = db.query(UserImage).filter(
         UserImage.image_id == image_id,
         UserImage.user_id == user_id,

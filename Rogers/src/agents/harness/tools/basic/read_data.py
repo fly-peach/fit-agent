@@ -5,7 +5,6 @@
 """
 
 # mypy: disable-error-code="operator, arg-type, call-arg"
-from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date
 from decimal import Decimal
@@ -32,23 +31,49 @@ _current_user_id: ContextVar[int | None] = ContextVar("current_user_id", default
 _current_db: ContextVar[Session | None] = ContextVar("current_db", default=None)
 
 
-@contextmanager
+class _DBSessionProxy:
+    """同时支持直接访问和 `with` 语法的数据库会话代理。"""
+
+    def __init__(self):
+        self._session: Session | None = None
+        self._owns_session = False
+
+    def _get_session(self) -> Session:
+        if self._session is not None:
+            return self._session
+        shared = _current_db.get()
+        if shared is not None:
+            self._session = shared
+            self._owns_session = False
+            return shared
+        from src.fitme.utils.database import SessionLocal
+        self._session = SessionLocal()
+        self._owns_session = True
+        return self._session
+
+    def __enter__(self) -> Session:
+        return self._get_session()
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self._owns_session and self._session is not None:
+            self._session.close()
+        self._session = None
+        self._owns_session = False
+
+    def __getattr__(self, item):
+        return getattr(self._get_session(), item)
+
+
 def get_db():
     """获取当前数据库 session。
 
-    优先使用 AgentContext 设置的共享 session；
-    未设置时会创建一个临时 session，退出时自动关闭。
+    优先使用 AgentContext 设置的共享 session；未设置时懒加载临时 session。
+    返回的代理既可直接使用，也可通过 `with get_db()` 管理生命周期。
     """
-    db = _current_db.get()
-    if db is not None:
-        yield db
-        return
-    from src.fitme.utils.database import SessionLocal
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    return _DBSessionProxy()
 
 
 def require_user() -> int | None:

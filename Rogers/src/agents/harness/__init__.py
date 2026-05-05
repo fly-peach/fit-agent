@@ -31,7 +31,9 @@ from .tools.basic.write_data import (
     update_settings,
     add_custom_food,
 )
+from .tools.basic.shell import execute_shell_command
 from .tools.memory_search import create_memory_search_tool
+from .tools.skill_resource import create_skill_resource_tool
 from .memory.reme_light import ReMeLightMemoryManager
 from .hooks.memory_compaction import create_memory_compaction_hook
 from .workspace.user_workspace import (
@@ -40,6 +42,13 @@ from .workspace.user_workspace import (
     ensure_user_workspace,
     load_user_sys_prompt,
     load_user_context,
+    restock_template_skills,
+)
+from .templates.templates import (
+    get_template_path,
+    get_skills_template_path,
+    get_agent_template_path,
+    get_soul_template_path,
 )
 from .sessions.user_session import UserSession
 from .utils.token_counter import EstimateTokenCounter, get_token_counter
@@ -78,8 +87,10 @@ __all__ = [
     "delete_meal",
     "update_settings",
     "add_custom_food",
+    "execute_shell_command",
     # 记忆
     "create_memory_search_tool",
+    "create_skill_resource_tool",
     "ReMeLightMemoryManager",
     # 钩子
     "create_memory_compaction_hook",
@@ -89,6 +100,12 @@ __all__ = [
     "ensure_user_workspace",
     "load_user_sys_prompt",
     "load_user_context",
+    "restock_template_skills",
+    # 模板
+    "get_template_path",
+    "get_skills_template_path",
+    "get_agent_template_path",
+    "get_soul_template_path",
     # 会话
     "UserSession",
     # 工具类

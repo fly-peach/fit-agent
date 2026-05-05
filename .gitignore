@@ -35,9 +35,13 @@ build/
 
 # Database
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 db/
+data/
 
 # Agent database workspace (user data, sessions)
 **/agent_db/workspace/
@@ -54,6 +58,7 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
+test/
 
 # Pencil design files
 *.pen.operations
@@ -61,6 +66,10 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+*.json.bak
 
 # Claude Code
 .claude/
+
+# Trae IDE
+.trae/

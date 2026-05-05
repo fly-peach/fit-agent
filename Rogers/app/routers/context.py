@@ -78,7 +78,7 @@ async def clear_cache(authorization: str | None = Header(default=None)):
 
 @router.post("/compact", response_model=CompactResponse)
 async def trigger_compact(authorization: str | None = Header(default=None)):
-    from src.agents.agent import agent_cache
+    from src.agents.agent import create_user_agent
 
     token = ""
     if authorization and authorization.startswith("Bearer "):
@@ -88,7 +88,7 @@ async def trigger_compact(authorization: str | None = Header(default=None)):
     except NotAuthenticatedError:
         raise HTTPException(status_code=401, detail="请先登录")
 
-    agent = await agent_cache.get_or_create(user_id)
+    agent = create_user_agent(user_id)
     memory_manager = getattr(agent, "_memory_manager", None)
 
     if not memory_manager:

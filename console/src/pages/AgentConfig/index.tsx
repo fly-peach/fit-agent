@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Tooltip, Modal, Table, Switch, Statistic, Spin, Popconfirm } from 'antd'
-import { Bot, Key, Cpu, Info, Sparkles } from 'lucide-react'
+import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Modal, Table, Statistic, Spin, Popconfirm } from 'antd'
+import { Bot, Key, Cpu, Sparkles } from 'lucide-react'
 import { EyeOutlined, ReloadOutlined, DeleteOutlined, ExperimentOutlined } from '@ant-design/icons'
 import { agentApi } from '../../services/user'
 import { contextApi, ContextStats, CacheEntry } from '../../services/context'
@@ -178,10 +178,10 @@ const useIsMobile = () => {
 const AgentConfig: React.FC = () => {
   const [agentForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
-  const [isCustomApiKey, setIsCustomApiKey] = useState(false)
   const [apiKeyMasked, setApiKeyMasked] = useState('')
   const [useCustomModel, setUseCustomModel] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string>('')
+  const [hasApiKeyInput, setHasApiKeyInput] = useState(false)
 
   const [savingModel, setSavingModel] = useState(false)
   const isMobile = useIsMobile()
@@ -258,7 +258,7 @@ const AgentConfig: React.FC = () => {
       agentForm.setFieldsValue({
         agents_md: data.agents_md,
         soul_md: data.soul_md,
-        api_key: data.api_key,
+        api_key: '', // 不填充 api_key，保持为空
         model_name: data.model_name,
       })
       // 如果当前模型不在预设列表中，切换到自定义模式
@@ -269,8 +269,8 @@ const AgentConfig: React.FC = () => {
         p => p.key !== 'custom' && p.agents_md === data.agents_md && p.soul_md === data.soul_md,
       )
       setSelectedPreset(matchedPreset ? matchedPreset.key : 'custom')
-      setIsCustomApiKey(data.is_custom_api_key)
       setApiKeyMasked(data.api_key_masked)
+      setHasApiKeyInput(false)
     } catch {
       message.error('获取配置失败')
     }
@@ -279,7 +279,15 @@ const AgentConfig: React.FC = () => {
     try {
       setSavingModel(true)
       const values = agentForm.getFieldsValue(['api_key', 'model_name'])
-      await agentApi.updateConfig(values)
+      // 如果用户没有输入新的 api_key，不传这个字段，避免覆盖
+      const payload: any = { model_name: values.model_name }
+      if (hasApiKeyInput && values.api_key) {
+        payload.api_key = values.api_key
+      } else if (hasApiKeyInput && !values.api_key) {
+        // 用户清空了输入，表示要清除自定义 api_key
+        payload.api_key = ''
+      }
+      await agentApi.updateConfig(payload)
       message.success('模型配置已保存')
       fetchConfig()
     } catch {
@@ -293,7 +301,19 @@ const AgentConfig: React.FC = () => {
     try {
       setSaving(true)
       const values = await agentForm.validateFields()
-      await agentApi.updateConfig(values)
+      // 如果用户没有输入新的 api_key，不传这个字段，避免覆盖
+      const payload: any = {
+        agents_md: values.agents_md,
+        soul_md: values.soul_md,
+        model_name: values.model_name,
+      }
+      if (hasApiKeyInput && values.api_key) {
+        payload.api_key = values.api_key
+      } else if (hasApiKeyInput && !values.api_key) {
+        // 用户清空了输入，表示要清除自定义 api_key
+        payload.api_key = ''
+      }
+      await agentApi.updateConfig(payload)
       message.success('Agent 配置已保存')
       fetchConfig()
     } catch {
@@ -367,23 +387,20 @@ const AgentConfig: React.FC = () => {
               配置 DashScope API Key 和模型参数，控制 Agent 的响应能力和思考模式。
             </Typography.Paragraph>
 
-            {/* API Key 来源提示 */}
+            {/* API Key 状态提示 */}
             {apiKeyMasked && (
               <Alert
-                type={isCustomApiKey ? 'success' : 'info'}
+                type="success"
                 showIcon
                 style={{ marginBottom: 16, borderRadius: 10 }}
                 message={
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>
                       当前 API Key：{apiKeyMasked}
-                      <Tag color={isCustomApiKey ? '#10B981' : '#0EA5E9'} style={{ marginLeft: 8 }}>
-                        {isCustomApiKey ? '个人配置' : '系统环境变量'}
+                      <Tag color="#10B981" style={{ marginLeft: 8 }}>
+                        已配置
                       </Tag>
                     </span>
-                    <Tooltip title={isCustomApiKey ? '您已配置个人专属 API Key，响应更稳定可靠' : '使用系统环境变量中的默认 API Key，如需更稳定服务请配置个人 Key'}>
-                      <Info size={16} style={{ color: '#6B7280', cursor: 'help' }} />
-                    </Tooltip>
                   </div>
                 }
               />
@@ -393,7 +410,7 @@ const AgentConfig: React.FC = () => {
                 type="warning"
                 showIcon
                 style={{ marginBottom: 16, borderRadius: 10 }}
-                message="未配置 API Key，请在下方填入您的 DashScope API Key，或联系管理员配置系统环境变量"
+                message="未配置 API Key，请在下方填入您的 DashScope API Key 后保存"
               />
             )}
 
@@ -407,11 +424,20 @@ const AgentConfig: React.FC = () => {
                       <span>DashScope API Key</span>
                     </div>
                   }
-                  help="填入个人 DashScope API Key 可获得更稳定服务；留空则使用系统环境变量中的默认 Key"
+                  help={
+                    hasApiKeyInput
+                      ? '输入新的 API Key 以替换当前配置；留空则清除已配置的 Key'
+                      : '填入您的 DashScope API Key，从阿里云百炼控制台获取'
+                  }
                 >
                   <Input.Password
-                    placeholder="留空使用系统默认 API Key"
+                    placeholder={
+                      apiKeyMasked
+                        ? '输入新的 API Key 或留空清除配置'
+                        : '输入您的 DashScope API Key'
+                    }
                     style={{ borderRadius: 10 }}
+                    onChange={() => setHasApiKeyInput(true)}
                   />
                 </Form.Item>
               </Col>

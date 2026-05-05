@@ -1,9 +1,14 @@
 """FitAgent FastAPI Application"""
 import os
 import logging
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load .env file FIRST before any other imports
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import time
-from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -13,8 +18,8 @@ logger = logging.getLogger("fitagent")
 
 
 from src.fitme.core.config import settings
-from src.fitme.models import Base
-from src.fitme.utils.database import engine
+from src.fitme.models import UserDBBase
+from src.fitme.utils.database import user_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router
 from .routers.agent import agent_app, router as agent_router, _auth_token
@@ -23,12 +28,18 @@ from .routers import skills, memory, context
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """初始化服务。"""
-    # 创建数据库表并创建测试账户
-    Base.metadata.create_all(bind=engine)
+    # 1. 初始化 fitbase.db（建表 + 种子数据，幂等）
+    from src.fitme.seed import seed_base_db
+    result = seed_base_db()
+    if any(v > 0 for v in result.values()):
+        logger.info("fitbase.db 种子数据已加载: %s", result)
 
-    # 迁移：为新列添加 ALTER TABLE
+    # 2. 初始化 fituser.db（建表）
+    UserDBBase.metadata.create_all(bind=user_engine)
+
+    # 迁移：为新列添加 ALTER TABLE (仅在 user_db 上)
     import sqlalchemy as sa
-    with engine.connect() as conn:
+    with user_engine.connect() as conn:
         for col, col_type in [("recurring_group_id", "INTEGER")]:
             try:
                 conn.execute(sa.text(f"ALTER TABLE training_plans ADD COLUMN {col} {col_type}"))
@@ -36,11 +47,12 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass  # 列已存在
 
+    # 创建测试账户
     from .seed import seed_test_accounts
     seed_test_accounts()
 
     # Disk-based session storage — stores under users/{user_id}/sessions/
-    sessions_dir = Path(__file__).resolve().parent.parent / "agent_db" / "workspace" / "users"
+    sessions_dir = settings.AGENT_DB_DIR / "workspace" / "users"
     from src.agents.harness.sessions.user_session import UserSession
     session = UserSession(save_dir=str(sessions_dir))
 
@@ -52,20 +64,10 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # Clean up ReMe memory managers
-        from src.agents.agent import agent_cache
-        for agent in agent_cache._agents.values():
-            mm = getattr(agent, "_memory_manager", None)
-            if mm:
-                try:
-                    await mm.close()
-                except Exception as e:
-                    logger.warning(f"Failed to close memory manager: {e}")
-        agent_cache._agents.clear()
         print("AgentApp is shutting down...")
-        
-        
-        
+
+
+
 app = FastAPI(
     lifespan=lifespan,
     title=settings.APP_NAME,
@@ -76,7 +78,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -110,9 +112,9 @@ async def log_requests(request: Request, call_next):
     path = request.url.path
     client = request.client.host if request.client else "unknown"
     logger.info(">> %s %s from %s", method, path, client)
-    
+
     response = await call_next(request)
-    
+
     duration = time.time() - start_time
     logger.info("<< %s %s -> %s (%.2fs)", method, path, response.status_code, duration)
     return response

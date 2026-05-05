@@ -3,12 +3,23 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from src.fitme.core.config import settings
+from ..skills.skill_manager import SkillManager
+from ..templates.templates import get_template_path, get_skills_template_path
 
 
-_WORKSPACE_ROOT = Path(__file__).resolve().parent.parent.parent / "agent_db" / "workspace"
-_TEMPLATE_DIR = _WORKSPACE_ROOT / "templates"
-_SKILLS_TEMPLATE_DIR = _TEMPLATE_DIR / "skills"
+# 模板目录通过统一模块获取
+_TEMPLATE_DIR = get_template_path()
+_SKILLS_TEMPLATE_DIR = get_skills_template_path()
+
+# 用户数据目录在 data 中
+_WORKSPACE_ROOT = settings.AGENT_DB_DIR / "workspace"
 _USERS_DIR = _WORKSPACE_ROOT / "users"
+
+
+def _sync_skill_manifest(user_dir: Path) -> None:
+    """根据当前工作区技能目录刷新 manifest。"""
+    SkillManager(user_dir).reconcile_manifest()
 
 
 def get_user_workspace(user_id: int | str) -> Path:
@@ -25,20 +36,21 @@ def ensure_user_workspace(user_id: int | str) -> Path:
     """创建用户工作区，如果是首次使用则复制模板文件。
 
     返回用户工作区路径。可安全并发调用 — 模板复制是幂等的。
+    即使工作区已存在，也会检查并补充缺失的模板技能。
     """
     user_dir = get_user_workspace(user_id)
-    if user_dir.exists():
-        return user_dir
+    first_time = not user_dir.exists()
 
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    # 复制模板文件（agents.md, soul.md）
-    if _TEMPLATE_DIR.exists():
+    # 复制模板文件（agents.md, soul.md）- 仅首次创建时复制
+    if first_time and _TEMPLATE_DIR.exists():
         for template_file in _TEMPLATE_DIR.iterdir():
             if template_file.is_file() and template_file.suffix == ".md":
                 shutil.copy2(template_file, user_dir / template_file.name)
 
     # 复制默认技能（从 templates/skills/ 目录）
+    # 每次都检查并补充缺失的模板技能（幂等操作）
     if _SKILLS_TEMPLATE_DIR.exists():
         user_skills_dir = user_dir / "skills"
         user_skills_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +63,35 @@ def ensure_user_workspace(user_id: int | str) -> Path:
     # 创建会话目录
     get_user_sessions_dir(user_id).mkdir(parents=True, exist_ok=True)
 
+    _sync_skill_manifest(user_dir)
+
     return user_dir
+
+
+def restock_template_skills(user_id: int | str) -> list[str]:
+    """重新补充缺失的模板技能。
+
+    从 templates/skills/ 复制缺失的模板技能到用户工作区。
+    不会覆盖用户已修改的技能。
+
+    Returns:
+        新补充的技能名称列表
+    """
+    user_dir = get_user_workspace(user_id)
+    user_skills_dir = user_dir / "skills"
+    user_skills_dir.mkdir(parents=True, exist_ok=True)
+
+    restocked = []
+    if _SKILLS_TEMPLATE_DIR.exists():
+        for skill_dir in _SKILLS_TEMPLATE_DIR.iterdir():
+            if skill_dir.is_dir():
+                dest = user_skills_dir / skill_dir.name
+                if not dest.exists():
+                    shutil.copytree(skill_dir, dest)
+                    restocked.append(skill_dir.name)
+
+    _sync_skill_manifest(user_dir)
+    return restocked
 
 
 def load_user_sys_prompt(user_id: int | str) -> str:
@@ -85,7 +125,7 @@ def load_user_context(user_id: int | str) -> str:
     from decimal import Decimal
 
     from src.fitme.utils.database import SessionLocal
-    from src.fitme.models.models import HealthMetric, StreakStats, User, UserSettings
+    from src.fitme.models import HealthMetric, StreakStats, User, UserSettings
 
     db = SessionLocal()
     try:

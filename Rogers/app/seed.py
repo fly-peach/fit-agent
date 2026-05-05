@@ -1,6 +1,6 @@
 """种子数据：启动时自动创建测试账户"""
 from sqlalchemy.orm import Session
-from src.fitme.utils.database import SessionLocal
+from src.fitme.utils.database import UserSessionLocal
 from src.fitme.models import User, UserSettings
 from src.fitme.services.auth_service import AuthService
 
@@ -12,7 +12,7 @@ TEST_ACCOUNTS = [
 
 def seed_test_accounts():
     """如果数据库为空，则插入测试账户"""
-    db: Session = SessionLocal()
+    db: Session = UserSessionLocal()
     try:
         if db.query(User).count() == 0:
             for account in TEST_ACCOUNTS:

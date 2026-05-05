@@ -14,7 +14,6 @@ import {
   DownOutlined,
   UserOutlined,
   LogoutOutlined,
-  MenuOutlined,
 } from '@ant-design/icons'
 import { LayoutDashboard, Heart, Dumbbell, Utensils, User, Bot, Wrench, Book } from 'lucide-react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
@@ -307,11 +306,11 @@ const MainLayout: React.FC = () => {
           </div>
         </Header>
         <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-          <Content style={{ flex: rightDrawerOpen ? '0 0 65%' : '1 1 auto', background: 'transparent', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+          <Content style={{ flex: rightDrawerOpen ? '0 0 60%' : '1 1 auto', background: 'transparent', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
             <Outlet />
           </Content>
           <div style={{
-            width: rightDrawerOpen ? '35%' : 0,
+            width: rightDrawerOpen ? '40%' : 0,
             height: 'calc(100vh - 64px)',
             position: 'relative',
             background: '#fff',

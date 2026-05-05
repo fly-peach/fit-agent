@@ -1,4 +1,14 @@
 """FitMe Utils Module"""
-from .database import get_db, engine, SessionLocal
+from .database import (
+    get_db, get_base_db, get_user_db,
+    engine, SessionLocal,
+    BaseSessionLocal, UserSessionLocal,
+    BaseDBContext, UserDBContext,
+)
 
-__all__ = ["get_db", "engine", "SessionLocal"]
+__all__ = [
+    "get_db", "get_base_db", "get_user_db",
+    "engine", "SessionLocal",
+    "BaseSessionLocal", "UserSessionLocal",
+    "BaseDBContext", "UserDBContext",
+]

@@ -1,9 +1,9 @@
-"""Exercise Router"""
+"""Exercise Router - Dual Database Support"""
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from src.fitme.utils.database import get_db
+from src.fitme.utils.database import get_db, get_base_db, get_user_db
 from src.fitme.services.exercise_service import ExerciseService
 from src.fitme.schemas.exercise import (
     ExercisesResponse,
@@ -22,13 +22,13 @@ router = APIRouter(prefix="/api/exercises", tags=["Exercises"])
 
 def get_current_user(
     authorization: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
+    user_db: Session = Depends(get_user_db)
 ):
     """获取当前用户"""
     if not authorization:
         raise HTTPException(status_code=401, detail="未授权")
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    user = AuthService.get_user_from_token(db, token)
+    user = AuthService.get_user_from_token(user_db, token)
     if not user:
         raise HTTPException(status_code=401, detail="登录过期")
     return user
@@ -45,11 +45,13 @@ def list_exercises(
     mechanics: str = Query(""),
     limit: int = Query(200),
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
 ):
     """获取健身动作列表"""
     results = ExerciseService.list_exercises(
-        db,
+        base_db,
+        user_db,
         user_id=current_user.user_id,
         keyword=keyword,
         target_muscle=target_muscle,
@@ -68,10 +70,11 @@ def list_exercises(
 def get_exercise(
     exercise_id: int = Path(...),
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
 ):
     """获取动作详情"""
-    result = ExerciseService.get_exercise(db, current_user.user_id, exercise_id)
+    result = ExerciseService.get_exercise(base_db, user_db, current_user.user_id, exercise_id)
     if not result:
         raise HTTPException(status_code=404, detail="动作不存在")
     exercise, is_pinned = result
@@ -79,37 +82,37 @@ def get_exercise(
 
 
 @router.get("/categories/muscles")
-def get_muscle_categories(db: Session = Depends(get_db)):
+def get_muscle_categories(base_db: Session = Depends(get_base_db)):
     """获取目标肌肉分类"""
-    muscles = ExerciseService.get_target_muscles(db)
+    muscles = ExerciseService.get_target_muscles(base_db)
     return {"code": 200, "data": muscles}
 
 
 @router.get("/categories/types")
-def get_type_categories(db: Session = Depends(get_db)):
+def get_type_categories(base_db: Session = Depends(get_base_db)):
     """获取动作类型分类"""
-    types = ExerciseService.get_exercise_types(db)
+    types = ExerciseService.get_exercise_types(base_db)
     return {"code": 200, "data": types}
 
 
 @router.get("/categories/equipment")
-def get_equipment_categories(db: Session = Depends(get_db)):
+def get_equipment_categories(base_db: Session = Depends(get_base_db)):
     """获取器械分类"""
-    equipment = ExerciseService.get_equipment_list(db)
+    equipment = ExerciseService.get_equipment_list(base_db)
     return {"code": 200, "data": equipment}
 
 
 @router.get("/categories/force-types")
-def get_force_type_categories(db: Session = Depends(get_db)):
+def get_force_type_categories(base_db: Session = Depends(get_base_db)):
     """获取发力类型分类"""
-    force_types = ExerciseService.get_force_types(db)
+    force_types = ExerciseService.get_force_types(base_db)
     return {"code": 200, "data": force_types}
 
 
 @router.get("/categories/mechanics")
-def get_mechanics_categories(db: Session = Depends(get_db)):
+def get_mechanics_categories(base_db: Session = Depends(get_base_db)):
     """获取力学类型分类"""
-    mechanics = ExerciseService.get_mechanics_list(db)
+    mechanics = ExerciseService.get_mechanics_list(base_db)
     return {"code": 200, "data": mechanics}
 
 
@@ -119,10 +122,11 @@ def get_mechanics_categories(db: Session = Depends(get_db)):
 def pin_exercise(
     data: PinExerciseRequest,
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
 ):
     """收藏动作"""
-    pinned = ExerciseService.pin_exercise(db, current_user.user_id, data.exerciseId)
+    pinned = ExerciseService.pin_exercise(base_db, user_db, current_user.user_id, data.exerciseId)
     if pinned is None:
         raise HTTPException(status_code=400, detail="已收藏或动作不存在")
     return {"code": 200, "message": "收藏成功"}
@@ -132,10 +136,10 @@ def pin_exercise(
 def unpin_exercise(
     exercise_id: int = Path(...),
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user_db: Session = Depends(get_user_db)
 ):
     """取消收藏"""
-    success = ExerciseService.unpin_exercise(db, current_user.user_id, exercise_id)
+    success = ExerciseService.unpin_exercise(user_db, current_user.user_id, exercise_id)
     if not success:
         raise HTTPException(status_code=404, detail="未找到收藏")
     return {"code": 200, "message": "取消收藏成功"}
@@ -144,10 +148,11 @@ def unpin_exercise(
 @router.get("/pinned", response_model=PinnedExercisesResponse)
 def get_pinned_exercises(
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
 ):
     """获取我的收藏"""
-    pinned = ExerciseService.get_pinned_exercises(db, current_user.user_id)
+    pinned = ExerciseService.get_pinned_exercises(base_db, user_db, current_user.user_id)
     return PinnedExercisesResponse(data=[PinnedExerciseSchema.from_orm(p) for p in pinned])
 
 
@@ -155,10 +160,10 @@ def get_pinned_exercises(
 def reorder_pinned(
     data: ReorderPinnedRequest,
     current_user=Depends(get_current_user),
-    db: Session = Depends(get_db)
+    user_db: Session = Depends(get_user_db)
 ):
     """调整收藏排序"""
-    success = ExerciseService.reorder_pinned(db, current_user.user_id, data.exerciseIds)
+    success = ExerciseService.reorder_pinned(user_db, current_user.user_id, data.exerciseIds)
     if not success:
         raise HTTPException(status_code=400, detail="排序失败")
     return {"code": 200, "message": "排序更新成功"}

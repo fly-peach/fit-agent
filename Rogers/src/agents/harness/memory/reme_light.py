@@ -4,6 +4,7 @@
 移植自 CoPaw 的 ReMeLightMemoryManager。
 """
 import importlib.metadata
+import json
 import logging
 import os
 import platform
@@ -184,25 +185,18 @@ class ReMeLightMemoryManager:
         """如果未设置，则从已附加的 agent 延迟获取 model/formatter。"""
         self._warn_if_version_mismatch()
         if self.chat_model is None or self.formatter is None:
-            # 尝试从缓存的 agent 实例获取 model
-            from src.agents.agent import agent_cache
-            agent = agent_cache._agents.get(self.agent_id)
-            if agent and hasattr(agent, "model") and hasattr(agent, "formatter"):
-                self.chat_model = agent.model
-                self.formatter = agent.formatter
-            else:
-                logger.warning(
-                    "Could not resolve chat_model/formatter for compaction; "
-                    "compaction will fall back to LLM defaults if available."
-                )
+            logger.warning(
+                "Could not resolve chat_model/formatter for compaction; "
+                "compaction will fall back to LLM defaults if available."
+            )
 
     def _get_embedding_config(self) -> dict:
         cfg = load_agent_config(self.agent_id).running.embedding_config
         return {
             "backend": cfg.backend,
-            "api_key": cfg.api_key or os.environ.get("EMBEDDING_API_KEY", ""),
-            "base_url": cfg.base_url or os.environ.get("EMBEDDING_BASE_URL", ""),
-            "model_name": cfg.model_name or os.environ.get("EMBEDDING_MODEL_NAME", ""),
+            "api_key": cfg.api_key,
+            "base_url": cfg.base_url,
+            "model_name": cfg.model_name,
             "dimensions": cfg.dimensions,
             "enable_cache": cfg.enable_cache,
             "use_dimensions": cfg.use_dimensions,
@@ -318,6 +312,98 @@ class ReMeLightMemoryManager:
             max_results=max_results,
             min_score=min_score,
         )
+
+    async def retrieve(
+        self,
+        messages: list[Msg] | Msg,
+        agent_name: str = "",
+        max_results: int = 1,
+        min_score: float = 0.3,
+        **_kwargs,
+    ) -> dict | None:
+        """自动检索相关记忆，并把结果注入为工具调用上下文。"""
+        msgs: list[Msg] = (
+            [messages] if isinstance(messages, Msg) else list(messages)
+        )
+
+        # 只取最近消息构造检索 query，避免噪声过多。
+        query_parts: list[str] = []
+        total = 0
+        for msg in reversed(msgs):
+            remaining = 180 - total
+            if remaining <= 0:
+                break
+            text = (msg.get_text_content() or "").strip()
+            if not text:
+                continue
+            chunk = text[:remaining]
+            query_parts.insert(0, chunk)
+            total += len(chunk)
+
+        query = " ".join(query_parts).strip()
+        if not query:
+            return None
+
+        try:
+            result = await self.memory_search(
+                query=query,
+                max_results=max_results,
+                min_score=min_score,
+            )
+        except Exception as e:
+            logger.warning(f"retrieve memory_search failed: {e}")
+            return None
+
+        content_blocks = getattr(result, "content", None) or []
+        text_parts: list[str] = []
+        for block in content_blocks:
+            if isinstance(block, dict):
+                text = block.get("text", "")
+            else:
+                text = getattr(block, "text", "")
+            if text:
+                text_parts.append(str(text))
+        text_content = "\n".join(text_parts).strip()
+        if not text_content:
+            return None
+
+        tool_use_id = uuid.uuid4().hex
+        tool_use_input = {
+            "query": query,
+            "max_results": max_results,
+            "min_score": min_score,
+        }
+
+        assistant_msg = Msg(
+            name=agent_name or "Rogers",
+            role="assistant",
+            content=[
+                {
+                    "type": "text",
+                    "text": "正在检索历史记忆以补充上下文...",
+                },
+                {
+                    "type": "tool_use",
+                    "id": tool_use_id,
+                    "name": "memory_search",
+                    "input": tool_use_input,
+                    "raw_input": json.dumps(tool_use_input, ensure_ascii=False),
+                },
+            ],
+        )
+        tool_result_msg = Msg(
+            name=agent_name or "Rogers",
+            role="system",
+            content=[
+                {
+                    "type": "tool_result",
+                    "id": tool_use_id,
+                    "name": "memory_search",
+                    "output": text_content,
+                },
+            ],
+        )
+        return {"msg": msgs + [assistant_msg, tool_result_msg]}
 
     def get_in_memory_memory(self, **_kwargs) -> "ReMeInMemoryMemory | None":
         """返回 ReMeInMemoryMemory 实例，用作 agent 内存。"""

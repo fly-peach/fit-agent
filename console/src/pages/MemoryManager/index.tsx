@@ -1,19 +1,22 @@
-import React, { useState, useEffect } from 'react'
-import { Row, Col, Button, message, Input, List, Modal, Spin, Collapse, Popconfirm } from 'antd'
-import { SaveOutlined, ReloadOutlined, ExperimentOutlined, DeleteOutlined, CalendarOutlined } from '@ant-design/icons'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Row, Col, Button, message, Input, List, Spin, Collapse, Popconfirm, Card, Space, Typography, Tag, Empty } from 'antd'
+import { SaveOutlined, ReloadOutlined, ExperimentOutlined, DeleteOutlined, CalendarOutlined, UndoOutlined, SearchOutlined, CopyOutlined } from '@ant-design/icons'
 import { memoryApi, MemoryContent, DailyLog } from '../../services/memory'
 
 const { TextArea } = Input
+const { Text } = Typography
 
 const MemoryManager: React.FC = () => {
   const [memory, setMemory] = useState<MemoryContent | null>(null)
   const [editingContent, setEditingContent] = useState('')
   const [logs, setLogs] = useState<string[]>([])
+  const [logSearch, setLogSearch] = useState('')
   const [selectedLog, setSelectedLog] = useState<DailyLog | null>(null)
   const [logLoading, setLogLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const [activeLogDate, setActiveLogDate] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const fetchMemory = async () => {
     setLoading(true)
@@ -31,7 +34,8 @@ const MemoryManager: React.FC = () => {
   const fetchLogs = async () => {
     try {
       const data = await memoryApi.listLogs()
-      setLogs(data)
+      const sorted = [...data].sort((a, b) => b.localeCompare(a))
+      setLogs(sorted)
     } catch (error) {
       message.error('获取日志列表失败')
     }
@@ -42,13 +46,52 @@ const MemoryManager: React.FC = () => {
     fetchLogs()
   }, [])
 
+  const hasChanges = editingContent !== (memory?.content || '')
+  const lineCount = editingContent ? editingContent.split('\n').length : 0
+  const charCount = editingContent.length
+  const filteredLogs = useMemo(
+    () => logs.filter((date) => date.toLowerCase().includes(logSearch.toLowerCase())),
+    [logs, logSearch],
+  )
+
+  useEffect(() => {
+    if (!hasChanges) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [hasChanges])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isSave = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's'
+      if (!isSave) return
+      event.preventDefault()
+      if (!saving && !loading && hasChanges) {
+        void handleSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [saving, loading, hasChanges, editingContent, memory])
+
   const handleSave = async () => {
+    if (!hasChanges) return
+    setSaving(true)
     try {
       await memoryApi.update(editingContent)
       message.success('记忆已保存')
-      fetchMemory()
+      await fetchMemory()
     } catch (error) {
       message.error('保存失败')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -96,60 +139,118 @@ const MemoryManager: React.FC = () => {
     }
   }
 
+  const handleReset = () => {
+    setEditingContent(memory?.content || '')
+    message.info('已恢复到最近一次保存内容')
+  }
+
+  const handleCopyLog = async () => {
+    if (!selectedLog?.content) return
+    try {
+      await navigator.clipboard.writeText(selectedLog.content)
+      message.success('日志内容已复制')
+    } catch (error) {
+      message.error('复制失败')
+    }
+  }
+
   return (
     <div className="fitagent-page-enter" style={{ padding: 24 }}>
       <Row gutter={24}>
         <Col xs={24} lg={14}>
-          <div style={{ marginBottom: 16 }}>
-            <h2 style={{ margin: 0, display: 'inline-block' }}>长期记忆</h2>
-            <div style={{ float: 'right' }}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchMemory}
-                style={{ marginRight: 8 }}
-              >
-                刷新
-              </Button>
-              <Button
-                icon={<ExperimentOutlined />}
-                onClick={handleOptimize}
-                loading={optimizing}
-                style={{ marginRight: 8 }}
-              >
-                优化记忆
-              </Button>
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-              >
-                保存
-              </Button>
-            </div>
-          </div>
-          <Spin spinning={loading}>
-            <TextArea
-              value={editingContent}
-              onChange={(e) => setEditingContent(e.target.value)}
-              autoSize={{ minRows: 20, maxRows: 30 }}
-              style={{ fontFamily: 'monospace', fontSize: 14 }}
-            />
-            {memory && memory.last_updated && (
-              <div style={{ marginTop: 8, color: '#999', fontSize: 12 }}>
-                最后更新: {memory.last_updated}
-              </div>
+          <Card
+            title={(
+              <Space>
+                <span>长期记忆</span>
+                {hasChanges ? <Tag color="warning">未保存</Tag> : <Tag color="success">已保存</Tag>}
+              </Space>
             )}
-          </Spin>
+            extra={(
+              <Space>
+                <Button
+                  icon={<UndoOutlined />}
+                  onClick={handleReset}
+                  disabled={!hasChanges || loading}
+                >
+                  放弃修改
+                </Button>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={fetchMemory}
+                  disabled={loading}
+                >
+                  刷新
+                </Button>
+                <Button
+                  icon={<ExperimentOutlined />}
+                  onClick={handleOptimize}
+                  loading={optimizing}
+                >
+                  优化记忆
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSave}
+                  loading={saving}
+                  disabled={!hasChanges || loading}
+                >
+                  保存
+                </Button>
+              </Space>
+            )}
+          >
+            <Space style={{ marginBottom: 10 }} size={12}>
+              <Text type="secondary">行数: {lineCount}</Text>
+              <Text type="secondary">字符: {charCount}</Text>
+              {memory?.last_updated && (
+                <Text type="secondary">最后更新: {memory.last_updated}</Text>
+              )}
+              <Text type="secondary">快捷键: Ctrl/Cmd + S</Text>
+            </Space>
+            <Spin spinning={loading}>
+              <TextArea
+                value={editingContent}
+                onChange={(e) => setEditingContent(e.target.value)}
+                autoSize={{ minRows: 20, maxRows: 30 }}
+                placeholder="这里是 MEMORY.md 的内容，支持直接编辑并保存。"
+                style={{ fontFamily: 'monospace', fontSize: 14 }}
+              />
+            </Spin>
+          </Card>
         </Col>
 
         <Col xs={24} lg={10}>
-          <h2 style={{ marginTop: 0 }}>
-            <CalendarOutlined /> 日志历史
-          </h2>
+          <Card
+            title={(
+              <Space>
+                <CalendarOutlined />
+                <span>日志历史</span>
+                <Tag>{filteredLogs.length}/{logs.length}</Tag>
+              </Space>
+            )}
+            extra={(
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={fetchLogs}
+              >
+                刷新
+              </Button>
+            )}
+          >
+            <Input
+              prefix={<SearchOutlined />}
+              value={logSearch}
+              onChange={(e) => setLogSearch(e.target.value)}
+              placeholder="按日期筛选，例如 2026-05"
+              allowClear
+              style={{ marginBottom: 12 }}
+            />
           <Spin spinning={logLoading}>
             <List
-              dataSource={logs}
+              dataSource={filteredLogs}
               style={{ maxHeight: '60vh', overflow: 'auto' }}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无日志" /> }}
               renderItem={(date) => (
                 <List.Item
                   actions={[
@@ -180,13 +281,21 @@ const MemoryManager: React.FC = () => {
           {selectedLog && (
             <Collapse style={{ marginTop: 16 }}>
               <Collapse.Panel header={`日志: ${selectedLog.date}`} key="1" extra={
-                <Popconfirm
-                  title="确认删除"
-                  description={`确定要删除 ${selectedLog.date} 的日志吗？`}
-                  onConfirm={() => handleDeleteLog(selectedLog.date)}
-                >
-                  <Button type="text" danger size="small" icon={<DeleteOutlined />} />
-                </Popconfirm>
+                <Space>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={handleCopyLog}
+                  />
+                  <Popconfirm
+                    title="确认删除"
+                    description={`确定要删除 ${selectedLog.date} 的日志吗？`}
+                    onConfirm={() => handleDeleteLog(selectedLog.date)}
+                  >
+                    <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                </Space>
               }>
                 <pre style={{ whiteSpace: 'pre-wrap', background: '#f5f5f5', padding: 12, borderRadius: 4, fontSize: 13 }}>
                   {selectedLog.content}
@@ -194,6 +303,7 @@ const MemoryManager: React.FC = () => {
               </Collapse.Panel>
             </Collapse>
           )}
+          </Card>
         </Col>
       </Row>
     </div>

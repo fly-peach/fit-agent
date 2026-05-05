@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Row, Col, Button, Table, message, Spin, Statistic, Popconfirm, Modal } from 'antd'
-import { ReloadOutlined, DeleteOutlined, ExperimentOutlined, EyeOutlined } from '@ant-design/icons'
+import { Card, Row, Col, Button, Table, message, Spin, Statistic, Popconfirm, Modal, Input, Space, Tag, Empty, Typography } from 'antd'
+import { ReloadOutlined, DeleteOutlined, ExperimentOutlined, EyeOutlined, SearchOutlined, CopyOutlined } from '@ant-design/icons'
 import { contextApi, ContextStats, CacheEntry } from '../../services/context'
+
+const { Text } = Typography
 
 const ContextManager: React.FC = () => {
   const [stats, setStats] = useState<ContextStats | null>(null)
@@ -10,6 +12,13 @@ const ContextManager: React.FC = () => {
   const [compactLoading, setCompactLoading] = useState(false)
   const [cacheContent, setCacheContent] = useState<string | null>(null)
   const [cacheModalVisible, setCacheModalVisible] = useState(false)
+  const [cacheKeyword, setCacheKeyword] = useState('')
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(2)} MB`
+  }
 
   const fetchData = async () => {
     setLoading(true)
@@ -67,6 +76,20 @@ const ContextManager: React.FC = () => {
       message.error('获取缓存失败')
     }
   }
+
+  const handleCopyCache = async () => {
+    if (!cacheContent) return
+    try {
+      await navigator.clipboard.writeText(cacheContent)
+      message.success('缓存内容已复制')
+    } catch (error) {
+      message.error('复制失败')
+    }
+  }
+
+  const filteredCacheList = cacheList.filter((item) =>
+    item.tool_name.toLowerCase().includes(cacheKeyword.toLowerCase()),
+  )
 
   const columns = [
     {
@@ -165,19 +188,30 @@ const ContextManager: React.FC = () => {
                 title="缓存总大小"
                 value={stats?.cache_total_size_bytes || 0}
                 precision={0}
-                suffix="B"
+                suffix={<Text type="secondary">{formatBytes(stats?.cache_total_size_bytes || 0)}</Text>}
               />
             </Card>
           </Col>
         </Row>
 
         <Card title="工具结果缓存">
+          <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }}>
+            <Input
+              prefix={<SearchOutlined />}
+              value={cacheKeyword}
+              onChange={(e) => setCacheKeyword(e.target.value)}
+              allowClear
+              placeholder="按工具名称筛选缓存"
+              style={{ maxWidth: 280 }}
+            />
+            <Tag>{filteredCacheList.length}/{cacheList.length}</Tag>
+          </Space>
           <Table
-            dataSource={cacheList}
+            dataSource={filteredCacheList}
             columns={columns}
             rowKey="id"
             pagination={{ pageSize: 10 }}
-            locale={{ emptyText: '暂无缓存' }}
+            locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无缓存" /> }}
           />
         </Card>
       </Spin>
@@ -186,7 +220,14 @@ const ContextManager: React.FC = () => {
         title="缓存内容"
         open={cacheModalVisible}
         onCancel={() => setCacheModalVisible(false)}
-        footer={null}
+        footer={[
+          <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyCache}>
+            复制
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setCacheModalVisible(false)}>
+            关闭
+          </Button>,
+        ]}
         width={800}
         style={{ maxHeight: '80vh', overflow: 'auto' }}
       >

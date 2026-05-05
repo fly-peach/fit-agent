@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime
@@ -53,13 +54,43 @@ class LifecycleHooksManager:
     async def pre_reply(self, agent: Any, kwargs: dict[str, Any]) -> dict[str, Any] | None:
         """Hook: Agent 回复前最终检查。
 
-        - 检查最终回复是否包含未处理的工具调用
-        - 验证回复格式和长度
+        - 可选自动注入 memory_search 结果
         - 记录遥测数据
         """
         self._stats["pre_reply_calls"] += 1
         logger.debug("pre_reply hook triggered")
-        return None
+        running = self.agent_cfg.running
+        ms_cfg = running.memory_summary
+        if not (ms_cfg.memory_summary_enabled and ms_cfg.force_memory_search):
+            return None
+
+        msg = kwargs.get("msg")
+        if msg is None:
+            return None
+
+        try:
+            result = await asyncio.wait_for(
+                self.memory_manager.retrieve(
+                    msg,
+                    agent_name=getattr(agent, "name", "Rogers"),
+                    max_results=ms_cfg.force_max_results,
+                    min_score=ms_cfg.force_min_score,
+                ),
+                timeout=ms_cfg.force_memory_search_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "force memory search timeout: %.2fs",
+                ms_cfg.force_memory_search_timeout,
+            )
+            return None
+        except Exception as e:
+            logger.warning("force memory search failed: %s", e)
+            return None
+
+        if result is None:
+            return None
+        return {**kwargs, **result}
 
     async def pre_reasoning(
         self, agent: Any, kwargs: dict[str, Any],

@@ -1,45 +1,45 @@
 """Agent 工厂 — 从 AppConfig 构建 Agent，不再使用硬编码全局变量。"""
 from __future__ import annotations
 
-from collections import OrderedDict
-from typing import Callable
-import asyncio
+from dotenv import load_dotenv
+from pathlib import Path
 
+# 确保在模块加载时就读取 .env
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
 from agentscope.memory import InMemoryMemory
 from agentscope.model import DashScopeChatModel
-from agentscope.tool import Toolkit, execute_python_code, ToolResponse
+from agentscope.tool import Toolkit, execute_python_code
 
-from .harness.tools.basic.read_data import (
-    get_user_profile,
-    get_health_summary,
-    get_health_history,
-    get_training_today,
-    get_training_weekly,
-    get_training_recommendations,
+from .config import AgentConfig, ModelProvider, load_agent_config
+from .harness import (
+    execute_shell_command,
+    add_custom_food,
+    add_health_metric,
+    add_meal,
+    add_training_plan,
+    complete_training,
+    create_memory_search_tool,
+    create_skill_resource_tool,
+    delete_meal,
+    delete_training_plan,
     get_diet_today,
     get_diet_weekly_trend,
     get_food_recommendations,
-    get_user_settings,
     get_full_overview,
+    get_health_history,
+    get_health_summary,
+    get_training_recommendations,
+    get_training_today,
+    get_training_weekly,
+    get_user_profile,
+    get_user_settings,
     search_foods,
-)
-from .harness.tools.basic.write_data import (
-    update_profile,
-    add_health_metric,
-    add_training_plan,
-    complete_training,
-    delete_training_plan,
-    add_meal,
     update_meal,
-    delete_meal,
+    update_profile,
     update_settings,
-    add_custom_food,
 )
-from .harness.tools.basic.image_view import view_image
-
-from .config import AgentConfig, get_config, load_agent_config
 from .harness.workspace.user_workspace import (
     ensure_user_workspace,
     load_user_sys_prompt,
@@ -47,171 +47,160 @@ from .harness.workspace.user_workspace import (
 )
 from .harness.skills.skill_manager import SkillManager
 
-# ---------------------------------------------------------------------------
-# 工具注册表 — 映射工具名称到可调用函数
-# ---------------------------------------------------------------------------
-
-_READ_TOOL_MAP = {
-    "get_user_profile": get_user_profile,
-    "get_health_summary": get_health_summary,
-    "get_health_history": get_health_history,
-    "get_training_today": get_training_today,
-    "get_training_weekly": get_training_weekly,
-    "get_training_recommendations": get_training_recommendations,
-    "get_diet_today": get_diet_today,
-    "get_diet_weekly_trend": get_diet_weekly_trend,
-    "get_food_recommendations": get_food_recommendations,
-    "get_user_settings": get_user_settings,
-    "get_full_overview": get_full_overview,
-    "search_foods": search_foods,
-}
-
-_WRITE_TOOL_MAP = {
-    "update_profile": update_profile,
-    "add_health_metric": add_health_metric,
-    "add_training_plan": add_training_plan,
-    "complete_training": complete_training,
-    "delete_training_plan": delete_training_plan,
-    "add_meal": add_meal,
-    "update_meal": update_meal,
-    "delete_meal": delete_meal,
-    "update_settings": update_settings,
-    "add_custom_food": add_custom_food,
-}
-
-_MULTIMODAL_TOOL_MAP = {
-    "view_image": view_image,
-}
-
-_ALL_TOOLS: dict[str, Callable] = {**_READ_TOOL_MAP, **_WRITE_TOOL_MAP, **_MULTIMODAL_TOOL_MAP}
-
-
-def get_weather(location: str, date: str) -> ToolResponse:
-    """获取指定位置和日期的天气数据。"""
-    return ToolResponse(
-        content=[{"type": "text", "text": f"The weather in {location} is sunny with a temperature of 25°C."}]
-    )
-
-
 DEFAULT_SYSTEM_PROMPT = (
     "你是 Rogers，一个专业的健身和健康管理助手。"
     "你帮助用户制定训练计划、记录饮食、跟踪健康指标。"
-    "使用你拥有的工具来读取和更新用户的数据，给出专业、温暖的建议。"
+    "使用你拥有的技能和工具来读取和更新用户的数据，给出专业、温暖的建议。"
     "如果用户没有登录，提示他们先登录。"
     "如果数据不存在，返回友好的提示而不是错误。"
     "用中文回答。"
 )
 
+AGENT_SKILL_INSTRUCTION = (
+    "# Agent Skills\n"
+    "以下目录级技能已注册到当前智能体。"
+    "每个技能目录都包含一个 `SKILL.md` 以及可选的 `references/`、`scripts/`。"
+    "当你要使用某个技能时，必须先通过 `read_skill_resource` 读取该技能的 `SKILL.md`，"
+    "再按需读取其他附件文件，不要凭猜测使用技能。"
+)
 
-def _build_toolkit(agent_cfg: AgentConfig) -> Toolkit:
-    """根据 Agent 配置构建工具集。"""
-    toolkit = Toolkit()
-    toolkit.register_tool_function(execute_python_code)
-    toolkit.register_tool_function(get_weather)
+AGENT_SKILL_TEMPLATE = """## {name}
+{description}
+技能目录：{dir}
+先用 `read_skill_resource(skill_name="{name}", file_path="SKILL.md")` 阅读主说明，再按需读取 `references/` 或 `scripts/` 下的文件。"""
 
-    enabled = agent_cfg.get_enabled_tools()
-    if enabled:
-        # 配置驱动：仅注册 tool_groups 中明确启用的工具
-        for name in enabled:
-            func = _ALL_TOOLS.get(name)
-            if func:
-                toolkit.register_tool_function(func)
-            else:
-                # 外部/自定义工具不在映射表中，静默跳过
-                pass
+MEMORY_GUIDANCE_ZH = (
+    "# Memory Guidance\n"
+    "你可以使用 `memory_search` 检索历史记忆。"
+    "当用户询问偏好、历史决定、之前任务结论、长期约束时，优先先检索再回答。"
+    "若检索到相关记忆，应基于记忆回答并保持一致；若未检索到，再明确说明无法从记忆中确认。"
+)
+
+
+def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: int | str) -> str:
+    """读取工作区系统提示词文件，并兼容旧的 `agents.md + soul.md`。"""
+    working_path = Path(working_dir)
+    parts: list[str] = []
+
+    if agent_cfg.sys_prompt_files:
+        for prompt_file in agent_cfg.sys_prompt_files:
+            prompt_path = working_path / prompt_file
+            if prompt_path.exists() and prompt_path.is_file():
+                parts.append(prompt_path.read_text(encoding="utf-8"))
     else:
-        # 未定义 tool_groups：注册所有工具以向后兼容
-        for func in _ALL_TOOLS.values():
-            toolkit.register_tool_function(func)
+        legacy_prompt = load_user_sys_prompt(user_id)
+        if legacy_prompt:
+            parts.append(legacy_prompt)
 
+    if agent_cfg.sys_prompt:
+        parts.append(agent_cfg.sys_prompt)
+
+    return "\n\n".join(part for part in parts if part.strip())
+
+
+def _build_toolkit(
+    agent_cfg: AgentConfig,
+    memory_manager,
+    skill_manager: SkillManager,
+    channel_name: str,
+) -> Toolkit:
+    """根据 Agent 配置构建工具集。"""
+    toolkit = Toolkit(
+        agent_skill_instruction=AGENT_SKILL_INSTRUCTION,
+        agent_skill_template=AGENT_SKILL_TEMPLATE,
+    )
+    enabled_tools = set(agent_cfg.get_enabled_tools())
+
+    tool_functions = {
+        "execute_python_code": execute_python_code,
+        "execute_shell_command": execute_shell_command,
+        "memory_search": create_memory_search_tool(memory_manager),
+        "read_skill_resource": create_skill_resource_tool(skill_manager),
+        "get_user_profile": get_user_profile,
+        "get_health_summary": get_health_summary,
+        "get_health_history": get_health_history,
+        "get_training_today": get_training_today,
+        "get_training_weekly": get_training_weekly,
+        "get_training_recommendations": get_training_recommendations,
+        "get_diet_today": get_diet_today,
+        "get_diet_weekly_trend": get_diet_weekly_trend,
+        "get_food_recommendations": get_food_recommendations,
+        "get_user_settings": get_user_settings,
+        "get_full_overview": get_full_overview,
+        "search_foods": search_foods,
+        "update_profile": update_profile,
+        "add_health_metric": add_health_metric,
+        "add_training_plan": add_training_plan,
+        "complete_training": complete_training,
+        "delete_training_plan": delete_training_plan,
+        "add_meal": add_meal,
+        "update_meal": update_meal,
+        "delete_meal": delete_meal,
+        "update_settings": update_settings,
+        "add_custom_food": add_custom_food,
+    }
+
+    for tool_name, tool_func in tool_functions.items():
+        if enabled_tools and tool_name not in enabled_tools:
+            continue
+        toolkit.register_tool_function(tool_func)
+
+    for skill in skill_manager.resolve_effective_skills(channel_name):
+        try:
+            toolkit.register_agent_skill(skill.path)
+        except Exception:
+            # Skill tooling is best-effort; keep the agent usable if one skill
+            # directory is malformed.
+            continue
     return toolkit
-
-
-# 内置支持思考模式的模型列表（DashScope 官方支持 enable_thinking=True 的模型）
-_THINKING_MODELS = {
-    # Qwen3.5 系列
-    "qwen3.5-plus", "qwen3.5-flash",
-    # Qwen3.6 系列
-    "qwen3.6-plus", "qwen3.6-max-preview",
-    # Qwen3 系列
-    "qwen3-max", "qwen3-plus", "qwen3-turbo",
-    # QwQ 系列
-    "qwq-plus", "qwq-32b",
-    # Qwen2.5 指令系列
-    "qwen2.5-72b-instruct", "qwen2.5-32b-instruct",
-    "qwen2.5-14b-instruct", "qwen2.5-7b-instruct",
-    # Qwen-Max / Plus / Turbo 系列
-    "qwen-max", "qwen-max-longcontext", "qwen-plus", "qwen-turbo",
-}
-
-
-def _model_supportes_thinking(model_name: str) -> bool:
-    """根据模型名称判断是否支持思考模式。"""
-    name = model_name.lower().strip()
-    return name in _THINKING_MODELS
 
 
 def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
     """根据 Agent 的模型配置创建模型实例。"""
-    import os
     model_cfg = agent_cfg.model
-    # 空字符串时回退到环境变量
-    api_key = model_cfg.api_key or os.getenv("DASHSCOPE_API_KEY", "")
-    # qwen3.5-flash 是视觉+文本模型，但不含 -vl 后缀，需要显式启用多模态 API
+
+    # 处理 model_cfg 可能是字符串的情况（引用）
+    if isinstance(model_cfg, str):
+        from src.agents.config import get_config
+        config = get_config()
+        if model_cfg in config.models:
+            model_cfg = config.models[model_cfg]
+        else:
+            # 回退到默认模型
+            model_cfg = ModelProvider()
+
+    # API Key 只从用户配置读取，不再从环境变量读取
+    api_key = model_cfg.api_key if hasattr(model_cfg, "api_key") else ""
+
+    if not api_key:
+        raise ValueError(
+            "未配置 API Key！请在「Agent 配置」页面填入您的 API Key"
+        )
+
+    # 获取模型名称，设置默认值以防万一
+    model_name = "qwen-turbo"
+    if hasattr(model_cfg, "model_name") and model_cfg.model_name:
+        model_name = model_cfg.model_name
+
+    # 构建模型参数字典
+    model_kwargs = {
+        "api_key": api_key,
+        "enable_thinking": True,
+        "stream": True,
+    }
+
     return DashScopeChatModel(
-        model_cfg.model_name,
-        api_key=api_key,
-        # enable_thinking=_model_supportes_thinking(model_cfg.model_name),
-        enable_thinking=True,
-        stream=model_cfg.stream,
-        multimodality=True,
+        model_name,
+        **model_kwargs
     )
 
 
-def create_agent(agent_cfg: AgentConfig | None = None) -> ReActAgent:
-    """从 AgentConfig 创建 ReActAgent。
-
-    若未提供配置，则使用全局 AppConfig 中的活跃 Agent。
-    """
-    if agent_cfg is None:
-        agent_cfg = get_config().get_active_agent()
-
-    toolkit = _build_toolkit(agent_cfg)
-    model = _build_model(agent_cfg)
-    sys_prompt = agent_cfg.sys_prompt or DEFAULT_SYSTEM_PROMPT
-
-    return ReActAgent(
-        name=agent_cfg.name,
-        model=model,
-        sys_prompt=sys_prompt,
-        toolkit=toolkit,
-        memory=InMemoryMemory(),
-        formatter=DashScopeChatFormatter(),
-    )
-
-
-# 向后兼容：模块级单例，使用默认配置
-rogers_agent = create_agent()
-
-
 # ---------------------------------------------------------------------------
-# 按用户创建 Agent 的工厂和缓存
+# 按用户创建 Agent 的工厂
 # ---------------------------------------------------------------------------
 
-# 共享工具集，在导入时构建一次 —— 安全，因为所有工具函数都使用
-# contextvars 实现用户隔离。
-_shared_toolkit: Toolkit | None = None
 
-
-def _get_shared_toolkit() -> Toolkit:
-    global _shared_toolkit
-    if _shared_toolkit is None:
-        cfg = get_config().get_active_agent()
-        _shared_toolkit = _build_toolkit(cfg)
-    return _shared_toolkit
-
-
-def create_user_agent(user_id: int | str) -> ReActAgent:
+def create_user_agent(user_id: int | str, channel_name: str = "console") -> ReActAgent:
     """为指定用户创建 ReActAgent，附带自定义系统提示词。
 
     确保用户工作区存在，加载 agents.md + soul.md，查询数据库获取用
@@ -229,21 +218,24 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
 
     skill_manager = SkillManager(working_dir)
     skill_manager.scan_skills()
-    skills_content = skill_manager.get_enabled_skills_content()
+
+    # 先构建 model，传给 memory_manager
+    model = _build_model(agent_cfg)
 
     memory_manager = ReMeLightMemoryManager(
         working_dir=working_dir,
         agent_id=str(user_id),
     )
+    # 直接设置 model 和 formatter，不需要从缓存获取
+    from agentscope.formatter import DashScopeChatFormatter
+    memory_manager.chat_model = model
+    memory_manager.formatter = DashScopeChatFormatter()
+
     reme_memory = memory_manager.get_in_memory_memory()
 
     # 从静态 Markdown 文件构建基础提示词
-    custom_prompt = load_user_sys_prompt(user_id)
+    custom_prompt = _load_prompt_from_files(working_dir, agent_cfg, user_id)
     base_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
-
-    # 追加技能内容
-    if skills_content:
-        base_prompt = base_prompt + skills_content
 
     # 从数据库获取用户上下文（姓名、目标、健康指标、连续记录）并前置
     user_context = load_user_context(user_id)
@@ -251,16 +243,14 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
         sys_prompt = f"{user_context}\n\n{base_prompt}"
     else:
         sys_prompt = base_prompt
-
-    model = _build_model(agent_cfg)
+    sys_prompt = f"{sys_prompt}\n\n{MEMORY_GUIDANCE_ZH}"
 
     # 为每个用户构建独立的 toolkit，避免 memory_search 共享冲突
-    toolkit = _build_toolkit(agent_cfg)
-
-    # 注册 memory_search 工具
-    from src.agents.harness.tools.memory_search import create_memory_search_tool
-    toolkit.register_tool_function(
-        create_memory_search_tool(memory_manager),
+    toolkit = _build_toolkit(
+        agent_cfg,
+        memory_manager,
+        skill_manager,
+        channel_name,
     )
 
     agent = ReActAgent(
@@ -308,40 +298,3 @@ def create_user_agent(user_id: int | str) -> ReActAgent:
     return agent
 
 
-class AgentCache:
-    """按用户缓存 ReActAgent 实例的 LRU 缓存。
-
-    每个用户一个 Agent 实例（懒加载创建）。Agent 的内存通过 session
-    的加载/保存在每次请求间交换，因此实例本身在调用之间是无状态的。
-    """
-
-    def __init__(self, maxsize: int = 50):
-        self._maxsize = maxsize
-        self._agents: OrderedDict[str, ReActAgent] = OrderedDict()
-        self._lock = asyncio.Lock()
-
-    async def get_or_create(self, user_id: int | str) -> ReActAgent:
-        async with self._lock:
-            uid = str(user_id)
-            if uid in self._agents:
-                # 移到末尾（最近使用）
-                self._agents.move_to_end(uid)
-                return self._agents[uid]
-
-            agent = create_user_agent(user_id)
-            self._agents[uid] = agent
-            self._evict_if_needed()
-            return agent
-
-    async def evict(self, user_id: int | str) -> None:
-        """从缓存中移除用户的 Agent（例如配置变更后）。"""
-        async with self._lock:
-            self._agents.pop(str(user_id), None)
-
-    def _evict_if_needed(self) -> None:
-        while len(self._agents) > self._maxsize:
-            self._agents.popitem(last=False)
-
-
-# 全局 Agent 缓存单例
-agent_cache = AgentCache()

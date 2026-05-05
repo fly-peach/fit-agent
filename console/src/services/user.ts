@@ -38,10 +38,17 @@ export const userApi = {
 export interface AgentConfig {
   agents_md: string
   soul_md: string
-  api_key: string
   api_key_masked: string
   model_name: string
   is_custom_api_key: boolean
+}
+
+// Update request type can still include api_key
+export interface AgentConfigUpdate {
+  agents_md?: string
+  soul_md?: string
+  api_key?: string
+  model_name?: string
 }
 
 export interface DefaultConfig {
@@ -54,7 +61,7 @@ export const agentApi = {
   getConfig: (): Promise<AgentConfig> =>
     api.get('/agent/config'),
 
-  updateConfig: (data: Partial<AgentConfig>): Promise<void> =>
+  updateConfig: (data: Partial<AgentConfigUpdate>): Promise<void> =>
     api.put('/agent/config', data),
 
   getDefaults: (): Promise<DefaultConfig> =>
