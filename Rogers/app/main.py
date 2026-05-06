@@ -169,8 +169,22 @@ def health_check():
 
 
 # ========== 静态文件服务 (前端控制台) ==========
-CONSOLE_DIR = Path(__file__).resolve().parent.parent / "console"
+from fastapi.responses import FileResponse
 
-if CONSOLE_DIR.exists():
+CONSOLE_DIR = Path(__file__).resolve().parent.parent / "console"
+DIST_DIR = CONSOLE_DIR / "dist"
+
+if DIST_DIR.exists():
     # 挂载静态文件在根路径（必须放在所有 API 路由之后）
-    app.mount("/", StaticFiles(directory=CONSOLE_DIR, html=True), name="static")
+    app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
+
+    # SPA fallback: 所有非 API 路由都返回 index.html
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        index_path = DIST_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return {"detail": "Not Found"}, 404
+elif CONSOLE_DIR.exists():
+    # 开发模式 fallback (如果有需要)
+    pass
