@@ -128,6 +128,20 @@ async def get_skill(name: str, authorization: str | None = Header(default=None))
     )
 
 
+@router.get("/{name}/sub-skills", response_model=list[SkillResponse])
+async def get_sub_skills(name: str, authorization: str | None = Header(default=None)):
+    sm = _get_skill_manager(authorization)
+    sub_skills = sm.get_sub_skills(name)
+    return [
+        SkillResponse(
+            name=s.name, version=s.version, description=s.description,
+            enabled=s.enabled, path=s.path, tags=s.tags,
+            channels=s.channels, source=s.source,
+        )
+        for s in sub_skills
+    ]
+
+
 @router.get("/{name}/files/{file_path:path}")
 async def get_skill_file(
     name: str,

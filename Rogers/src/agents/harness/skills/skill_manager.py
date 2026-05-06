@@ -18,6 +18,7 @@ from src.agents.harness.skills.skill_config import (
     SkillConfigManager,
     SkillPackageConfig,
     SkillSystemConfig,
+    SKILL_CONFIG_FILENAME,
 )
 
 logger = logging.getLogger("fitagent")
@@ -80,10 +81,11 @@ class SkillManager:
 
     def __init__(self, working_dir: str | Path):
         self.working_dir = Path(working_dir)
-        self.skills_dir = self.working_dir / "skills"
-        self.manifest_path = self.working_dir / SKILL_MANIFEST_FILENAME
+        self.workspace_dir = self.working_dir / "workspace"
+        self.skills_dir = self.workspace_dir / "skills"
+        self.manifest_path = self.workspace_dir / SKILL_MANIFEST_FILENAME
         self._skills_cache: dict[str, SkillInfo] = {}
-        self.config_manager = SkillConfigManager(working_dir)
+        self.config_manager = SkillConfigManager(self.working_dir)
 
     def _default_manifest(self) -> dict[str, Any]:
         return {"version": "1.0.0", "skills": {}}
@@ -104,7 +106,7 @@ class SkillManager:
             return self._default_manifest()
 
     def _write_manifest(self, manifest: dict[str, Any]) -> None:
-        self.working_dir.mkdir(parents=True, exist_ok=True)
+        self.workspace_dir.mkdir(parents=True, exist_ok=True)
         with open(self.manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2, ensure_ascii=False)
 
@@ -541,3 +543,28 @@ class SkillManager:
 
     def reset_config(self) -> SkillSystemConfig:
         return self.config_manager.reset_config()
+
+    def get_sub_skills(self, parent_name: str) -> list[SkillInfo]:
+        """获取某个技能目录下的子技能"""
+        parent_skill = self.get_skill(parent_name)
+        if not parent_skill:
+            return []
+
+        parent_dir = Path(parent_skill.path)
+        sub_skills: list[SkillInfo] = []
+
+        # 扫描父技能目录下的直接子目录
+        for sub_dir in parent_dir.iterdir():
+            if not sub_dir.is_dir():
+                continue
+            skill_md = sub_dir / SKILL_MD_FILENAME
+            if not skill_md.exists():
+                continue
+            try:
+                skill_info = self._load_skill_from_dir(sub_dir, {})
+                if skill_info:
+                    sub_skills.append(skill_info)
+            except Exception as exc:
+                logger.error("Failed to load sub-skill from %s: %s", sub_dir, exc)
+
+        return sub_skills

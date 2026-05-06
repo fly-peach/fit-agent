@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Modal, Table, Statistic, Spin, Popconfirm } from 'antd'
-import { Bot, Key, Cpu, Sparkles } from 'lucide-react'
+import { Bot, Key, Cpu, Sparkles, FolderOpen, CheckCircle2 } from 'lucide-react'
 import { EyeOutlined, ReloadOutlined, DeleteOutlined, ExperimentOutlined } from '@ant-design/icons'
-import { agentApi } from '../../services/user'
+import { agentApi, workspaceApi, type AgentWorkspaceStatus } from '../../services/user'
 import { contextApi, ContextStats, CacheEntry } from '../../services/context'
 
 const modelOptions = [
@@ -186,6 +186,12 @@ const AgentConfig: React.FC = () => {
   const [savingModel, setSavingModel] = useState(false)
   const isMobile = useIsMobile()
 
+  // 工作目录状态
+  const [workspaceStatus, setWorkspaceStatus] = useState<AgentWorkspaceStatus | null>(null)
+  const [workspaceLoading, setWorkspaceLoading] = useState(false)
+  const [workspaceSaving, setWorkspaceSaving] = useState(false)
+  const [customWorkspacePath, setCustomWorkspacePath] = useState('')
+
   // 上下文管理状态
   const [contextStats, setContextStats] = useState<ContextStats | null>(null)
   const [cacheList, setCacheList] = useState<CacheEntry[]>([])
@@ -193,6 +199,37 @@ const AgentConfig: React.FC = () => {
   const [compactLoading, setCompactLoading] = useState(false)
   const [cacheContent, setCacheContent] = useState<string | null>(null)
   const [cacheModalVisible, setCacheModalVisible] = useState(false)
+
+  const fetchWorkspaceStatus = async () => {
+    setWorkspaceLoading(true)
+    try {
+      const status = await workspaceApi.getStatus()
+      setWorkspaceStatus(status)
+      if (status.local_working_dir) {
+        setCustomWorkspacePath(status.local_working_dir)
+      }
+    } catch {
+      // 忽略错误
+    } finally {
+      setWorkspaceLoading(false)
+    }
+  }
+
+  const handleCreateWorkspace = async (useCustomPath: boolean = false) => {
+    setWorkspaceSaving(true)
+    try {
+      const data = useCustomPath && customWorkspacePath
+        ? { local_working_dir: customWorkspacePath }
+        : {}
+      await workspaceApi.createOrUpdate(data)
+      message.success('工作目录配置成功！')
+      await fetchWorkspaceStatus()
+    } catch (e: any) {
+      message.error(e?.detail || '配置失败，请检查路径')
+    } finally {
+      setWorkspaceSaving(false)
+    }
+  }
 
   const fetchContextData = async () => {
     setContextLoading(true)
@@ -249,6 +286,7 @@ const AgentConfig: React.FC = () => {
 
   useEffect(() => {
     fetchConfig()
+    fetchWorkspaceStatus()
     fetchContextData()
   }, [])
 
@@ -372,6 +410,109 @@ const AgentConfig: React.FC = () => {
 
       <Form form={agentForm} layout="vertical" onFinish={handleSave}>
         <Space direction="vertical" size={isMobile ? 16 : 24} style={{ width: '100%' }}>
+          {/* 工作目录配置卡片 */}
+          <Card
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FolderOpen size={16} style={{ color: '#10B981' }} />
+                <span>AI 工作目录</span>
+              </div>
+            }
+            style={{ border: 'none' }}
+          >
+            <Spin spinning={workspaceLoading}>
+              {workspaceStatus?.is_configured ? (
+                <Alert
+                  type="success"
+                  showIcon
+                  icon={<CheckCircle2 size={20} />}
+                  message={
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>
+                        目录已配置
+                        <Tag color="success" style={{ marginLeft: 8 }}>
+                          就绪
+                        </Tag>
+                      </span>
+                      <Button
+                        type="text"
+                        size="small"
+                        onClick={() => Modal.confirm({
+                          title: '更改工作目录',
+                          content: (
+                            <div style={{ marginTop: 16 }}>
+                              <Typography.Text type="secondary">
+                                当前目录：{workspaceStatus.local_working_dir}
+                              </Typography.Text>
+                              <Input
+                                style={{ marginTop: 12 }}
+                                placeholder="输入新的目录路径（留空使用默认）"
+                                value={customWorkspacePath}
+                                onChange={(e) => setCustomWorkspacePath(e.target.value)}
+                              />
+                            </div>
+                          ),
+                          okText: '确认更改',
+                          cancelText: '取消',
+                          onOk: () => handleCreateWorkspace(true),
+                        })}
+                      >
+                        更改目录
+                      </Button>
+                    </div>
+                  }
+                  description={
+                    <Typography.Text code style={{ marginTop: 8, display: 'block' }}>
+                      {workspaceStatus.local_working_dir}
+                    </Typography.Text>
+                  }
+                />
+              ) : (
+                <Alert
+                  type="info"
+                  showIcon
+                  message="首次使用：配置工作目录"
+                  description={
+                    <div style={{ marginTop: 12 }}>
+                      <Typography.Paragraph type="secondary">
+                        AI Agent 需要一个本地目录来存储对话记录、记忆和技能。
+                        默认使用 <code>~/.fitagent</code> 目录。
+                      </Typography.Paragraph>
+                      <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
+                        <Button
+                          type="primary"
+                          loading={workspaceSaving}
+                          onClick={() => handleCreateWorkspace(false)}
+                          icon={<FolderOpen size={16} />}
+                        >
+                          使用默认目录
+                        </Button>
+                        <div>
+                          <Typography.Text type="secondary" style={{ marginRight: 8 }}>
+                            或自定义目录：
+                          </Typography.Text>
+                          <Input
+                            placeholder="输入自定义目录路径"
+                            style={{ width: 300, marginRight: 8 }}
+                            value={customWorkspacePath}
+                            onChange={(e) => setCustomWorkspacePath(e.target.value)}
+                          />
+                          <Button
+                            loading={workspaceSaving}
+                            onClick={() => handleCreateWorkspace(true)}
+                            disabled={!customWorkspacePath}
+                          >
+                            使用此目录
+                          </Button>
+                        </div>
+                      </Space>
+                    </div>
+                  }
+                />
+              )}
+            </Spin>
+          </Card>
+
           {/* 模型配置卡片 */}
           <Card
             title={

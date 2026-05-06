@@ -171,6 +171,8 @@ const SkillManager: React.FC = () => {
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [selectedFileContent, setSelectedFileContent] = useState('')
   const [fileLoading, setFileLoading] = useState(false)
+  const [subSkills, setSubSkills] = useState<Skill[]>([])
+  const [subSkillsLoading, setSubSkillsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('skills')
 
   const fetchSkills = async () => {
@@ -251,11 +253,25 @@ const SkillManager: React.FC = () => {
       setSelectedSkill(detail)
       setSelectedFilePath(null)
       setSelectedFileContent('')
+      // 获取子技能
+      await fetchSubSkills(skill.name)
       setModalVisible(true)
     } catch {
       message.error('获取技能详情失败')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchSubSkills = async (skillName: string) => {
+    setSubSkillsLoading(true)
+    try {
+      const subs = await skillApi.getSubSkills(skillName)
+      setSubSkills(subs)
+    } catch {
+      setSubSkills([])
+    } finally {
+      setSubSkillsLoading(false)
     }
   }
 
@@ -641,6 +657,36 @@ const SkillManager: React.FC = () => {
               </Descriptions.Item>
               <Descriptions.Item label="描述" span={2}>{selectedSkill.description}</Descriptions.Item>
             </Descriptions>
+            {/* 子技能区域 */}
+            {subSkills.length > 0 && (
+              <>
+                <Divider />
+                <Title level={5}>子技能 ({subSkills.length})</Title>
+                <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+                  {subSkills.map((sub) => (
+                    <Col xs={24} sm={12} key={sub.name}>
+                      <Card size="small" style={{ background: sub.enabled ? '#f6ffed' : '#fafafa' }}>
+                        <Space>
+                          <div>
+                            <Text strong>{sub.name}</Text>
+                            <Tag style={{ marginLeft: 8 }} color={sub.enabled ? 'green' : 'default'}>
+                              {sub.enabled ? '启用' : '禁用'}
+                            </Tag>
+                          </div>
+                        </Space>
+                        {sub.description && (
+                          <div style={{ marginTop: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              {sub.description}
+                            </Text>
+                          </div>
+                        )}
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
+              </>
+            )}
             <Divider />
             <Row gutter={16}>
               <Col span={12}>

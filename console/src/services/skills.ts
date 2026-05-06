@@ -108,4 +108,8 @@ export const skillApi = {
   // 重新补充模板技能
   restockTemplates: (): Promise<{ status: string; restocked: string[] }> =>
     api.post('/agent/skills/restock-templates'),
+
+  // 获取子技能
+  getSubSkills: (name: string): Promise<Skill[]> =>
+    api.get(`/agent/skills/${name}/sub-skills`),
 }

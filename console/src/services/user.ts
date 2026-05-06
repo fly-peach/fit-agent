@@ -67,3 +67,30 @@ export const agentApi = {
   getDefaults: (): Promise<DefaultConfig> =>
     api.get('/agent/defaults'),
 }
+
+export interface AgentWorkspaceStatus {
+  is_configured: boolean
+  local_working_dir: string | null
+}
+
+export interface AgentWorkspaceConfig {
+  id: number
+  user_id: number
+  local_working_dir: string
+  last_used_at: string | null
+  created_at: string
+}
+
+export const workspaceApi = {
+  getStatus: (): Promise<AgentWorkspaceStatus> =>
+    api.get('/agent/workspace/status'),
+
+  createOrUpdate: (data: { local_working_dir?: string }): Promise<AgentWorkspaceConfig> =>
+    api.post('/agent/workspace', data),
+
+  update: (data: { local_working_dir: string }): Promise<AgentWorkspaceConfig> =>
+    api.put('/agent/workspace', data),
+
+  delete: (): Promise<void> =>
+    api.delete('/agent/workspace'),
+}

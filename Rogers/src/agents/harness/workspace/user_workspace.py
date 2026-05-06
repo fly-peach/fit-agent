@@ -8,7 +8,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 from src.fitme.core.config import settings
-from ..skills.skill_manager import SkillManager
+from ..skills.skill_manager import SkillManager, SKILL_MD_FILENAME
 from ..templates.templates import get_template_path, get_skills_template_path
 
 
@@ -82,11 +82,12 @@ def ensure_user_workspace(user_id: int | str) -> Path:
     if _SKILLS_TEMPLATE_DIR.exists():
         user_skills_dir = user_dir / "workspace" / "skills"
         user_skills_dir.mkdir(parents=True, exist_ok=True)
-        for skill_dir in _SKILLS_TEMPLATE_DIR.iterdir():
-            if skill_dir.is_dir():
-                dest = user_skills_dir / skill_dir.name
+        # 只复制第一级目录
+        for skill_src_dir in _SKILLS_TEMPLATE_DIR.iterdir():
+            if skill_src_dir.is_dir():
+                dest = user_skills_dir / skill_src_dir.name
                 if not dest.exists():
-                    shutil.copytree(skill_dir, dest)
+                    shutil.copytree(skill_src_dir, dest)
 
     # 创建会话目录
     get_user_sessions_dir(user_id).mkdir(parents=True, exist_ok=True)
@@ -114,12 +115,12 @@ def restock_template_skills(user_id: int | str) -> list[str]:
 
     restocked = []
     if _SKILLS_TEMPLATE_DIR.exists():
-        for skill_dir in _SKILLS_TEMPLATE_DIR.iterdir():
-            if skill_dir.is_dir():
-                dest = user_skills_dir / skill_dir.name
+        for skill_src_dir in _SKILLS_TEMPLATE_DIR.iterdir():
+            if skill_src_dir.is_dir():
+                dest = user_skills_dir / skill_src_dir.name
                 if not dest.exists():
-                    shutil.copytree(skill_dir, dest)
-                    restocked.append(skill_dir.name)
+                    shutil.copytree(skill_src_dir, dest)
+                    restocked.append(skill_src_dir.name)
 
     _sync_skill_manifest(user_dir)
     return restocked
