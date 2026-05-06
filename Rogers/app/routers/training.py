@@ -6,7 +6,7 @@ from datetime import date
 
 from src.fitme.utils.database import get_db, get_base_db, get_user_db
 from src.fitme.services.training_service import TrainingService
-from src.fitme.schemas.exercise import UpdatePlanExerciseItem
+from src.fitme.schemas.exercise import UpdatePlanExerciseItem, PlanExerciseItemInput
 from src.fitme.schemas.training import (
     WeeklyStatsResponse,
     WeeklyScheduleResponse,
@@ -154,13 +154,14 @@ def complete_plan(
 ):
     """完成训练记录"""
     from datetime import date as _date
-    # 循环计划直接通过，普通计划检查日期
-    if planId > 0:
-        plan = TrainingService.get_plan_by_id(user_db, planId, current_user.user_id)
-        if plan and plan.scheduled_date and plan.scheduled_date > _date.today():
-            raise HTTPException(status_code=400, detail="日期未到")
+    plan = TrainingService.get_plan_by_id(user_db, planId, current_user.user_id)
+    if plan and plan.scheduled_date and plan.scheduled_date > _date.today():
+        raise HTTPException(status_code=400, detail="计划日期未到，无法打卡")
     record = TrainingService.complete_plan(user_db, planId, current_user.user_id, data)
     if not record:
+        plan = TrainingService.get_plan_by_id(user_db, planId, current_user.user_id)
+        if plan and plan.status == "completed":
+            raise HTTPException(status_code=400, detail="该计划已完成，不能重复打卡")
         raise HTTPException(status_code=404, detail="计划不存在")
     return BaseResponse(message="记录成功")
 
@@ -218,6 +219,33 @@ def update_plan_exercise(
     if not item:
         raise HTTPException(status_code=404, detail="动作不存在")
     return BaseResponse(message="更新成功")
+
+
+@router.post("/plans/{planId}/exercises", response_model=BaseResponse)
+def add_plan_exercise(
+    planId: int = Path(...),
+    data: PlanExerciseItemInput = Body(...),
+    current_user = Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """向计划中新增一个动作"""
+    item = TrainingService.add_plan_exercise(user_db, planId, current_user.user_id, data)
+    if not item:
+        raise HTTPException(status_code=404, detail="计划不存在")
+    return BaseResponse(message="添加成功")
+
+
+@router.delete("/plans/exercise/{exerciseId}", response_model=BaseResponse)
+def delete_plan_exercise(
+    exerciseId: int = Path(...),
+    current_user = Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """从计划中删除一个动作"""
+    success = TrainingService.delete_plan_exercise(user_db, exerciseId, current_user.user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="动作不存在")
+    return BaseResponse(message="删除成功")
 
 
 @router.post("/plans/{planId}/renew", response_model=BaseResponse)

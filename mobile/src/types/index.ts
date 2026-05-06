@@ -92,6 +92,8 @@ export interface TrainingSchedule {
   duration: number;
   intensity: string;
   status: string;
+  isRecurring?: boolean;
+  isLastInGroup?: boolean;
   completedAt: string | null;
 }
 
@@ -110,6 +112,48 @@ export interface TrainingPlan {
   estimatedDuration?: number;
   scheduledDate: string;
   note?: string;
+  isRecurring?: boolean;
+  exercises?: PlanExerciseInput[];
+}
+
+export interface PlanExerciseInput {
+  exerciseId?: number;
+  customName?: string;
+  sets?: number;
+  reps?: number;
+  weight?: number;
+  duration?: number;
+  notes?: string;
+}
+
+export interface PlanExerciseItemOutput {
+  id: number;
+  exerciseId: number | null;
+  customName: string | null;
+  nameCn: string | null;
+  targetMuscle: string | null;
+  helperMuscles: string | null;
+  difficulty: string | null;
+  forceType: string | null;
+  mechanics: string | null;
+  equipment: string | null;
+  sets: number;
+  reps: number;
+  weight: number | null;
+  duration: number | null;
+  notes: string | null;
+}
+
+export interface PlanDetail {
+  planId: number;
+  planName: string;
+  planType: string;
+  targetIntensity: string | null;
+  estimatedDuration: number | null;
+  scheduledDate: string | null;
+  status: string;
+  note: string | null;
+  exercises: PlanExerciseItemOutput[];
 }
 
 // Diet
@@ -144,6 +188,79 @@ export interface NutritionProgress {
   protein: { current: number; goal: number; percent: number };
   carbs: { current: number; goal: number; percent: number };
   fat: { current: number; goal: number; percent: number };
+}
+
+export interface RecommendedFood {
+  recommendId: number;
+  foodName: string;
+  calories: number;
+  protein: number | null;
+  reason: string | null;
+  suitableTime: string | null;
+}
+
+export interface WeeklyDietTrend {
+  dailyStats: { day: string; date: string; calories: number; proteinGoalMet: boolean; waterGoalMet: boolean }[];
+  summary: { avgCalories: number; proteinGoalDays: number; waterGoalDays: number };
+}
+
+export interface FoodItem {
+  foodId: number;
+  name: string;
+  category: string;
+  source: 'system' | 'custom';
+  portionUnit: string | null;
+  portionGrams: number | null;
+  portionCalories: number;
+  caloriesPer100g: number;
+  calorieLevel: string | null;
+  protein: number;
+  carbs: number;
+  fat: number;
+  suitableMeals: string;
+}
+
+// Exercise
+export interface ExerciseItem {
+  exerciseId: number;
+  nameCn: string;
+  nameEn: string | null;
+  difficulty: string | null;
+  forceType: string | null;
+  mechanics: string | null;
+  exerciseType: string | null;
+  targetMuscle: string;
+  equipment: string | null;
+  isPinned: boolean;
+}
+
+export interface ExerciseDetail {
+  exerciseId: number;
+  nameCn: string;
+  nameEn: string | null;
+  difficulty: string | null;
+  forceType: string | null;
+  mechanics: string | null;
+  equipment: string | null;
+  exerciseType: string | null;
+  targetMuscle: string;
+  helperMuscles: string;
+  instructions: string[];
+  isPinned: boolean;
+}
+
+export interface PinnedExercise {
+  pinId: number;
+  exerciseId: number;
+  nameCn: string;
+  nameEn: string | null;
+  difficulty: string | null;
+  forceType: string | null;
+  mechanics: string | null;
+  exerciseType: string | null;
+  targetMuscle: string;
+  equipment: string | null;
+  sortOrder: number;
 }
 
 // Chat

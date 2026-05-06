@@ -91,11 +91,14 @@ export const TRAINING_TYPE_LABELS: Record<string, string> = {
   strength: '力量训练',
   cardio: '有氧运动',
   stretch: '拉伸放松',
+  flexibility: '柔韧训练',
 };
 
 export const BMI_STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   underweight: { label: '偏瘦', color: COLORS.warning, bg: COLORS.warningLight },
+  under: { label: '偏瘦', color: COLORS.warning, bg: COLORS.warningLight },
   normal: { label: '标准', color: COLORS.success, bg: COLORS.successLight },
   overweight: { label: '偏胖', color: COLORS.warning, bg: COLORS.warningLight },
+  over: { label: '偏胖', color: COLORS.warning, bg: COLORS.warningLight },
   obese: { label: '肥胖', color: COLORS.danger, bg: COLORS.dangerLight },
 };

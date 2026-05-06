@@ -9,7 +9,7 @@ from ..models import (
     PlanExerciseItem, Exercise
 )
 from ..schemas.training import CreateTrainingPlanRequest, UpdateTrainingPlanRequest, CompleteTrainingRequest
-from ..schemas.exercise import PlanExerciseItemOutput, UpdatePlanExerciseItem
+from ..schemas.exercise import PlanExerciseItemInput, PlanExerciseItemOutput, UpdatePlanExerciseItem
 
 
 class TrainingService:
@@ -196,6 +196,14 @@ class TrainingService:
         # 从最晚日期的下一周开始生成
         start_date = latest + timedelta(weeks=1)
 
+        # 查询用户在这些日期是否已有计划，避免重复
+        existing_dates = set(
+            d[0] for d in user_db.query(TrainingPlan.scheduled_date).filter(
+                TrainingPlan.user_id == user_id,
+                TrainingPlan.scheduled_date >= start_date,
+            ).all()
+        )
+
         # 读取该组任意一个计划的动作配置
         ref_plan = user_db.query(TrainingPlan).filter(
             TrainingPlan.user_id == user_id,
@@ -209,6 +217,9 @@ class TrainingService:
         plan_ids = []
         for week in range(weeks):
             plan_date = start_date + timedelta(weeks=week)
+            # 跳过已有计划的日期，避免重复
+            if plan_date in existing_dates:
+                continue
             new_plan = TrainingPlan(
                 user_id=user_id,
                 plan_name=ref_plan.plan_name,
@@ -332,16 +343,16 @@ class TrainingService:
             TrainingPlan.user_id == user_id
         ).first()
         if plan:
-            if data.planName:
+            if data.planName is not None:
                 plan.plan_name = data.planName
-            if data.scheduledDate:
+            if data.scheduledDate is not None:
                 plan.scheduled_date = data.scheduledDate
                 plan.day_of_week = data.scheduledDate.isoweekday()
-            if data.targetIntensity:
+            if data.targetIntensity is not None:
                 plan.target_intensity = data.targetIntensity
-            if data.estimatedDuration:
+            if data.estimatedDuration is not None:
                 plan.estimated_duration = data.estimatedDuration
-            if data.note:
+            if data.note is not None:
                 plan.note = data.note
             user_db.commit()
             user_db.refresh(plan)
@@ -355,6 +366,8 @@ class TrainingService:
             TrainingPlan.user_id == user_id
         ).first()
         if plan:
+            if plan.status == "completed":
+                return None
             completed_dt = datetime.now(timezone.utc)
             if data.completedDate:
                 completed_dt = datetime.combine(date.fromisoformat(data.completedDate), datetime.min.time()).replace(tzinfo=timezone.utc)
@@ -455,6 +468,43 @@ class TrainingService:
             user_db.commit()
             user_db.refresh(item)
         return item
+
+    @staticmethod
+    def add_plan_exercise(user_db: Session, plan_id: int, user_id: int, data: PlanExerciseItemInput) -> Optional[PlanExerciseItem]:
+        """向已有计划新增一个动作项"""
+        plan = user_db.query(TrainingPlan).filter(
+            TrainingPlan.plan_id == plan_id,
+            TrainingPlan.user_id == user_id
+        ).first()
+        if not plan:
+            return None
+        item = PlanExerciseItem(
+            plan_id=plan_id,
+            exercise_id=data.exerciseId,
+            custom_name=data.customName or "",
+            sets=data.sets,
+            reps=data.reps,
+            weight=data.weight,
+            duration=data.duration,
+            notes=data.notes,
+        )
+        user_db.add(item)
+        user_db.commit()
+        user_db.refresh(item)
+        return item
+
+    @staticmethod
+    def delete_plan_exercise(user_db: Session, exercise_item_id: int, user_id: int) -> bool:
+        """从计划中删除一个动作项"""
+        item = user_db.query(PlanExerciseItem).join(TrainingPlan).filter(
+            PlanExerciseItem.id == exercise_item_id,
+            TrainingPlan.user_id == user_id
+        ).first()
+        if not item:
+            return False
+        user_db.delete(item)
+        user_db.commit()
+        return True
 
     @staticmethod
     def get_date_range_trend(user_db: Session, user_id: int, start_date: date, end_date: date) -> dict:

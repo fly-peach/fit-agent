@@ -1,11 +1,59 @@
 import api from './request';
-import type { DietStats, DietMeal, NutritionProgress } from '../types';
+import type {
+  DietStats,
+  DietMeal,
+  NutritionProgress,
+  RecommendedFood,
+  WeeklyDietTrend,
+  FoodItem,
+} from '../types';
 
 export const dietApi = {
   getTodayStats: (): Promise<DietStats> => api.get('/diet/stats/today'),
-  getTodayMeals: (): Promise<DietMeal[]> => api.get('/diet/meals/today'),
-  createMeal: (data: { mealType: string; mealName: string; calories: number; protein?: number; carbs?: number; fat?: number; time: string; note?: string }): Promise<{ mealId: number }> =>
+  getTodayMeals: (targetDate?: string): Promise<DietMeal[]> =>
+    api.get('/diet/meals/today', { params: targetDate ? { date: targetDate } : undefined }),
+  createMeal: (data: { mealType: string; mealName: string; calories: number; protein?: number; carbs?: number; fat?: number; water?: number; time: string; note?: string; mealDate?: string }): Promise<{ mealId: number }> =>
     api.post('/diet/meals', data),
+  updateMeal: (mealId: number, data: Partial<DietMeal>): Promise<void> =>
+    api.put(`/diet/meals/${mealId}`, data),
   deleteMeal: (mealId: number): Promise<void> => api.delete(`/diet/meals/${mealId}`),
   getNutritionProgress: (): Promise<NutritionProgress> => api.get('/diet/nutrition/progress'),
+  getRecommendations: (): Promise<RecommendedFood[]> => api.get('/diet/recommendations'),
+  getWeeklyTrend: (): Promise<WeeklyDietTrend> => api.get('/diet/trend/weekly'),
+  searchFoods: (keyword = '', category = '', mealType = ''): Promise<FoodItem[]> =>
+    api.get('/diet/foods', { params: { keyword, category, meal_type: mealType } }),
+  getFoodCategories: (): Promise<string[]> => api.get('/diet/foods/categories'),
+  addCustomFood: (data: {
+    name: string;
+    category: string;
+    portionUnit?: string;
+    portionGrams?: number;
+    portionCalories: number;
+    caloriesPer100g: number;
+    calorieLevel?: string;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  }): Promise<{ foodId: number }> => api.post('/diet/foods', data),
+  deleteCustomFood: (foodId: number): Promise<void> => api.delete(`/diet/foods/${foodId}`),
+  getDateRangeTrend: (startDate: string, endDate: string): Promise<{
+    dailyStats: {
+      date: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+      water: number;
+      proteinGoalMet: boolean;
+      waterGoalMet: boolean;
+      mealCount: number;
+    }[];
+    goals: {
+      caloriesGoal: number;
+      proteinGoal: number;
+      carbsGoal: number;
+      fatGoal: number;
+      waterGoal: number;
+    };
+  }> => api.get('/diet/trend/range', { params: { start_date: startDate, end_date: endDate } }),
 };

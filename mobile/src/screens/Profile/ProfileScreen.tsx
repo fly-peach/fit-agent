@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,6 +58,18 @@ export default function ProfileScreen({ onLogout }: Props) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', avatar: '' });
+  const [settingsForm, setSettingsForm] = useState({
+    calorieGoal: '',
+    proteinGoal: '',
+    carbsGoal: '',
+    fatGoal: '',
+    waterGoal: '',
+    weightGoal: '',
+    weeklyTrainingGoal: '',
+  });
 
   const loadData = useCallback(async () => {
     try {
@@ -63,8 +77,22 @@ export default function ProfileScreen({ onLogout }: Props) {
         userApi.getProfile().catch(() => null),
         userApi.getSettings().catch(() => null),
       ]);
-      if (p) setProfile(p);
-      if (s) setSettings(s);
+      if (p) {
+        setProfile(p);
+        setProfileForm({ name: p.name || '', avatar: p.avatar || '' });
+      }
+      if (s) {
+        setSettings(s);
+        setSettingsForm({
+          calorieGoal: String(s.calorieGoal ?? ''),
+          proteinGoal: String(s.proteinGoal ?? ''),
+          carbsGoal: String(s.carbsGoal ?? ''),
+          fatGoal: String(s.fatGoal ?? ''),
+          waterGoal: String(s.waterGoal ?? ''),
+          weightGoal: s.weightGoal == null ? '' : String(s.weightGoal),
+          weeklyTrainingGoal: String(s.weeklyTrainingGoal ?? ''),
+        });
+      }
     } catch {}
   }, []);
 
@@ -96,6 +124,37 @@ export default function ProfileScreen({ onLogout }: Props) {
     ? Object.entries(SETTING_LABELS).filter(([key]) => settings[key as keyof UserSettings] != null)
     : [];
 
+  const saveProfile = async () => {
+    try {
+      await userApi.updateProfile({
+        name: profileForm.name.trim(),
+        avatar: profileForm.avatar.trim() || undefined,
+      });
+      setShowProfileModal(false);
+      loadData();
+    } catch (e: any) {
+      Alert.alert('错误', e.message || '更新资料失败');
+    }
+  };
+
+  const saveSettings = async () => {
+    try {
+      await userApi.updateSettings({
+        calorieGoal: parseInt(settingsForm.calorieGoal, 10) || 0,
+        proteinGoal: parseInt(settingsForm.proteinGoal, 10) || 0,
+        carbsGoal: parseInt(settingsForm.carbsGoal, 10) || 0,
+        fatGoal: parseInt(settingsForm.fatGoal, 10) || 0,
+        waterGoal: parseInt(settingsForm.waterGoal, 10) || 0,
+        weightGoal: settingsForm.weightGoal ? parseFloat(settingsForm.weightGoal) : null,
+        weeklyTrainingGoal: parseInt(settingsForm.weeklyTrainingGoal, 10) || 0,
+      });
+      setShowSettingsModal(false);
+      loadData();
+    } catch (e: any) {
+      Alert.alert('错误', e.message || '保存失败');
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -122,12 +181,21 @@ export default function ProfileScreen({ onLogout }: Props) {
           <Ionicons name="mail-outline" size={14} color={COLORS.textSecondary} />
           <Text style={styles.profileEmail}>{profile?.email || ''}</Text>
         </View>
+        <TouchableOpacity style={styles.inlineAction} onPress={() => setShowProfileModal(true)}>
+          <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+          <Text style={styles.inlineActionText}>编辑资料</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Settings */}
       {settings && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>目标设置</Text>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>目标设置</Text>
+            <TouchableOpacity style={styles.miniBtn} onPress={() => setShowSettingsModal(true)}>
+              <Text style={styles.miniBtnText}>编辑</Text>
+            </TouchableOpacity>
+          </View>
           {settingEntries.map(([key, label], idx) => {
             const config = SETTING_ICONS[key] || { icon: 'settings-outline' as keyof typeof Ionicons.glyphMap, color: COLORS.textSecondary, bg: COLORS.background };
             const value = settings[key as keyof UserSettings];
@@ -179,6 +247,70 @@ export default function ProfileScreen({ onLogout }: Props) {
       </TouchableOpacity>
 
       <View style={{ height: 24 }} />
+
+      <Modal visible={showProfileModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowProfileModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>编辑资料</Text>
+              <TouchableOpacity onPress={saveProfile}>
+                <Text style={styles.modalSave}>保存</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.inputLabel}>姓名</Text>
+            <TextInput
+              style={styles.input}
+              value={profileForm.name}
+              onChangeText={value => setProfileForm(prev => ({ ...prev, name: value }))}
+            />
+            <Text style={styles.inputLabel}>头像字母</Text>
+            <TextInput
+              style={styles.input}
+              value={profileForm.avatar}
+              onChangeText={value => setProfileForm(prev => ({ ...prev, avatar: value }))}
+              maxLength={2}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
+                <Ionicons name="close" size={22} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>编辑目标</Text>
+              <TouchableOpacity onPress={saveSettings}>
+                <Text style={styles.modalSave}>保存</Text>
+              </TouchableOpacity>
+            </View>
+            {[
+              ['calorieGoal', '每日热量'],
+              ['proteinGoal', '蛋白质'],
+              ['carbsGoal', '碳水'],
+              ['fatGoal', '脂肪'],
+              ['waterGoal', '饮水'],
+              ['weightGoal', '目标体重'],
+              ['weeklyTrainingGoal', '每周训练目标'],
+            ].map(([key, label]) => (
+              <View key={key} style={{ marginTop: 12 }}>
+                <Text style={styles.inputLabel}>{label}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={(settingsForm as any)[key]}
+                  onChangeText={value => setSettingsForm(prev => ({ ...prev, [key]: value }))}
+                  keyboardType="numeric"
+                />
+              </View>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -223,7 +355,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   profileEmail: { fontSize: 13, color: COLORS.textSecondary },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 16 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -261,4 +394,27 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   logoutText: { color: COLORS.danger, fontSize: 16, fontWeight: '600' },
+  inlineAction: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  inlineActionText: { color: COLORS.primary, fontWeight: '600' },
+  miniBtn: { backgroundColor: COLORS.blueBg, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  miniBtnText: { color: COLORS.primary, fontWeight: '700', fontSize: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)', justifyContent: 'flex-end' },
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    minHeight: 320,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  modalSave: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
+  inputLabel: { color: COLORS.textSecondary, marginBottom: 6, marginTop: 8 },
+  input: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: COLORS.text,
+  },
 });

@@ -118,4 +118,10 @@ export const trainingApi = {
 
   updatePlanExercise: (exerciseId: number, data: { sets?: number; reps?: number; weight?: number; duration?: number }): Promise<void> =>
     api.put(`/training/plans/exercise/${exerciseId}`, data),
+
+  addPlanExercise: (planId: number, data: PlanExerciseInput): Promise<void> =>
+    api.post(`/training/plans/${planId}/exercises`, data),
+
+  deletePlanExercise: (exerciseId: number): Promise<void> =>
+    api.delete(`/training/plans/exercise/${exerciseId}`),
 }

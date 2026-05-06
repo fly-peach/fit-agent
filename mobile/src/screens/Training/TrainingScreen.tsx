@@ -23,10 +23,12 @@ const TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   stretch: 'leaf',
 };
 
-export default function TrainingScreen() {
+export default function TrainingScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<WeeklyStats | null>(null);
   const [schedule, setSchedule] = useState<TrainingSchedule[]>([]);
+  const [trendDays, setTrendDays] = useState(7);
+  const [trendData, setTrendData] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [planName, setPlanName] = useState('');
@@ -48,11 +50,24 @@ export default function TrainingScreen() {
     } catch {}
   }, []);
 
+  const loadTrend = useCallback(async () => {
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - (trendDays - 1));
+      const format = (date: Date) => date.toISOString().slice(0, 10);
+      const result = await trainingApi.getDateRangeTrend(format(start), format(end)).catch(() => ({ dailyStats: [] }));
+      setTrendData(result.dailyStats || []);
+    } catch {}
+  }, [trendDays]);
+
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadTrend(); }, [loadTrend]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
+    await loadTrend();
     setRefreshing(false);
   };
 
@@ -121,6 +136,8 @@ export default function TrainingScreen() {
   };
 
   const todayPlans = schedule.filter(s => s.date === today);
+  const recentPlans = schedule.slice(0, 6);
+  const maxTrend = Math.max(...trendData.map(item => item.duration || 0), 1);
 
   return (
     <View style={styles.container}>
@@ -140,9 +157,14 @@ export default function TrainingScreen() {
         <View style={[styles.card, { marginTop: 12 }]}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>今日训练</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-              <Ionicons name="add" size={22} color={COLORS.white} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.smallAction} onPress={() => navigation.navigate('TrainingCalendar')}>
+                <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('TrainingCreate')}>
+                <Ionicons name="add" size={22} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
           </View>
           {todayPlans.length === 0 ? (
             <View style={styles.emptyState}>
@@ -170,6 +192,11 @@ export default function TrainingScreen() {
                     {item.status !== 'completed' && item.planId && (
                       <TouchableOpacity style={styles.completeBtn} onPress={() => handleComplete(item.planId!)}>
                         <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                      </TouchableOpacity>
+                    )}
+                    {item.planId && (
+                      <TouchableOpacity onPress={() => navigation.navigate('TrainingPlanDetail', { planId: item.planId })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="eye-outline" size={16} color={COLORS.primary} />
                       </TouchableOpacity>
                     )}
                     {item.planId && (
@@ -222,6 +249,57 @@ export default function TrainingScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.card}>
+          <View style={styles.trendHeader}>
+            <Text style={styles.cardTitle}>训练趋势</Text>
+            <View style={styles.daySwitch}>
+              {[7, 14, 30].map(day => (
+                <TouchableOpacity key={day} style={[styles.dayChip, trendDays === day && styles.dayChipActive]} onPress={() => setTrendDays(day)}>
+                  <Text style={[styles.dayChipText, trendDays === day && styles.dayChipTextActive]}>近{day}天</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          {trendData.length ? trendData.map(item => {
+            const percent = Math.min(((item.duration || 0) / maxTrend) * 100, 100);
+            return (
+              <View key={item.date} style={styles.trendRow}>
+                <Text style={styles.trendDate}>{item.date.slice(5)}</Text>
+                <View style={styles.trendTrack}>
+                  <View style={[styles.trendFill, { width: `${percent}%` }]} />
+                </View>
+                <Text style={styles.trendValue}>{item.duration} 分钟</Text>
+              </View>
+            );
+          }) : (
+            <Text style={styles.emptySub}>暂无趋势数据</Text>
+          )}
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>最近计划</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('TrainingCalendar')}>
+              <Text style={styles.linkText}>查看月历</Text>
+            </TouchableOpacity>
+          </View>
+          {recentPlans.length ? recentPlans.map(item => (
+            <TouchableOpacity
+              key={`${item.planId || item.planName}-${item.date}`}
+              style={styles.recentRow}
+              onPress={() => item.planId && navigation.navigate('TrainingPlanDetail', { planId: item.planId })}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.planName}>{item.planName}</Text>
+                <Text style={styles.planDetail}>{item.date} · {item.duration}分钟 · {item.intensity}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+            </TouchableOpacity>
+          )) : (
+            <Text style={styles.emptySub}>暂无计划</Text>
+          )}
+        </View>
         <View style={{ height: 24 }} />
       </ScrollView>
 
@@ -294,6 +372,15 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  smallAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.blueBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   addBtn: {
     width: 36,
     height: 36,
@@ -358,6 +445,26 @@ const styles = StyleSheet.create({
   },
   statValueWhite: { fontSize: 20, fontWeight: 'bold', color: COLORS.white },
   statLabelWhite: { fontSize: 11, color: 'rgba(255,255,255,0.85)' },
+  trendHeader: { gap: 12 },
+  daySwitch: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  dayChip: { backgroundColor: COLORS.background, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  dayChipActive: { backgroundColor: COLORS.blueBg },
+  dayChipText: { color: COLORS.textSecondary, fontSize: 12 },
+  dayChipTextActive: { color: COLORS.primary, fontWeight: '700' },
+  trendRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
+  trendDate: { width: 54, fontSize: 12, color: COLORS.textSecondary },
+  trendTrack: { flex: 1, height: 10, backgroundColor: COLORS.divider, borderRadius: 999, overflow: 'hidden' },
+  trendFill: { height: '100%', backgroundColor: COLORS.primary, borderRadius: 999 },
+  trendValue: { width: 72, fontSize: 12, color: COLORS.text, textAlign: 'right' },
+  linkText: { color: COLORS.primary, fontWeight: '600' },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.divider,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

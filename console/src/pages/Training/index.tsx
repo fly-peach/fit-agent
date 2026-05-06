@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Calendar, Tag, Space, message, Radio, Checkbox, List, Avatar } from 'antd'
+import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Calendar, Tag, Space, message, Radio, Checkbox, List, Avatar, Popconfirm } from 'antd'
 import { PlusOutlined, CheckOutlined, SyncOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { Dumbbell } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -58,7 +58,12 @@ const Training: React.FC = () => {
   const [detailData, setDetailData] = useState<PlanDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [editingExerciseId, setEditingExerciseId] = useState<number | null>(null)
+  const [editingDraft, setEditingDraft] = useState<{ sets: number; reps: number; weight: number | null } | null>(null)
   const [detailPlanInfo, setDetailPlanInfo] = useState<{ isRecurring?: boolean; isLastInGroup?: boolean } | null>(null)
+  const [detailExercisePickerOpen, setDetailExercisePickerOpen] = useState(false)
+  const [detailCustomName, setDetailCustomName] = useState('')
+  const [detailCustomSets, setDetailCustomSets] = useState(3)
+  const [detailCustomReps, setDetailCustomReps] = useState(10)
 
   const isMobile = useIsMobile()
 
@@ -126,7 +131,10 @@ const Training: React.FC = () => {
     }
     try {
       const values = await completeForm.validateFields()
-      await trainingApi.completePlan(selectedPlanId, values)
+      await trainingApi.completePlan(selectedPlanId, {
+        ...values,
+        completedDate: values.completedDate?.format('YYYY-MM-DD'),
+      })
       message.success('完成记录成功')
       setCompleteOpen(false)
       completeForm.resetFields()
@@ -161,6 +169,44 @@ const Training: React.FC = () => {
     } catch { message.error('获取详情失败') } finally { setDetailLoading(false) }
   }
 
+  const handleAddExercisesToDetail = async (exercises: PlanExerciseInput[]) => {
+    if (!detailData) return
+    try {
+      for (const ex of exercises) {
+        await trainingApi.addPlanExercise(detailData.planId, ex)
+      }
+      message.success('添加成功')
+      setDetailExercisePickerOpen(false)
+      // 重新加载详情
+      handleViewDetail(detailData.planId)
+    } catch { message.error('添加失败') }
+  }
+
+  const handleAddCustomExerciseToDetail = async () => {
+    if (!detailData) return
+    if (!detailCustomName.trim()) { message.warning('请输入动作名称'); return }
+    try {
+      await trainingApi.addPlanExercise(detailData.planId, {
+        customName: detailCustomName.trim(),
+        sets: detailCustomSets,
+        reps: detailCustomReps,
+      })
+      message.success('添加成功')
+      setDetailCustomName('')
+      handleViewDetail(detailData.planId)
+    } catch { message.error('添加失败') }
+  }
+
+  const handleDeleteExerciseFromDetail = async (exerciseId: number) => {
+    try {
+      await trainingApi.deletePlanExercise(exerciseId)
+      message.success('删除成功')
+      if (detailData) {
+        setDetailData(prev => prev ? { ...prev, exercises: prev.exercises.filter(e => e.id !== exerciseId) } : prev)
+      }
+    } catch { message.error('删除失败') }
+  }
+
   const getTypeTag = (type: string) => {
     const colors: Record<string, string> = { strength: '#F59E0B', cardio: '#10B981', flexibility: '#0EA5E9' }
     const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
@@ -177,14 +223,13 @@ const Training: React.FC = () => {
       <style>{`
         .training-calendar .ant-picker-cell-inner { overflow: hidden; max-width: 100%; }
         .training-calendar .ant-picker-cell { overflow: hidden; }
+        .training-calendar .ant-picker-calendar-date-content { height: auto !important; min-height: 100px; }
         @media (max-width: 767px) {
           .training-calendar .ant-picker-calendar-header { flex-wrap: wrap; }
           .training-calendar .ant-picker-cell-content { height: auto; }
-          .training-calendar .ant-picker-date-panel .ant-picker-body th { font-size: 11px; padding: 4px 0; }
+          .training-calendar .ant-picker-date-panel .ant-picker-body th { font-size: 12px; padding: 6px 0; }
           .training-calendar .ant-picker-cell-inner { padding: 0; }
-          .training-calendar .training-plan-row { min-height: 18px; }
-          .training-calendar .training-plan-row span { min-height: 16px; display: inline-flex; align-items: center; }
-          .training-calendar .ant-picker-content { font-size: 12px; }
+          .training-calendar .ant-picker-content { font-size: 13px; }
           .fitagent-page-enter .ant-modal { padding-bottom: 0; }
           .fitagent-page-enter .ant-modal-body { padding: 16px; max-height: 80vh; overflow-y: auto; }
         }
@@ -196,36 +241,78 @@ const Training: React.FC = () => {
         <Typography.Title level={4} style={{ margin: 0 }}>训练计划</Typography.Title>
       </div>
 
-      <Row gutter={[isMobile ? 12 : 16, isMobile ? 12 : 16]}>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' }}>
-            <Typography.Text type="secondary">本周训练</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#10B981', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyCount || 0} 次`}</Typography.Title>
-          </Card>
+      <Row gutter={[isMobile ? 8 : 12, isMobile ? 8 : 12]}>
+        <Col xs={12} sm={6} md={6}>
+          <div className="fitagent-card-hover" style={{
+            padding: isMobile ? 12 : 16,
+            borderRadius: 6,
+            background: '#F0FDF4',
+            border: '1px solid #86EFAC',
+            height: '100%',
+          }}>
+            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>本周训练</Typography.Text>
+            <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#10B981', marginTop: 8 }}>
+              {loading ? '-' : `${weeklyStats?.weeklyCount || 0}`}
+              <span style={{ fontSize: isMobile ? 12 : 14, fontWeight: 500, marginLeft: 4 }}>次</span>
+            </div>
+          </div>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="fitagent-card-hover" style={{ border: 'none' }}>
-            <Typography.Text type="secondary">本周时长</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyHours || 0} 小时`}</Typography.Title>
-          </Card>
+        <Col xs={12} sm={6} md={6}>
+          <div className="fitagent-card-hover" style={{
+            padding: isMobile ? 12 : 16,
+            borderRadius: 6,
+            background: '#F5F5F5',
+            border: '1px solid #e8e8e8',
+            height: '100%',
+          }}>
+            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>本周时长</Typography.Text>
+            <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, marginTop: 8 }}>
+              {loading ? '-' : `${weeklyStats?.weeklyHours || 0}`}
+              <span style={{ fontSize: isMobile ? 12 : 14, fontWeight: 500, marginLeft: 4 }}>小时</span>
+            </div>
+          </div>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%)' }}>
-            <Typography.Text type="secondary">消耗热量</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#F59E0B', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.weeklyCalories || 0} kcal`}</Typography.Title>
-          </Card>
+        <Col xs={12} sm={6} md={6}>
+          <div className="fitagent-card-hover" style={{
+            padding: isMobile ? 12 : 16,
+            borderRadius: 6,
+            background: '#FFF7ED',
+            border: '1px solid #FED7AA',
+            height: '100%',
+          }}>
+            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>消耗热量</Typography.Text>
+            <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#F59E0B', marginTop: 8 }}>
+              {loading ? '-' : `${weeklyStats?.weeklyCalories || 0}`}
+              <span style={{ fontSize: isMobile ? 12 : 14, fontWeight: 500, marginLeft: 4 }}>kcal</span>
+            </div>
+          </div>
         </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Card className="fitagent-card-hover" style={{ border: 'none', background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)' }}>
-            <Typography.Text type="secondary">连续训练</Typography.Text>
-            <Typography.Title level={3} style={{ margin: '8px 0 0', color: '#8B5CF6', fontWeight: 700 }}>{loading ? '-' : `${weeklyStats?.streakDays || 0} 天`}</Typography.Title>
-          </Card>
+        <Col xs={12} sm={6} md={6}>
+          <div className="fitagent-card-hover" style={{
+            padding: isMobile ? 12 : 16,
+            borderRadius: 6,
+            background: '#F5F3FF',
+            border: '1px solid #DDD6FE',
+            height: '100%',
+          }}>
+            <Typography.Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>连续训练</Typography.Text>
+            <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#8B5CF6', marginTop: 8 }}>
+              {loading ? '-' : `${weeklyStats?.streakDays || 0}`}
+              <span style={{ fontSize: isMobile ? 12 : 14, fontWeight: 500, marginLeft: 4 }}>天</span>
+            </div>
+          </div>
         </Col>
       </Row>
 
-      <Card style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-          <Typography.Title level={5} style={{ margin: 0 }}>训练趋势</Typography.Title>
+      <div style={{
+        marginTop: isMobile ? 16 : 24,
+        padding: isMobile ? 12 : 16,
+        borderRadius: 6,
+        background: '#F5F5F5',
+        border: '1px solid #e8e8e8',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <Typography.Text strong style={{ fontSize: isMobile ? 14 : 16 }}>训练趋势</Typography.Text>
           <Radio.Group value={trendDays} onChange={e => setTrendDays(e.target.value)} size="small">
             <Radio.Button value={7}>近7天</Radio.Button>
             <Radio.Button value={14}>近14天</Radio.Button>
@@ -233,19 +320,19 @@ const Training: React.FC = () => {
           </Radio.Group>
         </div>
 
-        <Checkbox.Group value={activeMetrics} onChange={(vals: any[]) => setActiveMetrics(vals)} style={{ marginBottom: 16 }}>
-          <Space wrap>
+        <Checkbox.Group value={activeMetrics} onChange={(vals: any[]) => setActiveMetrics(vals)} style={{ marginBottom: 12 }}>
+          <Space wrap size={8}>
             <Checkbox value="duration">时长</Checkbox>
             <Checkbox value="caloriesBurned">消耗热量</Checkbox>
           </Space>
         </Checkbox.Group>
 
-        <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+        <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
           <LineChart data={trendLoading ? [] : trendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="date" tick={{ fontSize: isMobile ? 10 : 12 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: isMobile ? 10 : 12 }} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: isMobile ? 10 : 12 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
+            <XAxis dataKey="date" tick={{ fontSize: isMobile ? 11 : 12 }} />
+            <YAxis yAxisId="left" tick={{ fontSize: isMobile ? 11 : 12 }} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: isMobile ? 11 : 12 }} />
             <Tooltip formatter={(value: any, name: any) => {
               const labels: Record<string, string> = { duration: '时长', caloriesBurned: '消耗热量', planCount: '计划数' }
               const units: Record<string, string> = { duration: ' 分钟', caloriesBurned: ' kcal' }
@@ -255,16 +342,22 @@ const Training: React.FC = () => {
             {activeMetrics.includes('caloriesBurned') && <Line type="monotone" yAxisId="right" dataKey="caloriesBurned" name="caloriesBurned" stroke="#F59E0B" strokeWidth={2} dot={{ r: 3 }} />}
           </LineChart>
         </ResponsiveContainer>
-      </Card>
+      </div>
 
-      <Card style={{ marginTop: isMobile ? 16 : 24, border: 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{
+        marginTop: isMobile ? 16 : 24,
+        padding: isMobile ? 12 : 16,
+        borderRadius: 6,
+        background: '#F5F5F5',
+        border: '1px solid #e8e8e8',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Button size="small" icon={<LeftOutlined />} onClick={() => setCurrentMonth(m => m.subtract(1, 'month'))} />
-            <Typography.Title level={5} style={{ margin: 0 }}>{currentMonth.format('YYYY年M月')}</Typography.Title>
+            <Typography.Text strong style={{ fontSize: isMobile ? 14 : 16 }}>{currentMonth.format('YYYY年M月')}</Typography.Text>
             <Button size="small" icon={<RightOutlined />} onClick={() => setCurrentMonth(m => m.add(1, 'month'))} />
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新建计划</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} size={isMobile ? "small" : "middle"}>新建计划</Button>
         </div>
 
         <Calendar
@@ -284,13 +377,14 @@ const Training: React.FC = () => {
             if (dayPlans.length === 0) {
               return (
                 <div style={{
-                  height: isMobile ? 60 : 80,
+                  minHeight: isMobile ? 80 : 120,
+                  height: '100%',
                   borderLeft: isToday ? '3px solid #10B981' : 'none',
-                  padding: '2px 4px',
+                  padding: '4px 6px',
                   background: isCurrentMonth && !isToday ? '#FAFFFE' : undefined,
                   width: '100%',
                 }}>
-                  <div style={{ fontWeight: isToday ? 700 : 400, color: isToday ? '#10B981' : !isCurrentMonth ? '#ccc' : undefined }}>
+                  <div style={{ fontWeight: isToday ? 700 : 400, color: isToday ? '#10B981' : !isCurrentMonth ? '#ccc' : undefined, fontSize: isMobile ? 14 : 16 }}>
                     {date.date()}
                   </div>
                 </div>
@@ -299,79 +393,82 @@ const Training: React.FC = () => {
 
             return (
               <div style={{
-                height: isMobile ? 60 : 80,
+                minHeight: isMobile ? 80 : 120,
+                height: '100%',
                 borderLeft: isToday ? '3px solid #10B981' : hasCompleted ? '3px solid #10B981' : 'none',
-                padding: '2px 4px',
+                padding: '4px 6px',
                 overflow: 'hidden',
                 background: isCurrentMonth && !isToday ? '#FAFFFE' : undefined,
                 width: '100%',
               }}>
-                <div style={{ fontWeight: isToday ? 700 : 400, color: isToday ? '#10B981' : undefined, fontSize: 12 }}>
+                <div style={{ fontWeight: isToday ? 700 : 400, color: isToday ? '#10B981' : undefined, fontSize: isMobile ? 14 : 16, marginBottom: 4 }}>
                   {date.date()}
                 </div>
-                {dayPlans.slice(0, isMobile ? 2 : 4).map(item => (
+                {dayPlans.slice(0, isMobile ? 2 : 3).map(item => (
                   <div
                     key={item.planId}
                     style={{
-                      marginTop: 2,
-                      padding: '1px 3px',
-                      borderRadius: 3,
-                      fontSize: 10,
+                      marginTop: 0,
+                      marginBottom: 4,
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      fontSize: isMobile ? 12 : 13,
                       background: item.status === 'completed' ? '#F0FDF4' : '#F5F5F5',
                       border: item.status === 'completed' ? '1px solid #86EFAC' : '1px solid #e8e8e8',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      flexWrap: 'nowrap',
+                      flexDirection: 'column',
+                      gap: 6,
                     }}
                   >
-                    {item.status === 'completed' && <CheckOutlined style={{ color: '#10B981', fontSize: 9, flexShrink: 0 }} />}
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '0 3px',
-                      borderRadius: 2,
-                      fontSize: 9,
-                      lineHeight: '14px',
-                      background: (() => {
-                        const colors: Record<string, string> = { strength: '#F59E0B20', cardio: '#10B98120', flexibility: '#0EA5E920' }
-                        return colors[item.planType] || '#eee'
-                      })(),
-                      color: (() => {
-                        const colors: Record<string, string> = { strength: '#F59E0B', cardio: '#10B981', flexibility: '#0EA5E9' }
-                        return colors[item.planType] || '#666'
-                      })(),
-                      flexShrink: 0,
-                      marginRight: 2,
-                    }}>
-                      {(() => {
-                        const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
-                        return labels[item.planType] || item.planType
-                      })()}
-                    </span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', flex: 1, minWidth: 0 }} onClick={() => item.planId && item.planId > 0 && handleViewDetail(item.planId)}>
-                      {item.planName}
-                    </span>
-                    <div style={{ display: 'flex', gap: 0, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {item.status === 'completed' && <CheckOutlined style={{ color: '#10B981', fontSize: isMobile ? 12 : 14, flexShrink: 0 }} />}
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: isMobile ? 11 : 12,
+                        lineHeight: '18px',
+                        background: (() => {
+                          const colors: Record<string, string> = { strength: '#F59E0B20', cardio: '#10B98120', flexibility: '#0EA5E920' }
+                          return colors[item.planType] || '#eee'
+                        })(),
+                        color: (() => {
+                          const colors: Record<string, string> = { strength: '#F59E0B', cardio: '#10B981', flexibility: '#0EA5E9' }
+                          return colors[item.planType] || '#666'
+                        })(),
+                        flexShrink: 0,
+                        fontWeight: 600,
+                      }}>
+                        {(() => {
+                          const labels: Record<string, string> = { strength: '力量', cardio: '有氧', flexibility: '柔韧' }
+                          return labels[item.planType] || item.planType
+                        })()}
+                      </span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', flex: 1, minWidth: 0, fontWeight: 500 }} onClick={() => item.planId && item.planId > 0 && handleViewDetail(item.planId)}>
+                        {item.planName}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                       {item.status !== 'completed' && (
-                        <span style={{ color: isFuture ? '#ccc' : '#1677ff', cursor: isFuture ? 'not-allowed' : 'pointer', fontSize: 10, lineHeight: '14px' }} onClick={isFuture ? undefined : () => { setSelectedPlanId(item.planId!); setCompleteOpen(true) }}>
+                        <span style={{ color: isFuture ? '#ccc' : '#1677ff', cursor: isFuture ? 'not-allowed' : 'pointer', fontSize: isMobile ? 12 : 13, lineHeight: '18px', fontWeight: 500 }} onClick={isFuture ? undefined : () => { setSelectedPlanId(item.planId!); setCompleteOpen(true) }}>
                           {isFuture ? '未到' : '打卡'}
                         </span>
                       )}
-                      <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: 10, lineHeight: '14px' }} onClick={() => item.planId && handleDeletePlan(item.planId)}>删</span>
+                      <span style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: isMobile ? 12 : 13, lineHeight: '18px', fontWeight: 500 }} onClick={() => item.planId && handleDeletePlan(item.planId)}>删除</span>
                       {item.isRecurring && item.isLastInGroup && (
-                        <span style={{ color: '#1677ff', cursor: 'pointer', fontSize: 10, lineHeight: '14px', marginLeft: 2 }} onClick={() => item.planId && handleRenewPlan(item.planId)}>续</span>
+                        <span style={{ color: '#1677ff', cursor: 'pointer', fontSize: isMobile ? 12 : 13, lineHeight: '18px', fontWeight: 500 }} onClick={() => item.planId && handleRenewPlan(item.planId)}>续期</span>
                       )}
                     </div>
                   </div>
                 ))}
-                {dayPlans.length > (isMobile ? 2 : 4) && (
-                  <div style={{ fontSize: 10, color: '#999', marginTop: 2 }}>+{dayPlans.length - (isMobile ? 2 : 4)} 更多</div>
+                {dayPlans.length > (isMobile ? 2 : 3) && (
+                  <div style={{ fontSize: isMobile ? 11 : 12, color: '#999', marginTop: 2, fontWeight: 500 }}>+{dayPlans.length - (isMobile ? 2 : 3)} 更多</div>
                 )}
               </div>
             )
           }}
         />
-      </Card>
+      </div>
 
       <Modal title="创建训练计划" open={createOpen} onCancel={() => { setCreateOpen(false); setSelectedExercises([]) }} onOk={handleCreatePlan} okText="创建" cancelText="取消" width={isMobile ? '100%' : undefined} style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}>
         <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
@@ -426,6 +523,7 @@ const Training: React.FC = () => {
         <Form form={completeForm} layout="vertical" style={{ marginTop: 16 }} initialValues={{ completedDate: dayjs(), actualDuration: 60, caloriesBurned: 0 }}>
           <Form.Item name="actualDuration" label="实际时长" rules={[{ required: true }]}><InputNumber addonAfter="分钟" style={{ width: '100%' }} /></Form.Item>
           <Form.Item name="caloriesBurned" label="消耗热量"><InputNumber addonAfter="kcal" style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="completedDate" label="完成日期"><DatePicker style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
 
@@ -436,10 +534,17 @@ const Training: React.FC = () => {
         initialExercises={selectedExercises}
       />
 
+      <ExercisePicker
+        open={detailExercisePickerOpen}
+        onClose={() => setDetailExercisePickerOpen(false)}
+        onConfirm={(exercises) => handleAddExercisesToDetail(exercises)}
+        initialExercises={[]}
+      />
+
       <Modal
         title="计划详情"
         open={detailOpen}
-        onCancel={() => { setDetailOpen(false); setDetailData(null); setEditingExerciseId(null) }}
+        onCancel={() => { setDetailOpen(false); setDetailData(null); setEditingExerciseId(null); setEditingDraft(null) }}
         footer={null}
         width={isMobile ? '100%' : 600}
         style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}
@@ -499,7 +604,12 @@ const Training: React.FC = () => {
                           <>
                             <Typography.Text strong>{ex.sets} 组 × {ex.reps} 次</Typography.Text>
                             {ex.weight && <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{ex.weight} kg</Typography.Text>}
-                            <Button size="small" type="link" onClick={() => setEditingExerciseId(ex.id)}>编辑</Button>
+                            <div>
+                              <Button size="small" type="link" onClick={() => { setEditingExerciseId(ex.id); setEditingDraft({ sets: ex.sets, reps: ex.reps, weight: ex.weight ?? null }) }}>编辑</Button>
+                              <Popconfirm title="确认删除" description="确定要删除该动作吗？" onConfirm={() => handleDeleteExerciseFromDetail(ex.id)} okText="删除" cancelText="取消" okButtonProps={{ danger: true }}>
+                                <Button size="small" type="link" danger>删除</Button>
+                              </Popconfirm>
+                            </div>
                           </>
                         )}
                       </div>
@@ -512,11 +622,8 @@ const Training: React.FC = () => {
                               size="middle"
                               min={1}
                               max={20}
-                              value={ex.sets}
-                              onChange={v => setDetailData(prev => {
-                                if (!prev) return prev
-                                return { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, sets: v ?? e.sets } : e) }
-                              })}
+                              value={editingDraft?.sets ?? ex.sets}
+                              onChange={v => setEditingDraft(prev => prev ? { ...prev, sets: v ?? prev.sets } : { sets: v ?? ex.sets, reps: ex.reps, weight: ex.weight ?? null })}
                               style={{ width: '100%', fontSize: 16, height: 40 }}
                               addonBefore="组"
                             />
@@ -526,11 +633,8 @@ const Training: React.FC = () => {
                               size="middle"
                               min={1}
                               max={100}
-                              value={ex.reps}
-                              onChange={v => setDetailData(prev => {
-                                if (!prev) return prev
-                                return { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, reps: v ?? e.reps } : e) }
-                              })}
+                              value={editingDraft?.reps ?? ex.reps}
+                              onChange={v => setEditingDraft(prev => prev ? { ...prev, reps: v ?? prev.reps } : { sets: ex.sets, reps: v ?? ex.reps, weight: ex.weight ?? null })}
                               style={{ width: '100%', fontSize: 16, height: 40 }}
                               addonBefore="次"
                             />
@@ -541,11 +645,8 @@ const Training: React.FC = () => {
                               min={0}
                               max={500}
                               step={0.5}
-                              value={ex.weight ?? undefined}
-                              onChange={v => setDetailData(prev => {
-                                if (!prev) return prev
-                                return { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, weight: v } : e) }
-                              })}
+                              value={editingDraft?.weight ?? ex.weight ?? undefined}
+                              onChange={v => setEditingDraft(prev => prev ? { ...prev, weight: v } : { sets: ex.sets, reps: ex.reps, weight: v })}
                               style={{ width: '100%', fontSize: 16, height: 40 }}
                               addonBefore="kg"
                               placeholder="-"
@@ -554,13 +655,20 @@ const Training: React.FC = () => {
                         </Row>
                         <Space>
                           <Button type="primary" onClick={async () => {
+                            const draft = editingDraft ?? { sets: ex.sets, reps: ex.reps, weight: ex.weight ?? null }
                             try {
-                              await trainingApi.updatePlanExercise(ex.id, { sets: ex.sets, reps: ex.reps, weight: ex.weight ?? undefined })
+                              await trainingApi.updatePlanExercise(ex.id, { sets: draft.sets, reps: draft.reps, weight: draft.weight ?? undefined })
+                              // 保存成功后写回 detailData
+                              setDetailData(prev => {
+                                if (!prev) return prev
+                                return { ...prev, exercises: prev.exercises.map(e => e.id === ex.id ? { ...e, sets: draft.sets, reps: draft.reps, weight: draft.weight } : e) }
+                              })
                               message.success('更新成功')
                               setEditingExerciseId(null)
+                              setEditingDraft(null)
                             } catch { message.error('更新失败') }
                           }}>保存</Button>
-                          <Button onClick={() => setEditingExerciseId(null)}>取消</Button>
+                          <Button onClick={() => { setEditingExerciseId(null); setEditingDraft(null) }}>取消</Button>
                         </Space>
                       </List.Item>
                     )}
@@ -571,8 +679,24 @@ const Training: React.FC = () => {
             ) : (
               <Typography.Text type="secondary">暂无训练动作</Typography.Text>
             )}
+            {detailData.status !== 'completed' && (
+              <div style={{ padding: '12px 0', borderTop: '1px dashed #e8e8e8' }}>
+                <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>添加动作</Typography.Text>
+                <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                  <Space wrap>
+                    <Button icon={<PlusOutlined />} onClick={() => setDetailExercisePickerOpen(true)}>从动作库选择</Button>
+                    <Button type="dashed" icon={<PlusOutlined />} onClick={handleAddCustomExerciseToDetail}>添加自定义</Button>
+                  </Space>
+                  <Space wrap>
+                    <Input placeholder="自定义动作名称" value={detailCustomName} onChange={(e) => setDetailCustomName(e.target.value)} style={{ width: 180 }} />
+                    <InputNumber size="small" min={1} max={20} value={detailCustomSets} onChange={(v) => setDetailCustomSets(v ?? 3)} style={{ width: 70 }} addonBefore="组" />
+                    <InputNumber size="small" min={1} max={100} value={detailCustomReps} onChange={(v) => setDetailCustomReps(v ?? 10)} style={{ width: 70 }} addonBefore="次" />
+                  </Space>
+                </Space>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginTop: 8, borderTop: '1px solid #f0f0f0' }}>
-              <Button onClick={() => { setDetailOpen(false); setDetailData(null); setEditingExerciseId(null) }}>关闭</Button>
+              <Button onClick={() => { setDetailOpen(false); setDetailData(null); setEditingExerciseId(null); setEditingDraft(null) }}>关闭</Button>
               <Space>
                 {detailPlanInfo?.isRecurring && detailPlanInfo?.isLastInGroup && (
                   <Button type="primary" icon={<SyncOutlined />} onClick={() => { handleRenewPlan(detailData!.planId); setDetailOpen(false) }}>

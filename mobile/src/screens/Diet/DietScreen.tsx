@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  TouchableOpacity,
-  StyleSheet,
   Alert,
   Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dietApi } from '../../services/diet';
 import { COLORS, SHADOWS, MEAL_TYPE_LABELS } from '../../constants';
-import type { DietStats, DietMeal } from '../../types';
+import type { DietMeal, DietStats, FoodItem } from '../../types';
 
 const MEAL_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   breakfast: 'sunny',
@@ -31,17 +31,22 @@ const MEAL_COLORS: Record<string, [string, string]> = {
   snack: ['#EC4899', '#F472B6'],
 };
 
-export default function DietScreen() {
+export default function DietScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DietStats | null>(null);
   const [meals, setMeals] = useState<DietMeal[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [mealType, setMealType] = useState('breakfast');
   const [mealName, setMealName] = useState('');
   const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editingMeal, setEditingMeal] = useState<DietMeal | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -55,6 +60,19 @@ export default function DietScreen() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const selectedFood = route?.params?.selectedFood as FoodItem | undefined;
+    if (selectedFood) {
+      setMealName(selectedFood.name);
+      setCalories(String(selectedFood.portionCalories || 0));
+      setProtein(String(selectedFood.protein || 0));
+      setCarbs(String(selectedFood.carbs || 0));
+      setFat(String(selectedFood.fat || 0));
+      setShowAddModal(true);
+      navigation.setParams({ selectedFood: undefined });
+    }
+  }, [navigation, route?.params?.selectedFood]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -73,12 +91,18 @@ export default function DietScreen() {
         mealType,
         mealName: mealName.trim(),
         calories: parseInt(calories) || 0,
+        protein: parseInt(protein) || 0,
+        carbs: parseInt(carbs) || 0,
+        fat: parseInt(fat) || 0,
         time: new Date().toTimeString().slice(0, 5),
         note: note.trim() || undefined,
       });
       setShowAddModal(false);
       setMealName('');
       setCalories('');
+      setProtein('');
+      setCarbs('');
+      setFat('');
       setNote('');
       Alert.alert('成功', '饮食记录已添加');
       loadData();
@@ -105,6 +129,34 @@ export default function DietScreen() {
         },
       },
     ]);
+  };
+
+  const openEdit = (meal: DietMeal) => {
+    setEditingMeal(meal);
+    setMealName(meal.mealName);
+    setCalories(String(meal.calories));
+    setProtein(String(meal.protein));
+    setCarbs(String(meal.carbs));
+    setFat(String(meal.fat));
+    setShowEditModal(true);
+  };
+
+  const handleEditMeal = async () => {
+    if (!editingMeal) return;
+    try {
+      await dietApi.updateMeal(editingMeal.mealId, {
+        mealName,
+        calories: parseInt(calories) || 0,
+        protein: parseInt(protein) || 0,
+        carbs: parseInt(carbs) || 0,
+        fat: parseInt(fat) || 0,
+      });
+      setShowEditModal(false);
+      setEditingMeal(null);
+      loadData();
+    } catch (err: any) {
+      Alert.alert('错误', err.message || '更新失败');
+    }
   };
 
   const calPercent = stats ? Math.min((stats.calories / stats.caloriesGoal) * 100, 100) : 0;
@@ -189,9 +241,17 @@ export default function DietScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>今日餐食</Text>
-            <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
-              <Ionicons name="add" size={22} color={COLORS.white} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.smallAction} onPress={() => navigation.navigate('FoodLibrary')}>
+                <Ionicons name="search-outline" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.smallAction} onPress={() => navigation.navigate('DietTrend')}>
+                <Ionicons name="stats-chart-outline" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
+                <Ionicons name="add" size={22} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
           </View>
           {meals.length === 0 ? (
             <View style={styles.emptyState}>
@@ -215,9 +275,13 @@ export default function DietScreen() {
                   <View style={styles.mealInfo}>
                     <Text style={styles.mealName}>{meal.mealName}</Text>
                     <Text style={styles.mealType}>{MEAL_TYPE_LABELS[meal.mealType] || meal.mealType} · {meal.time}</Text>
+                    <Text style={styles.mealMeta}>P {meal.protein} / C {meal.carbs} / F {meal.fat}</Text>
                   </View>
                   <View style={styles.mealRight}>
                     <Text style={styles.mealCal}>{meal.calories} kcal</Text>
+                    <TouchableOpacity onPress={() => openEdit(meal)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="create-outline" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDelete(meal.mealId)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                       <Ionicons name="trash-outline" size={16} color={COLORS.textTertiary} />
                     </TouchableOpacity>
@@ -227,6 +291,13 @@ export default function DietScreen() {
             })
           )}
         </View>
+        <TouchableOpacity style={styles.linkCard} onPress={() => navigation.navigate('CustomFood')}>
+          <View>
+            <Text style={styles.linkTitle}>自定义食物库</Text>
+            <Text style={styles.linkSub}>添加、维护你的常用食物</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
+        </TouchableOpacity>
         <View style={{ height: 24 }} />
       </ScrollView>
 
@@ -288,8 +359,44 @@ export default function DietScreen() {
                 <TextInput style={styles.formInput} placeholder="0" value={calories} onChangeText={setCalories} keyboardType="numeric" placeholderTextColor={COLORS.textTertiary} />
               </View>
 
+              <Text style={styles.formLabel}>蛋白质 / 碳水 / 脂肪</Text>
+              <View style={styles.macroRow}>
+                <TextInput style={[styles.formInputFull, styles.macroInput]} placeholder="蛋白质" value={protein} onChangeText={setProtein} keyboardType="numeric" placeholderTextColor={COLORS.textTertiary} />
+                <TextInput style={[styles.formInputFull, styles.macroInput]} placeholder="碳水" value={carbs} onChangeText={setCarbs} keyboardType="numeric" placeholderTextColor={COLORS.textTertiary} />
+                <TextInput style={[styles.formInputFull, styles.macroInput]} placeholder="脂肪" value={fat} onChangeText={setFat} keyboardType="numeric" placeholderTextColor={COLORS.textTertiary} />
+              </View>
+
               <Text style={styles.formLabel}>备注</Text>
               <TextInput style={[styles.formInputFull, { height: 80 }]} placeholder="添加备注..." value={note} onChangeText={setNote} multiline textAlignVertical="top" placeholderTextColor={COLORS.textTertiary} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showEditModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowEditModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>编辑饮食记录</Text>
+              <TouchableOpacity onPress={handleEditMeal}>
+                <Text style={styles.modalSave}>保存</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formCard}>
+              <Text style={styles.formLabel}>食物内容</Text>
+              <TextInput style={styles.formInputFull} value={mealName} onChangeText={setMealName} />
+              <Text style={styles.formLabel}>热量（kcal）</Text>
+              <TextInput style={styles.formInputFull} value={calories} onChangeText={setCalories} keyboardType="numeric" />
+              <Text style={styles.formLabel}>蛋白质 / 碳水 / 脂肪</Text>
+              <View style={styles.macroRow}>
+                <TextInput style={[styles.formInputFull, styles.macroInput]} value={protein} onChangeText={setProtein} keyboardType="numeric" />
+                <TextInput style={[styles.formInputFull, styles.macroInput]} value={carbs} onChangeText={setCarbs} keyboardType="numeric" />
+                <TextInput style={[styles.formInputFull, styles.macroInput]} value={fat} onChangeText={setFat} keyboardType="numeric" />
+              </View>
             </View>
           </View>
         </View>
@@ -316,6 +423,15 @@ const styles = StyleSheet.create({
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   cardTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  smallAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: COLORS.blueBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   addBtn: {
     width: 36,
     height: 36,
@@ -363,6 +479,7 @@ const styles = StyleSheet.create({
   mealInfo: { flex: 1 },
   mealName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   mealType: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+  mealMeta: { fontSize: 12, color: COLORS.textTertiary, marginTop: 2 },
   mealRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   mealCal: { fontSize: 14, fontWeight: '600', color: COLORS.text },
   modalOverlay: {
@@ -445,4 +562,19 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     backgroundColor: COLORS.white,
   },
+  macroRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  macroInput: { flex: 1 },
+  linkCard: {
+    backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...SHADOWS.card,
+  },
+  linkTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
+  linkSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
 });
