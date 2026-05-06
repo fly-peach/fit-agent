@@ -354,11 +354,25 @@ def _deep_merge(base: dict, override: dict) -> None:
 # ---------------------------------------------------------------------------
 
 _config: Optional[AppConfig] = None
+_user_configs: dict[int, AppConfig] = {}  # 缓存每个用户的配置
 
 
-def get_config() -> AppConfig:
-    """返回全局 AppConfig 单例，如未加载则先加载。"""
+def get_config(user_id: int | str | None = None) -> AppConfig:
+    """返回全局 AppConfig 单例，如未加载则先加载。
+
+    Args:
+        user_id: 用户ID，如果提供则尝试从用户的本地目录加载配置
+    """
     global _config
+
+    # 如果有 user_id，尝试从用户本地目录加载
+    if user_id is not None:
+        uid = int(user_id)
+        if uid not in _user_configs:
+            _user_configs[uid] = _load_config_for_user(uid)
+        return _user_configs[uid]
+
+    # 全局配置
     if _config is None:
         # 使用统一配置的路径
         config_path = settings.AGENT_DB_DIR / "agent.json"
@@ -366,48 +380,106 @@ def get_config() -> AppConfig:
     return _config
 
 
+def _load_config_for_user(user_id: int) -> AppConfig:
+    """为指定用户加载配置。
+
+    优先从用户配置的本地目录加载，如果没有配置则使用默认目录。
+    """
+    try:
+        from src.fitme.utils.database import UserSessionLocal
+        from src.fitme.crud import agent_config as agent_crud
+        from src.fitme.utils.agent_directory import get_default_agent_directory
+
+        db = UserSessionLocal()
+        try:
+            config = agent_crud.get_user_agent_config(db, user_id)
+            if config and config.local_working_dir:
+                local_dir = config.local_working_dir
+            else:
+                local_dir = get_default_agent_directory()
+
+            # 从用户本地目录加载 agent.json
+            config_path = Path(local_dir) / "agent.json"
+            if config_path.exists():
+                return AppConfig.from_file(config_path)
+
+            # 如果用户本地没有配置，使用全局配置
+            return get_config()
+        finally:
+            db.close()
+    except Exception:
+        # 出错时回退到全局配置
+        return get_config()
+
+
 def load_agent_config(user_id: int | str) -> AgentConfig:
     """加载指定用户的智能体配置。
 
-    返回全局 active_agent 配置，并可选地与
-    workspace/users/{uid}/agent.json 中的用户级覆盖配置合并。
+    返回全局 active_agent 配置，并可选地与用户本地目录中的
+    agent.json 覆盖配置合并。
     """
-    config = get_config()
+    config = get_config(user_id)
     agent_cfg = config.get_active_agent()
-    # 使用统一配置的 workspace 根路径
-    workspace_root = settings.AGENT_DB_DIR / "workspace"
-    user_config_path = workspace_root / "users" / str(user_id) / "agent.json"
-    if user_config_path.exists():
-        with open(user_config_path, encoding="utf-8") as f:
-            user_data = json.load(f)
-        merged = agent_cfg.model_dump()
 
-        # 特殊处理 model 字段：
-        # 如果用户配置中有 model 且是字典，只合并其中的特定字段，
-        # 避免覆盖掉整个 model 结构
-        if "model" in user_data and isinstance(user_data["model"], dict):
-            # 如果 merged['model'] 是字符串（引用），先解析成对象
-            if isinstance(merged.get("model"), str):
-                model_key = merged["model"]
-                if model_key in config.models:
-                    merged["model"] = config.models[model_key].model_dump()
+    # 尝试从用户本地目录加载覆盖配置
+    try:
+        user_local_config = _get_user_local_config_path(int(user_id))
+        if user_local_config and user_local_config.exists():
+            with open(user_local_config, encoding="utf-8") as f:
+                user_data = json.load(f)
+            merged = agent_cfg.model_dump()
 
-            # 现在合并用户的 model 配置（只合并允许的字段）
-            if isinstance(merged.get("model"), dict):
-                user_model = user_data["model"]
-                # 只允许覆盖这些字段
-                for key in ["api_key", "model_name"]:
-                    if key in user_model:
-                        merged["model"][key] = user_model[key]
-                # 用户配置中删除 model，避免后面 _deep_merge 再次处理
-                del user_data["model"]
+            # 特殊处理 model 字段：
+            if "model" in user_data and isinstance(user_data["model"], dict):
+                if isinstance(merged.get("model"), str):
+                    model_key = merged["model"]
+                    if model_key in config.models:
+                        merged["model"] = config.models[model_key].model_dump()
 
-        _deep_merge(merged, user_data)
-        return AgentConfig(**merged)
+                if isinstance(merged.get("model"), dict):
+                    user_model = user_data["model"]
+                    for key in ["api_key", "model_name"]:
+                        if key in user_model:
+                            merged["model"][key] = user_model[key]
+                    del user_data["model"]
+
+            _deep_merge(merged, user_data)
+            return AgentConfig(**merged)
+    except Exception:
+        pass
+
     return agent_cfg
 
 
-def set_config(config: AppConfig) -> None:
-    """设置全局配置（适用于测试或编程覆盖）。"""
+def _get_user_local_config_path(user_id: int) -> Path | None:
+    """获取用户本地配置文件路径"""
+    try:
+        from src.fitme.utils.database import UserSessionLocal
+        from src.fitme.crud import agent_config as agent_crud
+        from src.fitme.utils.agent_directory import get_default_agent_directory
+
+        db = UserSessionLocal()
+        try:
+            config = agent_crud.get_user_agent_config(db, user_id)
+            if config and config.local_working_dir:
+                return Path(config.local_working_dir) / "agent.json"
+            else:
+                return Path(get_default_agent_directory()) / "agent.json"
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def set_config(config: AppConfig, user_id: int | None = None) -> None:
+    """设置全局配置（适用于测试或编程覆盖）。
+
+    Args:
+        config: 要设置的配置
+        user_id: 如果提供则设置该用户的配置，否则设置全局配置
+    """
     global _config
-    _config = config
+    if user_id is not None:
+        _user_configs[int(user_id)] = config
+    else:
+        _config = config

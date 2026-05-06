@@ -1,4 +1,8 @@
-"""用户工作区管理器 — 每个用户的 agents.md、soul.md、技能与会话存储。"""
+"""用户工作区管理器 — 每个用户的 agents.md、soul.md、技能与会话存储。
+
+新架构：用户数据存储在用户本地目录（由 user_agent_config 配置），
+不再使用服务器端的 users/{user_id} 结构。
+"""
 from __future__ import annotations
 
 import shutil
@@ -12,9 +16,28 @@ from ..templates.templates import get_template_path, get_skills_template_path
 _TEMPLATE_DIR = get_template_path()
 _SKILLS_TEMPLATE_DIR = get_skills_template_path()
 
-# 用户数据目录在 data 中
-_WORKSPACE_ROOT = settings.AGENT_DB_DIR / "workspace"
-_USERS_DIR = _WORKSPACE_ROOT / "users"
+
+def _get_user_local_dir(user_id: int) -> Path:
+    """获取用户的本地 Agent 工作目录。
+
+    优先从数据库读取用户配置的路径，如果未配置则使用默认目录。
+    """
+    try:
+        from src.fitme.utils.database import UserSessionLocal
+        from src.fitme.crud import agent_config as agent_crud
+        from src.fitme.utils.agent_directory import get_default_agent_directory
+
+        db = UserSessionLocal()
+        try:
+            config = agent_crud.get_user_agent_config(db, user_id)
+            if config and config.local_working_dir:
+                return Path(config.local_working_dir).resolve()
+            return Path(get_default_agent_directory())
+        finally:
+            db.close()
+    except Exception:
+        from src.fitme.utils.agent_directory import get_default_agent_directory
+        return Path(get_default_agent_directory())
 
 
 def _sync_skill_manifest(user_dir: Path) -> None:
@@ -23,13 +46,16 @@ def _sync_skill_manifest(user_dir: Path) -> None:
 
 
 def get_user_workspace(user_id: int | str) -> Path:
-    """返回指定用户的工作区目录。"""
-    return _USERS_DIR / str(user_id)
+    """返回指定用户的工作区目录。
+
+    新架构：直接在用户本地目录操作，不再有 users/{user_id} 子目录。
+    """
+    return _get_user_local_dir(int(user_id))
 
 
 def get_user_sessions_dir(user_id: int | str) -> Path:
     """返回指定用户的会话目录。"""
-    return get_user_workspace(user_id) / "sessions"
+    return get_user_workspace(user_id) / "workspace" / "sessions"
 
 
 def ensure_user_workspace(user_id: int | str) -> Path:
@@ -37,6 +63,8 @@ def ensure_user_workspace(user_id: int | str) -> Path:
 
     返回用户工作区路径。可安全并发调用 — 模板复制是幂等的。
     即使工作区已存在，也会检查并补充缺失的模板技能。
+
+    注意：不再使用 users/{user_id} 子目录，直接在用户本地目录操作。
     """
     user_dir = get_user_workspace(user_id)
     first_time = not user_dir.exists()
@@ -52,7 +80,7 @@ def ensure_user_workspace(user_id: int | str) -> Path:
     # 复制默认技能（从 templates/skills/ 目录）
     # 每次都检查并补充缺失的模板技能（幂等操作）
     if _SKILLS_TEMPLATE_DIR.exists():
-        user_skills_dir = user_dir / "skills"
+        user_skills_dir = user_dir / "workspace" / "skills"
         user_skills_dir.mkdir(parents=True, exist_ok=True)
         for skill_dir in _SKILLS_TEMPLATE_DIR.iterdir():
             if skill_dir.is_dir():
@@ -62,6 +90,9 @@ def ensure_user_workspace(user_id: int | str) -> Path:
 
     # 创建会话目录
     get_user_sessions_dir(user_id).mkdir(parents=True, exist_ok=True)
+
+    # 创建记忆目录
+    (user_dir / "workspace" / "memory").mkdir(parents=True, exist_ok=True)
 
     _sync_skill_manifest(user_dir)
 
@@ -78,7 +109,7 @@ def restock_template_skills(user_id: int | str) -> list[str]:
         新补充的技能名称列表
     """
     user_dir = get_user_workspace(user_id)
-    user_skills_dir = user_dir / "skills"
+    user_skills_dir = user_dir / "workspace" / "skills"
     user_skills_dir.mkdir(parents=True, exist_ok=True)
 
     restocked = []
@@ -145,18 +176,18 @@ def load_user_context(user_id: int | str) -> str:
         ]
 
         # 用户设置
-        settings = db.query(UserSettings).filter(UserSettings.user_id == uid).first()
-        if settings:
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == uid).first()
+        if user_settings:
             lines.append("")
             lines.append("用户设置：")
-            lines.append(f"  每日热量目标：{settings.calorie_goal} kcal")
-            lines.append(f"  蛋白目标：{settings.protein_goal}g")
-            lines.append(f"  碳水目标：{settings.carbs_goal}g")
-            lines.append(f"  脂肪目标：{settings.fat_goal}g")
-            lines.append(f"  饮水目标：{settings.water_goal}ml")
-            lines.append(f"  每周训练目标：{settings.weekly_training_goal} 天")
-            if settings.weight_goal:
-                goal_val = float(settings.weight_goal) if isinstance(settings.weight_goal, Decimal) else settings.weight_goal
+            lines.append(f"  每日热量目标：{user_settings.calorie_goal} kcal")
+            lines.append(f"  蛋白目标：{user_settings.protein_goal}g")
+            lines.append(f"  碳水目标：{user_settings.carbs_goal}g")
+            lines.append(f"  脂肪目标：{user_settings.fat_goal}g")
+            lines.append(f"  饮水目标：{user_settings.water_goal}ml")
+            lines.append(f"  每周训练目标：{user_settings.weekly_training_goal} 天")
+            if user_settings.weight_goal:
+                goal_val = float(user_settings.weight_goal) if isinstance(user_settings.weight_goal, Decimal) else user_settings.weight_goal
                 lines.append(f"  目标体重：{goal_val} kg")
 
         # 最新健康指标
@@ -202,3 +233,8 @@ def load_user_context(user_id: int | str) -> str:
         return ""
     finally:
         db.close()
+
+
+# 向后兼容：保留旧的路径常量引用（指向默认目录）
+_WORKSPACE_ROOT = settings.AGENT_DB_DIR / "workspace"
+_USERS_DIR = _WORKSPACE_ROOT / "users"

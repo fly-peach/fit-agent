@@ -42,13 +42,20 @@ python run.py
 
 ### 2. 前端
 
+**开发模式:**
 ```bash
 cd console
 npm install
 npm run dev
 ```
-
 访问 http://localhost:3000
+
+**生产构建 (嵌入后端):**
+```bash
+cd rogers
+python scripts/build_console.py
+```
+构建后前端静态文件会复制到 `rogers/console/`，访问后端地址 http://localhost:8000 即可直接使用。
 
 ### 3. 移动端
 

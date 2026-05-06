@@ -258,21 +258,30 @@ const AgentConfig: React.FC = () => {
       agentForm.setFieldsValue({
         agents_md: data.agents_md,
         soul_md: data.soul_md,
-        api_key: '', // 不填充 api_key，保持为空
+        api_key: '',
         model_name: data.model_name,
       })
-      // 如果当前模型不在预设列表中，切换到自定义模式
       const isPreset = modelOptions.some(opt => opt.value === data.model_name)
       setUseCustomModel(!isPreset)
-      // 检测当前人格配置匹配的预设
       const matchedPreset = personalityPresets.find(
         p => p.key !== 'custom' && p.agents_md === data.agents_md && p.soul_md === data.soul_md,
       )
-      setSelectedPreset(matchedPreset ? matchedPreset.key : 'custom')
+      setSelectedPreset(matchedPreset ? matchedPreset.key : (data.agents_md || data.soul_md ? 'custom' : 'rogers_default'))
       setApiKeyMasked(data.api_key_masked)
       setHasApiKeyInput(false)
     } catch {
-      message.error('获取配置失败')
+      // 配置未找到时使用默认值，引导用户完成首次配置
+      agentForm.setFieldsValue({
+        agents_md: personalityPresets[0].agents_md,
+        soul_md: personalityPresets[0].soul_md,
+        api_key: '',
+        model_name: 'qwen3.5-flash',
+      })
+      setSelectedPreset('rogers_default')
+      setUseCustomModel(false)
+      setApiKeyMasked('')
+      setHasApiKeyInput(false)
+      message.info('首次使用，请配置 DashScope API Key 后保存即可开始使用')
     }
   }
   const handleSaveModel = async () => {
@@ -410,7 +419,16 @@ const AgentConfig: React.FC = () => {
                 type="warning"
                 showIcon
                 style={{ marginBottom: 16, borderRadius: 10 }}
-                message="未配置 API Key，请在下方填入您的 DashScope API Key 后保存"
+                message="首次使用配置"
+                description={
+                  <span>
+                    请在下方填入您的 DashScope API Key 后点击「保存模型配置」即可开始使用 AI 助手。
+                    获取 API Key 请访问{' '}
+                    <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener noreferrer">
+                      阿里云百炼控制台
+                    </a>
+                  </span>
+                }
               />
             )}
 

@@ -11,6 +11,7 @@ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 
@@ -21,7 +22,7 @@ from src.fitme.core.config import settings
 from src.fitme.models import UserDBBase
 from src.fitme.utils.database import user_engine
 
-from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router
+from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
 from .routers.agent import agent_app, router as agent_router, _auth_token
 from .routers import skills, memory, context
 
@@ -126,11 +127,19 @@ app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
 app.include_router(exercise_router)
+app.include_router(agent_config_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
 app.include_router(agent_router)
 app.include_router(skills.router)
 app.include_router(memory.router)
 app.include_router(context.router)
+
+# AgentScope Runtime 会自动注册 "/" 根路由，导致前端首页被 JSON 响应覆盖。
+# 保留其 "/process" 等接口，仅移除冲突的首页路由。
+app.router.routes = [
+    route for route in app.router.routes
+    if not (getattr(route, "path", None) == "/" and getattr(route, "name", None) == "root")
+]
 
 
 
@@ -152,17 +161,16 @@ def _patched_openapi() -> dict:
 
 
 app.openapi = _patched_openapi
-@app.get("/")
-def root():
-    """根路由"""
-    return {
-        "name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-        "message": "FitAgent API 服务运行中"
-    }
-
 
 @app.get("/health")
 def health_check():
     """健康检查"""
     return {"status": "healthy"}
+
+
+# ========== 静态文件服务 (前端控制台) ==========
+CONSOLE_DIR = Path(__file__).resolve().parent.parent / "console"
+
+if CONSOLE_DIR.exists():
+    # 挂载静态文件在根路径（必须放在所有 API 路由之后）
+    app.mount("/", StaticFiles(directory=CONSOLE_DIR, html=True), name="static")

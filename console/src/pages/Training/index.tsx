@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Calendar, Tag, Space, message, Radio, Checkbox, List, Avatar, Popconfirm } from 'antd'
+import { Typography, Row, Col, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Calendar, Tag, Space, message, Radio, Checkbox, List, Avatar, Popconfirm } from 'antd'
 import { PlusOutlined, CheckOutlined, SyncOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { Dumbbell } from 'lucide-react'
 import dayjs from 'dayjs'

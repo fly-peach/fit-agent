@@ -73,3 +73,14 @@ test/
 
 # Trae IDE
 .trae/
+
+# Console build artifacts
+Rogers/console/
+console/
+
+# Git clone optimization - common large directories
+**/node_modules/
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.pyc

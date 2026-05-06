@@ -229,18 +229,18 @@ class DefaultConfigResponse(BaseModel):
 async def get_agent_config(
     authorization: str | None = Header(default=None),
 ):
-    """获取当前用户的 agent 配置。"""
+    """获取当前用户的 agent 配置。未配置时返回默认值。"""
     import json
     user_id = _get_user_id_from_auth(authorization)
 
-    user_dir = get_user_workspace(user_id)
+    user_dir = ensure_user_workspace(user_id)
     agents_md = (user_dir / "agents.md").read_text(encoding="utf-8") if (user_dir / "agents.md").exists() else ""
     soul_md = (user_dir / "soul.md").read_text(encoding="utf-8") if (user_dir / "soul.md").exists() else ""
 
     # 加载用户级 agent.json
     user_config_path = user_dir / "agent.json"
     user_api_key = ""
-    model_name = "qwen-turbo"
+    model_name = "qwen3.5-flash"
 
     if user_config_path.exists():
         with open(user_config_path, encoding="utf-8") as f:
@@ -248,7 +248,7 @@ async def get_agent_config(
         model_config = user_config.get("model", {})
         if isinstance(model_config, dict):
             user_api_key = model_config.get("api_key", "")
-            model_name = model_config.get("model_name", "qwen-turbo")
+            model_name = model_config.get("model_name", "qwen3.5-flash")
 
     # API Key 只从用户配置读取，不再从环境变量读取
     is_custom_api_key = bool(user_api_key)

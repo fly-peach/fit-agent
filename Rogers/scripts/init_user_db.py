@@ -11,11 +11,10 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from fitme.models.user_db import Base, User, UserSettings
-from fitme.utils.database import user_engine, UserSessionLocal
-from fitme.services.auth_service import AuthService
+from src.fitme.models.user_db import Base, User, UserSettings
+from src.fitme.utils.database import user_engine, UserSessionLocal
+from src.fitme.services.auth_service import AuthService
 
 TEST_ACCOUNTS = [
     {"name": "测试用户", "email": "user@test.com", "password": "password123", "role": "user"},
