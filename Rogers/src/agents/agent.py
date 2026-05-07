@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
-from agentscope.memory import InMemoryMemory
+from agentscope.memory import InMemoryMemory, AsyncSQLAlchemyMemory
 from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit, execute_python_code
 
@@ -218,7 +218,11 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
 # ---------------------------------------------------------------------------
 
 
-def create_user_agent(user_id: int | str, channel_name: str = "console") -> ReActAgent:
+def create_user_agent(
+    user_id: int | str,
+    channel_name: str = "console",
+    db_memory: "AsyncSQLAlchemyMemory | None" = None,
+) -> ReActAgent:
     """为指定用户创建 ReActAgent，附带自定义系统提示词。
 
     确保用户工作区存在，加载 agents.md + soul.md，查询数据库获取用
@@ -272,12 +276,18 @@ def create_user_agent(user_id: int | str, channel_name: str = "console") -> ReAc
         channel_name,
     )
 
+    # 如果传入了 db_memory，用它作为 agent 的记忆后端
+    if db_memory is not None:
+        agent_memory = db_memory
+    else:
+        agent_memory = reme_memory if reme_memory else InMemoryMemory()
+
     agent = ReActAgent(
         name=agent_cfg.name,
         model=model,
         sys_prompt=sys_prompt,
         toolkit=toolkit,
-        memory=reme_memory if reme_memory else InMemoryMemory(),
+        memory=agent_memory,
         formatter=DashScopeChatFormatter(),
     )
 

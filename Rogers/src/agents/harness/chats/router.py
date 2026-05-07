@@ -2,6 +2,9 @@
 
 Moved from app/routers/agent.py to keep chat-related endpoints co-located
 with their models and CRUD under the agents module.
+
+会话消息现在通过 ``FitAgentSQLMemory``（基于 AsyncSQLAlchemyMemory）
+从 ``agent_memory.db`` 读取，取代了旧的 ``chat_messages`` 表手动 CRUD。
 """
 import json
 import logging
@@ -10,8 +13,10 @@ import datetime
 
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
+from agentscope.message import Msg
 
-from src.fitme.utils.database import UserSessionLocal
+from src.fitme.utils.database import UserSessionLocal, async_agent_memory_engine
+from src.agents.harness.memory.fitagent_memory import FitAgentSQLMemory
 from src.agents.harness.context import get_user_id_from_token, NotAuthenticatedError
 from .crud import (
     get_sessions,
@@ -19,7 +24,6 @@ from .crud import (
     create_session,
     update_session_name,
     delete_session,
-    get_messages,
 )
 
 logger = logging.getLogger("fitagent")
@@ -71,6 +75,46 @@ def _validate_session_id(session_id: str) -> None:
         )
 
 
+async def _msg_to_ui_dict(msg: Msg) -> dict:
+    """将 Msg 对象转换为前端 UI 格式。"""
+    # 提取文本内容
+    content = msg.content
+    if isinstance(content, str):
+        text = content
+    elif isinstance(content, list):
+        texts = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "text":
+                    texts.append(block.get("text", ""))
+                elif block.get("type") == "image":
+                    texts.append("[图片]")
+        text = "\n".join(texts)
+    else:
+        text = str(content) if content else ""
+
+    return {
+        "id": msg.id or "",
+        "role": msg.role or "assistant",
+        "cards": [{"code": "markdown", "data": text}],
+        "msgStatus": "finished",
+    }
+
+
+async def _load_messages_from_memory(user_id: int, session_id: str) -> list[dict]:
+    """从 FitAgentSQLMemory 加载会话消息，转为 UI 格式。"""
+    memory = FitAgentSQLMemory(
+        engine_or_session=async_agent_memory_engine,
+        user_id=str(user_id),
+        session_id=session_id,
+    )
+    try:
+        msgs = await memory.get_memory(prepend_summary=False)
+        return [await _msg_to_ui_dict(m) for m in msgs]
+    finally:
+        await memory.close()
+
+
 # ---------------------------------------------------------------------------
 # Session endpoints
 # ---------------------------------------------------------------------------
@@ -98,7 +142,7 @@ async def get_session_detail(
     session_id: str,
     authorization: str | None = Header(default=None),
 ):
-    """获取会话详情（含消息列表）。"""
+    """获取会话详情（含消息列表，从 FitAgentSQLMemory 读取）。"""
     _validate_session_id(session_id)
     user_id = _get_user_id(authorization)
     db = UserSessionLocal()
@@ -107,19 +151,8 @@ async def get_session_detail(
         if session is None:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        messages_raw = get_messages(db, session_id)
-        messages = []
-        for m in messages_raw:
-            try:
-                msg_data = json.loads(m.content)
-                messages.append(msg_data)
-            except (json.JSONDecodeError, TypeError):
-                messages.append({
-                    "id": str(m.id),
-                    "role": m.role,
-                    "cards": [{"code": "markdown", "data": m.content}],
-                    "msgStatus": "finished",
-                })
+        # 从 AsyncSQLAlchemyMemory 读取消息
+        messages = await _load_messages_from_memory(user_id, session_id)
 
         return SessionResponse(
             id=session.id,
@@ -179,7 +212,7 @@ async def delete_session_endpoint(
     session_id: str,
     authorization: str | None = Header(default=None),
 ):
-    """删除会话（级联删除所有消息）。"""
+    """删除会话（从 chat_sessions 和 agent_memory.db 中删除）。"""
     _validate_session_id(session_id)
     user_id = _get_user_id(authorization)
     db = UserSessionLocal()

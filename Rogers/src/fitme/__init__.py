@@ -25,7 +25,7 @@ from .models import (
     Base,
 )
 from .services import UserService, HealthService, TrainingService, DietService, AuthService, ExerciseService
-from .utils import get_db, get_base_db, get_user_db, engine, SessionLocal, BaseSessionLocal, UserSessionLocal, BaseDBContext, UserDBContext
+from .utils import get_db, get_base_db, get_user_db, engine, SessionLocal, BaseSessionLocal, UserSessionLocal, BaseDBContext, UserDBContext, async_agent_memory_engine, AsyncAgentMemorySessionLocal
 
 __all__ = [
     # Config
@@ -67,6 +67,8 @@ __all__ = [
     "SessionLocal",
     "BaseSessionLocal",
     "UserSessionLocal",
+    "async_agent_memory_engine",
+    "AsyncAgentMemorySessionLocal",
     "BaseDBContext",
     "UserDBContext",
 ]

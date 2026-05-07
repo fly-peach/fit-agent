@@ -52,15 +52,8 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # Disk-based session storage — stores under users/{user_id}/sessions/
-    sessions_dir = settings.AGENT_DB_DIR / "workspace" / "users"
-    from src.agents.harness.sessions.user_session import UserSession
-    session = UserSession(save_dir=str(sessions_dir))
-
-    # agent_app 的 query_func 通过 agent_app.state 访问 session，
-    # 需要同时设置到 agent_app 上。
-    app.state.session = session
-    agent_app.state.session = session
+    # 不需要 JSONSession/UserSession — 对话历史由 AsyncSQLAlchemyMemory 持久化
+    # 异步引擎在 database.py 中已初始化为 async_agent_memory_engine
 
     try:
         yield

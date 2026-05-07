@@ -20,12 +20,12 @@ from pydantic import BaseModel
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
 from src.agents.harness.tools.basic.read_data import get_db as harness_get_db
-from src.fitme.utils.database import get_user_db, UserSessionLocal
+from src.fitme.utils.database import get_user_db, UserSessionLocal, async_agent_memory_engine
+from src.agents.harness.memory.fitagent_memory import FitAgentSQLMemory
 from src.fitme.models import UserImage
 from src.agents.harness.chats.crud import (
     get_session as get_session_crud,
     create_session as create_session_crud,
-    add_message,
 )
 
 logger = logging.getLogger("fitagent")
@@ -156,7 +156,14 @@ async def query_func(
     request: AgentRequest | None = None,
     **_kwargs,
 ):
-    """处理用户查询。"""
+    """处理用户查询 — 使用 AsyncSQLAlchemyMemory 持久化对话历史。
+
+    相比旧版（JSONSession + 手动 add_message）的改进：
+    - 消息由 ``AsyncSQLAlchemyMemory`` 自动持久化到 ``agent_memory.db``
+    - 无需手动 ``add_message()`` 和 ``_make_ui_message()``
+    - 无需 ``load_session_state()`` / ``save_session_state()``
+    - Msg 对象直存直读，无需格式转换
+    """
     assert request is not None, "request is required"
     session_id = request.session_id or "default"
 
@@ -168,41 +175,32 @@ async def query_func(
         yield Msg(name="Rogers", content="请先登录后再使用助手。", role="assistant"), True
         return
 
-    # 确保数据库中有该会话记录
+    # 确保 chat_sessions 表中有该会话记录（仍用于会话列表）
     db = UserSessionLocal()
     try:
         existing = get_session_crud(db, user_id, session_id)
         if existing is None:
             create_session_crud(db, user_id, session_id, name="新对话")
-
-        # 保存用户消息到数据库
-        if msgs:
-            msgs_list = msgs if isinstance(msgs, list) else [msgs]
-            for m in msgs_list:
-                if isinstance(m, Msg) and m.role == "user":
-                    ui_content = _make_ui_message(m, "user", "finished")
-                    add_message(db, session_id, "user", ui_content, "finished")
     finally:
         db.close()
 
-    # 每次创建全新的 agent 实例，确保用户间完全独立
-    agent = create_user_agent(user_id)
+    # 创建 FitAgentSQLMemory — 扩展自 AsyncSQLAlchemyMemory
+    # 使用独立数据库 agent_memory.db 避免与主库 users 表冲突
+    db_memory = FitAgentSQLMemory(
+        engine_or_session=async_agent_memory_engine,
+        user_id=str(user_id),
+        session_id=session_id,
+    )
+
+    # 每次创建全新的 agent 实例，传入 DB 记忆后端
+    agent = create_user_agent(user_id, db_memory=db_memory)
     agent.set_console_output_enabled(False)
     memory_manager = getattr(agent, "_memory_manager", None)
-
-    # 收集最后一条响应消息，用于保存到 DB
-    last_response_content = ""
 
     async with agent_context(user_id):
         try:
             if memory_manager is not None:
                 await memory_manager.start()
-
-            await agent_app.state.session.load_session_state(
-                session_id=session_id,
-                user_id=str(user_id),
-                agent=agent,
-            )
 
             # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
             with harness_get_db() as db:
@@ -212,29 +210,8 @@ async def query_func(
                 agents=[agent],
                 coroutine_task=agent(msgs),
             ):
-                if last and isinstance(msg, Msg):
-                    last_response_content = _msg_content_to_ui_text(msg)
                 yield msg, last
 
-            await agent_app.state.session.save_session_state(
-                session_id=session_id,
-                user_id=str(user_id),
-                agent=agent,
-            )
-
-            # 保存 assistant 响应到数据库
-            if last_response_content:
-                db2 = UserSessionLocal()
-                try:
-                    ui_content = json.dumps({
-                        "id": str(uuid.uuid4()),
-                        "role": "assistant",
-                        "cards": [{"code": "markdown", "data": last_response_content}],
-                        "msgStatus": "finished",
-                    }, ensure_ascii=False)
-                    add_message(db2, session_id, "assistant", ui_content, "finished")
-                finally:
-                    db2.close()
         finally:
             if memory_manager is not None:
                 await memory_manager.close()
