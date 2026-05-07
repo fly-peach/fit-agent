@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shutil
 import tempfile
@@ -79,10 +80,13 @@ def _parse_skill_md(content: str) -> tuple[dict[str, Any], str]:
 class SkillManager:
     """管理工作目录中的 skills。"""
 
-    def __init__(self, working_dir: str | Path):
+    def __init__(self, working_dir: str | Path, skills_dir: str | Path | None = None):
         self.working_dir = Path(working_dir)
         self.workspace_dir = self.working_dir / "workspace"
-        self.skills_dir = self.workspace_dir / "skills"
+        if skills_dir:
+            self.skills_dir = Path(skills_dir)
+        else:
+            self.skills_dir = self.workspace_dir / "skills"
         self.manifest_path = self.workspace_dir / SKILL_MANIFEST_FILENAME
         self._skills_cache: dict[str, SkillInfo] = {}
         self.config_manager = SkillConfigManager(self.working_dir)
@@ -282,7 +286,12 @@ class SkillManager:
         if not skill:
             return False
         skill.enabled = True
-        self._update_frontmatter(skill, enabled=True)
+        # Only update frontmatter if skills directory is writable
+        try:
+            if os.access(self.skills_dir, os.W_OK):
+                self._update_frontmatter(skill, enabled=True)
+        except Exception:
+            pass  # Skip if not writable
         self._update_manifest_entry(name, enabled=True)
         self._skills_cache[name] = skill
         return True
@@ -292,7 +301,12 @@ class SkillManager:
         if not skill:
             return False
         skill.enabled = False
-        self._update_frontmatter(skill, enabled=False)
+        # Only update frontmatter if skills directory is writable
+        try:
+            if os.access(self.skills_dir, os.W_OK):
+                self._update_frontmatter(skill, enabled=False)
+        except Exception:
+            pass  # Skip if not writable
         self._update_manifest_entry(name, enabled=False)
         self._skills_cache[name] = skill
         return True
@@ -543,6 +557,28 @@ class SkillManager:
 
     def reset_config(self) -> SkillSystemConfig:
         return self.config_manager.reset_config()
+
+    def export_skill_to_zip(self, name: str, output_path: str | Path) -> None:
+        """将技能导出为 ZIP 文件"""
+        skill = self.get_skill(name)
+        if not skill:
+            raise ValueError(f"Skill not found: {name}")
+
+        skill_dir = Path(skill.path)
+        if not skill_dir.exists():
+            raise ValueError(f"Skill directory not found: {skill_dir}")
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for file_path in sorted(skill_dir.rglob("*")):
+                if not file_path.is_file():
+                    continue
+                relative_path = file_path.relative_to(skill_dir)
+                zf.write(file_path, relative_path)
+
+        logger.info("Exported skill %s to %s", name, output_path)
 
     def get_sub_skills(self, parent_name: str) -> list[SkillInfo]:
         """获取某个技能目录下的子技能"""

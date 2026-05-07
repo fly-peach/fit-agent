@@ -76,15 +76,6 @@ export const skillApi = {
     api.put(`/agent/skills/${name}/enable`),
   disable: (name: string): Promise<{ status: string; name: string; enabled: boolean }> =>
     api.put(`/agent/skills/${name}/disable`),
-  upload: (file: File): Promise<{ status: string; name: string }> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    return api.post('/agent/skills/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-  },
-  delete: (name: string): Promise<{ status: string; name: string }> =>
-    api.delete(`/agent/skills/${name}`),
 
   // 技能配置管理
   getConfig: (): Promise<SkillSystemConfig> =>
@@ -104,10 +95,6 @@ export const skillApi = {
 
   resetConfig: (): Promise<SkillSystemConfig> =>
     api.delete('/agent/skills/config/reset'),
-
-  // 重新补充模板技能
-  restockTemplates: (): Promise<{ status: string; restocked: string[] }> =>
-    api.post('/agent/skills/restock-templates'),
 
   // 获取子技能
   getSubSkills: (name: string): Promise<Skill[]> =>

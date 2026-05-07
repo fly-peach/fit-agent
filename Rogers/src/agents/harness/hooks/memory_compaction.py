@@ -10,7 +10,7 @@ from src.agents.harness.utils.token_counter import get_token_counter
 
 if TYPE_CHECKING:
     from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
-    from src.agents.harness.utils.token_counter import EstimateTokenCounter
+    from agentscope.token import TokenCounterBase
     from src.agents.config import RunningConfig
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ async def _run_compaction(
     agent: ReActAgent,
     memory_manager: "ReMeLightMemoryManager",
     running_config: "RunningConfig",
-    token_counter: "EstimateTokenCounter",
+    token_counter: "TokenCounterBase",
 ) -> None:
     """执行完整的上下文压缩流程。
 

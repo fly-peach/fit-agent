@@ -1,8 +1,12 @@
 """Agent 工厂 — 从 AppConfig 构建 Agent，不再使用硬编码全局变量。"""
 from __future__ import annotations
 
+import asyncio
+import logging
 from dotenv import load_dotenv
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # 确保在模块加载时就读取 .env
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
@@ -46,6 +50,7 @@ from .harness.workspace.user_workspace import (
     load_user_context,
 )
 from .harness.skills.skill_manager import SkillManager
+from .harness.templates.templates import get_skills_template_path
 
 DEFAULT_SYSTEM_PROMPT = (
     "你是 Rogers，一个专业的健身和健康管理助手。"
@@ -78,9 +83,15 @@ MEMORY_GUIDANCE_ZH = (
 
 
 def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: int | str) -> str:
-    """读取工作区系统提示词文件，并兼容旧的 `agents.md + soul.md`。"""
+    """读取工作区系统提示词文件，并兼容旧的 `agents.md + soul.md`。
+
+    使用 PromptBuilder 处理条件区块（heartbeat / memory）。
+    """
     working_path = Path(working_dir)
     parts: list[str] = []
+
+    # 判断心跳是否启用
+    heartbeat_enabled = getattr(agent_cfg.heartbeat, "enabled", False)
 
     if agent_cfg.sys_prompt_files:
         for prompt_file in agent_cfg.sys_prompt_files:
@@ -88,9 +99,16 @@ def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: i
             if prompt_path.exists() and prompt_path.is_file():
                 parts.append(prompt_path.read_text(encoding="utf-8"))
     else:
-        legacy_prompt = load_user_sys_prompt(user_id)
-        if legacy_prompt:
-            parts.append(legacy_prompt)
+        # 使用 PromptBuilder 加载 agents.md + soul.md，处理条件区块
+        from src.agents.harness.workspace.user_workspace import PromptBuilder
+        builder = PromptBuilder(
+            user_dir=working_path,
+            heartbeat_enabled=heartbeat_enabled,
+            memory_prompt_enabled=True,
+        )
+        prompt = builder.build()
+        if prompt:
+            parts.append(prompt)
 
     if agent_cfg.sys_prompt:
         parts.append(agent_cfg.sys_prompt)
@@ -183,10 +201,10 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
         model_name = model_cfg.model_name
 
     # 构建模型参数字典
-    model_kwargs = {
+    model_kwargs: dict = {
         "api_key": api_key,
-        "enable_thinking": True,
         "stream": True,
+        "enable_thinking": True,
     }
 
     return DashScopeChatModel(
@@ -216,7 +234,8 @@ def create_user_agent(user_id: int | str, channel_name: str = "console") -> ReAc
 
     working_dir = str(ensure_user_workspace(user_id))
 
-    skill_manager = SkillManager(working_dir)
+    template_skills_dir = get_skills_template_path()
+    skill_manager = SkillManager(working_dir, skills_dir=template_skills_dir)
     skill_manager.scan_skills()
 
     # 先构建 model，传给 memory_manager
@@ -294,6 +313,28 @@ def create_user_agent(user_id: int | str, channel_name: str = "console") -> ReAc
     agent._lifecycle_hooks = lifecycle_hooks  # type: ignore[attr-defined]
     agent._memory_manager = memory_manager  # type: ignore[attr-defined]
     agent._skill_manager = skill_manager  # type: ignore[attr-defined]
+
+    # --- Heartbeat 集成 ---
+    if agent_cfg.heartbeat.enabled:
+        from src.agents.harness.memory.heartbeat_manager import HeartbeatManager
+        hb_manager = HeartbeatManager(
+            agent=agent,
+            agent_id=str(user_id),
+            workspace_dir=Path(working_dir),
+        )
+        # 在事件循环中调度心跳启动
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                asyncio.create_task(hb_manager.start(agent_cfg.heartbeat))
+        except RuntimeError:
+            # 没有运行中的事件循环，使用 run
+            asyncio.run(hb_manager.start(agent_cfg.heartbeat))
+        agent._heartbeat_manager = hb_manager  # type: ignore[attr-defined]
+        logger.info(
+            "Heartbeat enabled for user %s: every=%s",
+            user_id, agent_cfg.heartbeat.every,
+        )
 
     return agent
 

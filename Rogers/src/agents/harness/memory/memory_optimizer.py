@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -37,11 +38,12 @@ class MemoryOptimizer:
         self.ltm = long_term_memory
         self.model = model
 
-    async def optimize(self, date: str | None = None) -> dict:
+    async def optimize(self, date: str | None = None, custom_prompt: str = "") -> dict:
         """对指定日期进行记忆优化。
 
         Args:
             date: 要优化的日志日期，默认今天
+            custom_prompt: 自定义优化提示词（可选，覆盖默认 prompt）
 
         Returns:
             优化结果字典
@@ -61,6 +63,8 @@ class MemoryOptimizer:
         try:
             from agentscope.message import Msg
 
+            system_prompt = custom_prompt if custom_prompt else DREAM_OPTIMIZE_PROMPT
+
             prompt = f"""当前长期记忆：
 {current_memory}
 
@@ -70,11 +74,12 @@ class MemoryOptimizer:
 请输出优化后的 MEMORY.md 内容。"""
 
             messages = [
-                Msg("system", DREAM_OPTIMIZE_PROMPT, "system"),
+                Msg("system", system_prompt, "system"),
                 Msg("user", prompt, "user"),
             ]
 
-            response = await self.model(messages)
+            # 调用 LLM 生成优化后的记忆内容
+            response = await asyncio.to_thread(self.model, messages)
 
             optimized_content = ""
             if hasattr(response, "content"):

@@ -1,5 +1,8 @@
+import json
 import logging
 import base64
+import uuid
+import datetime
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
@@ -17,8 +20,13 @@ from pydantic import BaseModel
 from src.agents.harness.context import agent_context, NotAuthenticatedError, get_user_id_from_token
 from src.agents.harness.workspace.user_workspace import get_user_workspace, ensure_user_workspace
 from src.agents.harness.tools.basic.read_data import get_db as harness_get_db
-from src.fitme.utils.database import get_user_db
+from src.fitme.utils.database import get_user_db, UserSessionLocal
 from src.fitme.models import UserImage
+from src.agents.harness.chats.crud import (
+    get_session as get_session_crud,
+    create_session as create_session_crud,
+    add_message,
+)
 
 logger = logging.getLogger("fitagent")
 
@@ -112,6 +120,35 @@ def _extract_image_id(url: str) -> int | None:
     return None
 
 
+def _msg_content_to_ui_text(msg: Msg) -> str:
+    """将 Msg.content 提取为纯文本（用于前端展示）。"""
+    content = msg.content
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        texts = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "text":
+                    texts.append(block.get("text", ""))
+                elif block.get("type") == "image":
+                    texts.append("[图片]")
+        return "\n".join(texts)
+    return str(content) if content else ""
+
+
+def _make_ui_message(msg: Msg, role: str, msg_status: str = "finished") -> str:
+    """将 Msg 转换为 IAgentScopeRuntimeWebUIMessage 格式的 JSON 字符串。"""
+    text = _msg_content_to_ui_text(msg)
+    ui_msg = {
+        "id": str(uuid.uuid4()),
+        "role": role,
+        "cards": [{"code": "markdown", "data": text}],
+        "msgStatus": msg_status,
+    }
+    return json.dumps(ui_msg, ensure_ascii=False)
+
+
 @agent_app.query(framework="agentscope")
 async def query_func(
     self,
@@ -131,10 +168,30 @@ async def query_func(
         yield Msg(name="Rogers", content="请先登录后再使用助手。", role="assistant"), True
         return
 
+    # 确保数据库中有该会话记录
+    db = UserSessionLocal()
+    try:
+        existing = get_session_crud(db, user_id, session_id)
+        if existing is None:
+            create_session_crud(db, user_id, session_id, name="新对话")
+
+        # 保存用户消息到数据库
+        if msgs:
+            msgs_list = msgs if isinstance(msgs, list) else [msgs]
+            for m in msgs_list:
+                if isinstance(m, Msg) and m.role == "user":
+                    ui_content = _make_ui_message(m, "user", "finished")
+                    add_message(db, session_id, "user", ui_content, "finished")
+    finally:
+        db.close()
+
     # 每次创建全新的 agent 实例，确保用户间完全独立
     agent = create_user_agent(user_id)
     agent.set_console_output_enabled(False)
     memory_manager = getattr(agent, "_memory_manager", None)
+
+    # 收集最后一条响应消息，用于保存到 DB
+    last_response_content = ""
 
     async with agent_context(user_id):
         try:
@@ -155,6 +212,8 @@ async def query_func(
                 agents=[agent],
                 coroutine_task=agent(msgs),
             ):
+                if last and isinstance(msg, Msg):
+                    last_response_content = _msg_content_to_ui_text(msg)
                 yield msg, last
 
             await agent_app.state.session.save_session_state(
@@ -162,6 +221,20 @@ async def query_func(
                 user_id=str(user_id),
                 agent=agent,
             )
+
+            # 保存 assistant 响应到数据库
+            if last_response_content:
+                db2 = UserSessionLocal()
+                try:
+                    ui_content = json.dumps({
+                        "id": str(uuid.uuid4()),
+                        "role": "assistant",
+                        "cards": [{"code": "markdown", "data": last_response_content}],
+                        "msgStatus": "finished",
+                    }, ensure_ascii=False)
+                    add_message(db2, session_id, "assistant", ui_content, "finished")
+                finally:
+                    db2.close()
         finally:
             if memory_manager is not None:
                 await memory_manager.close()
@@ -341,26 +414,12 @@ async def update_agent_config(
     return {"status": "ok"}
 
 
-@router.delete("/sessions/{session_id}")
-async def delete_session(
-    session_id: str,
-    authorization: str | None = Header(default=None),
-):
-    """删除指定 session 文件。"""
-    import re
-    if not re.match(r'^[a-zA-Z0-9_\-]+$', session_id):
-        raise HTTPException(status_code=400, detail="session_id 仅支持字母、数字、下划线、短横线")
-    user_id = _get_user_id_from_auth(authorization)
+# ---------------------------------------------------------------------------
+# Session management — included from agents.harness.chats.router
+# ---------------------------------------------------------------------------
 
-    user_dir = get_user_workspace(user_id)
-    session_file = user_dir / "sessions" / f"{session_id}.json"
-
-    if session_file.exists():
-        session_file.unlink()
-        return {"status": "ok"}
-
-    raise HTTPException(status_code=404, detail="Session not found")
-
+from src.agents.harness.chats.router import router as chat_router
+router.include_router(chat_router)
 
 # ---------------------------------------------------------------------------
 # Image upload / retrieval / deletion

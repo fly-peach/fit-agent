@@ -148,6 +148,7 @@ class EmbeddingConfig(BaseModel):
 class ContextCompactConfig(BaseModel):
     """上下文压缩和令牌计数配置。"""
     token_count_estimate_divisor: float = 3.75
+    token_counter_model: str = ""  # HuggingFace 模型名，如 "Qwen/Qwen2.5-7B-Instruct"，空则用估算
     context_compact_enabled: bool = True
     memory_compact_ratio: float = 0.75
     memory_reserve_ratio: float = 0.1
@@ -198,6 +199,48 @@ class RunningConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Heartbeat 配置（参考 CoPaw HeartbeatConfig）
+# ---------------------------------------------------------------------------
+
+HEARTBEAT_DEFAULT_EVERY = "6h"
+HEARTBEAT_DEFAULT_TARGET = "main"
+HEARTBEAT_TARGET_LAST = "last"
+
+
+class ActiveHoursConfig(BaseModel):
+    """心跳活跃时段（例如 08:00–22:00）。"""
+
+    start: str = "08:00"
+    end: str = "22:00"
+
+
+class HeartbeatConfig(BaseModel):
+    """心跳：按固定间隔以 HEARTBEAT.md 内容作为查询运行 agent。
+
+    支持两种调度方式：
+    - interval 字符串：'30m', '1h', '2h30m', '90s'
+    - cron 表达式：'0 */6 * * *'
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="是否启用心跳",
+    )
+    every: str = Field(
+        default=HEARTBEAT_DEFAULT_EVERY,
+        description="调度间隔（interval 字符串如 '30m' / '6h'，或 cron 表达式如 '0 */6 * * *'）",
+    )
+    target: str = Field(
+        default=HEARTBEAT_DEFAULT_TARGET,
+        description="路由目标：'main' 静默执行，'last' 路由到上次活跃频道",
+    )
+    active_hours: Optional[ActiveHoursConfig] = Field(
+        default=None,
+        description="可选活跃时段，非活跃时段跳过心跳",
+    )
+
+
+# ---------------------------------------------------------------------------
 # 智能体配置（每个智能体实例的配置，参考 CoPaw 的 AgentProfileConfig）
 # ---------------------------------------------------------------------------
 
@@ -216,6 +259,10 @@ class AgentConfig(BaseModel):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     tool_groups: dict[str, ToolGroupConfig] = Field(default_factory=dict)
     running: RunningConfig = Field(default_factory=RunningConfig)
+    heartbeat: HeartbeatConfig = Field(
+        default_factory=HeartbeatConfig,
+        description="心跳配置（按固定间隔以 HEARTBEAT.md 为查询运行 agent）",
+    )
 
     # 已启用工具的派生列表
     def get_enabled_tools(self) -> list[str]:

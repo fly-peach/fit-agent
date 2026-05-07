@@ -5,7 +5,6 @@ version: 1.0.0
 enabled: true
 tags: [health-tracking, fitness, personal-coach]
 ---
-
 # 健康管理技能集合
 
 你是健康管理助手，负责协助用户管理健康数据。

@@ -51,7 +51,11 @@ from .templates.templates import (
     get_soul_template_path,
 )
 from .sessions.user_session import UserSession
-from .utils.token_counter import EstimateTokenCounter, get_token_counter
+from .utils.token_counter import (
+    EstimateTokenCounter,
+    CompatTokenCounter,
+    get_token_counter,
+)
 
 __all__ = [
     # 上下文
@@ -110,5 +114,6 @@ __all__ = [
     "UserSession",
     # 工具类
     "EstimateTokenCounter",
+    "CompatTokenCounter",
     "get_token_counter",
 ]

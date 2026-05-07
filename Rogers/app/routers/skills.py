@@ -1,20 +1,22 @@
 """Skill 管理 API 路由。"""
 import logging
-import os
 import tempfile
+import shutil
 from pathlib import Path
 from typing import List, Any
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Header, UploadFile, Depends
+from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from src.agents.harness.context import get_user_id_from_token, NotAuthenticatedError
-from src.agents.harness.workspace.user_workspace import get_user_workspace, restock_template_skills, ensure_user_workspace
+from src.agents.harness.workspace.user_workspace import ensure_user_workspace
 from src.agents.harness.skills.skill_manager import SkillManager
 from src.agents.harness.skills.skill_config import (
     SkillSystemConfig, SkillPackageConfig
 )
+from src.agents.harness.templates.templates import get_skills_template_path
 
 logger = logging.getLogger("fitagent")
 
@@ -91,131 +93,11 @@ def _get_skill_manager(authorization: str | None) -> SkillManager:
     except NotAuthenticatedError:
         raise HTTPException(status_code=401, detail="请先登录")
     user_dir = ensure_user_workspace(user_id)
-    return SkillManager(user_dir)
+    template_skills_dir = get_skills_template_path()
+    return SkillManager(user_dir, skills_dir=template_skills_dir)
 
 
-# ===== 技能基本管理 API =====
-
-@router.get("", response_model=List[SkillResponse])
-async def list_skills(authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    skills = sm.list_skills()
-    return [
-        SkillResponse(
-            name=s.name, version=s.version, description=s.description,
-            enabled=s.enabled, path=s.path, tags=s.tags,
-            channels=s.channels, source=s.source,
-        )
-        for s in skills
-    ]
-
-
-@router.get("/{name}", response_model=SkillDetailResponse)
-async def get_skill(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    skill = sm.get_skill(name)
-    if not skill:
-        raise HTTPException(status_code=404, detail="Skill not found")
-    return SkillDetailResponse(
-        name=skill.name, version=skill.version, description=skill.description,
-        enabled=skill.enabled, path=skill.path, tags=skill.tags, content=skill.content,
-        body=skill.body,
-        references=skill.references,
-        scripts=skill.scripts,
-        channels=skill.channels,
-        config=skill.config,
-        source=skill.source,
-    )
-
-
-@router.get("/{name}/sub-skills", response_model=list[SkillResponse])
-async def get_sub_skills(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    sub_skills = sm.get_sub_skills(name)
-    return [
-        SkillResponse(
-            name=s.name, version=s.version, description=s.description,
-            enabled=s.enabled, path=s.path, tags=s.tags,
-            channels=s.channels, source=s.source,
-        )
-        for s in sub_skills
-    ]
-
-
-@router.get("/{name}/files/{file_path:path}")
-async def get_skill_file(
-    name: str,
-    file_path: str,
-    authorization: str | None = Header(default=None),
-):
-    sm = _get_skill_manager(authorization)
-    content = sm.load_skill_file(name, file_path)
-    if content is None:
-        raise HTTPException(status_code=404, detail="Skill file not found")
-    return {"content": content}
-
-
-@router.put("/{name}/enable")
-async def enable_skill(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    if not sm.enable_skill(name):
-        raise HTTPException(status_code=404, detail="Skill not found")
-    # 同步到配置
-    sm.sync_to_config()
-    return {"status": "ok", "name": name, "enabled": True}
-
-
-@router.put("/{name}/disable")
-async def disable_skill(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    if not sm.disable_skill(name):
-        raise HTTPException(status_code=404, detail="Skill not found")
-    # 同步到配置
-    sm.sync_to_config()
-    return {"status": "ok", "name": name, "enabled": False}
-
-
-@router.post("/upload")
-async def upload_skill(
-    file: UploadFile,
-    authorization: str | None = Header(default=None),
-):
-    sm = _get_skill_manager(authorization)
-
-    if not file.content_type or "zip" not in file.content_type.lower():
-        raise HTTPException(status_code=400, detail="仅支持 ZIP 文件")
-
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tf:
-        content = await file.read()
-        if len(content) > 200 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="技能包不能超过 200MB")
-        tf.write(content)
-        tf.flush()
-        try:
-            skill_name = sm.install_skill_from_zip(tf.name)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        finally:
-            os.unlink(tf.name)
-
-    # 同步新安装的技能到配置
-    sm.sync_to_config()
-    return {"status": "ok", "name": skill_name}
-
-
-@router.delete("/{name}")
-async def delete_skill(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    if not sm.delete_skill(name):
-        raise HTTPException(status_code=404, detail="Skill not found")
-    # 同步到配置
-    sm.sync_to_config()
-    return {"status": "ok", "name": name}
-
-
-# ===== 技能配置管理 API =====
+# ===== 技能配置管理 API (放在前面避免被 /{name} 路由捕获) =====
 
 @router.get("/config", response_model=SkillSystemConfigResponse)
 async def get_skill_config(authorization: str | None = Header(default=None)):
@@ -391,34 +273,114 @@ async def reset_skill_config(authorization: str | None = Header(default=None)):
     )
 
 
-@router.post("/restock-templates")
-async def restock_template_skills_endpoint(authorization: str | None = Header(default=None)):
-    """重新补充缺失的模板技能
+# ===== 技能基本管理 API =====
 
-    从 templates/skills/ 复制缺失的模板技能到用户工作区。
-    不会覆盖用户已修改的技能。
-
-    Returns:
-        {
-            "status": "ok",
-            "restocked": [skill_name1, skill_name2, ...]
-        }
-    """
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
-
-    restocked = restock_template_skills(user_id)
-
-    # 重新扫描技能
+@router.get("", response_model=List[SkillResponse])
+async def list_skills(authorization: str | None = Header(default=None)):
     sm = _get_skill_manager(authorization)
-    sm.scan_skills()
+    skills = sm.list_skills()
+    return [
+        SkillResponse(
+            name=s.name, version=s.version, description=s.description,
+            enabled=s.enabled, path=s.path, tags=s.tags,
+            channels=s.channels, source=s.source,
+        )
+        for s in skills
+    ]
 
+
+@router.get("/{name}", response_model=SkillDetailResponse)
+async def get_skill(name: str, authorization: str | None = Header(default=None)):
+    sm = _get_skill_manager(authorization)
+    skill = sm.get_skill(name)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return SkillDetailResponse(
+        name=skill.name, version=skill.version, description=skill.description,
+        enabled=skill.enabled, path=skill.path, tags=skill.tags, content=skill.content,
+        body=skill.body,
+        references=skill.references,
+        scripts=skill.scripts,
+        channels=skill.channels,
+        config=skill.config,
+        source=skill.source,
+    )
+
+
+@router.get("/{name}/sub-skills", response_model=list[SkillResponse])
+async def get_sub_skills(name: str, authorization: str | None = Header(default=None)):
+    sm = _get_skill_manager(authorization)
+    sub_skills = sm.get_sub_skills(name)
+    return [
+        SkillResponse(
+            name=s.name, version=s.version, description=s.description,
+            enabled=s.enabled, path=s.path, tags=s.tags,
+            channels=s.channels, source=s.source,
+        )
+        for s in sub_skills
+    ]
+
+
+@router.get("/{name}/files/{file_path:path}")
+async def get_skill_file(
+    name: str,
+    file_path: str,
+    authorization: str | None = Header(default=None),
+):
+    sm = _get_skill_manager(authorization)
+    content = sm.load_skill_file(name, file_path)
+    if content is None:
+        raise HTTPException(status_code=404, detail="Skill file not found")
+    return {"content": content}
+
+
+@router.put("/{name}/enable")
+async def enable_skill(name: str, authorization: str | None = Header(default=None)):
+    sm = _get_skill_manager(authorization)
+    if not sm.enable_skill(name):
+        raise HTTPException(status_code=404, detail="Skill not found")
     # 同步到配置
     sm.sync_to_config()
+    return {"status": "ok", "name": name, "enabled": True}
 
-    return {"status": "ok", "restocked": restocked}
+
+@router.put("/{name}/disable")
+async def disable_skill(name: str, authorization: str | None = Header(default=None)):
+    sm = _get_skill_manager(authorization)
+    if not sm.disable_skill(name):
+        raise HTTPException(status_code=404, detail="Skill not found")
+    # 同步到配置
+    sm.sync_to_config()
+    return {"status": "ok", "name": name, "enabled": False}
+
+
+@router.get("/{name}/export")
+async def export_skill(
+    name: str,
+    background_tasks: BackgroundTasks,
+    authorization: str | None = Header(default=None),
+):
+    """导出技能为 ZIP 文件"""
+    sm = _get_skill_manager(authorization)
+    skill = sm.get_skill(name)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    # 创建临时 ZIP 文件
+    temp_dir = tempfile.mkdtemp()
+    zip_path = Path(temp_dir) / f"{name}.zip"
+
+    try:
+        sm.export_skill_to_zip(name, zip_path)
+        # 添加后台任务清理临时文件
+        background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
+        return FileResponse(
+            path=zip_path,
+            media_type="application/zip",
+            filename=f"{name}.zip",
+        )
+    except Exception as exc:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.error("Failed to export skill: %s", exc)
+        raise HTTPException(status_code=500, detail="Export failed")
+

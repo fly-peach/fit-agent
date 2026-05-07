@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Row, Col, Button, message, Input, List, Spin, Collapse, Popconfirm, Card, Space, Typography, Tag, Empty } from 'antd'
-import { SaveOutlined, ReloadOutlined, ExperimentOutlined, DeleteOutlined, CalendarOutlined, UndoOutlined, SearchOutlined, CopyOutlined } from '@ant-design/icons'
-import { memoryApi, MemoryContent, DailyLog } from '../../services/memory'
+import { Row, Col, Button, message, Input, List, Spin, Collapse, Popconfirm, Card, Space, Typography, Empty, Switch, Tag } from 'antd'
+import { SaveOutlined, ReloadOutlined, ExperimentOutlined, DeleteOutlined, CalendarOutlined, UndoOutlined, SearchOutlined, CopyOutlined, FileTextOutlined } from '@ant-design/icons'
+import { memoryApi, MemoryContent, DailyLog, MemoryConfig } from '../../services/memory'
 
 const { TextArea } = Input
 const { Text } = Typography
@@ -17,6 +17,17 @@ const MemoryManager: React.FC = () => {
   const [optimizing, setOptimizing] = useState(false)
   const [activeLogDate, setActiveLogDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Memory config state (heartbeat only)
+  const [memoryConfig, setMemoryConfig] = useState<MemoryConfig>({
+    heartbeat: { enabled: false, every: '6h', target: 'main', active_hours: null },
+  })
+  const [savingConfig, setSavingConfig] = useState(false)
+
+  // HEARTBEAT.md 编辑
+  const [heartbeatDoc, setHeartbeatDoc] = useState('')
+  const [heartbeatDocLoading, setHeartbeatDocLoading] = useState(false)
+  const [heartbeatDocSaving, setHeartbeatDocSaving] = useState(false)
 
   const fetchMemory = async () => {
     setLoading(true)
@@ -41,9 +52,32 @@ const MemoryManager: React.FC = () => {
     }
   }
 
+  const fetchConfig = async () => {
+    try {
+      const cfg = await memoryApi.getConfig()
+      setMemoryConfig(cfg)
+    } catch (error) {
+      // 配置不存在时使用默认值
+    }
+  }
+
+  const fetchHeartbeatDoc = async () => {
+    setHeartbeatDocLoading(true)
+    try {
+      const data = await memoryApi.getHeartbeatDoc()
+      setHeartbeatDoc(data.content)
+    } catch (error) {
+      // 文件不存在时使用空内容
+    } finally {
+      setHeartbeatDocLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchMemory()
     fetchLogs()
+    fetchConfig()
+    fetchHeartbeatDoc()
   }, [])
 
   const hasChanges = editingContent !== (memory?.content || '')
@@ -151,6 +185,30 @@ const MemoryManager: React.FC = () => {
       message.success('日志内容已复制')
     } catch (error) {
       message.error('复制失败')
+    }
+  }
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true)
+    try {
+      await memoryApi.updateConfig(memoryConfig)
+      message.success('设置已保存')
+    } catch (error) {
+      message.error('保存设置失败')
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
+  const handleSaveHeartbeatDoc = async () => {
+    setHeartbeatDocSaving(true)
+    try {
+      await memoryApi.updateHeartbeatDoc(heartbeatDoc)
+      message.success('HEARTBEAT.md 已保存')
+    } catch (error) {
+      message.error('保存失败')
+    } finally {
+      setHeartbeatDocSaving(false)
     }
   }
 
@@ -303,6 +361,154 @@ const MemoryManager: React.FC = () => {
               </Collapse.Panel>
             </Collapse>
           )}
+
+          {/* 心跳配置 */}
+          <Card
+            title={
+              <Space>
+                <ReloadOutlined />
+                <span>心跳配置</span>
+              </Space>
+            }
+            style={{ marginTop: 16 }}
+          >
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+              Agent 会按固定间隔自动执行 HEARTBEAT.md 中的任务（如记忆维护、状态检查）。
+            </Text>
+
+            <div style={{ marginBottom: 16 }}>
+              <Space>
+                <Switch
+                  checked={memoryConfig.heartbeat?.enabled ?? false}
+                  onChange={(checked) =>
+                    setMemoryConfig({
+                      ...memoryConfig,
+                      heartbeat: { ...memoryConfig.heartbeat, enabled: checked },
+                    })
+                  }
+                />
+                <Text>启用心跳</Text>
+              </Space>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                执行间隔
+              </Text>
+              <Input
+                value={memoryConfig.heartbeat?.every ?? '6h'}
+                onChange={(e) =>
+                  setMemoryConfig({
+                    ...memoryConfig,
+                    heartbeat: { ...memoryConfig.heartbeat, every: e.target.value },
+                  })
+                }
+                disabled={!memoryConfig.heartbeat?.enabled}
+                placeholder="如 30m、1h、6h、0 */6 * * *"
+                style={{ width: '100%' }}
+              />
+              <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                支持区间格式（30m / 1h / 6h）或 cron 表达式（0 */6 * * *）
+              </Text>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                活跃时段（可选）
+              </Text>
+              <Space>
+                <Input
+                  value={memoryConfig.heartbeat?.active_hours?.start ?? '08:00'}
+                  onChange={(e) =>
+                    setMemoryConfig({
+                      ...memoryConfig,
+                      heartbeat: {
+                        ...memoryConfig.heartbeat,
+                        active_hours: {
+                          start: e.target.value,
+                          end: memoryConfig.heartbeat?.active_hours?.end ?? '22:00',
+                        },
+                      },
+                    })
+                  }
+                  disabled={!memoryConfig.heartbeat?.enabled}
+                  placeholder="08:00"
+                  style={{ width: 100 }}
+                />
+                <Text>至</Text>
+                <Input
+                  value={memoryConfig.heartbeat?.active_hours?.end ?? '22:00'}
+                  onChange={(e) =>
+                    setMemoryConfig({
+                      ...memoryConfig,
+                      heartbeat: {
+                        ...memoryConfig.heartbeat,
+                        active_hours: {
+                          start: memoryConfig.heartbeat?.active_hours?.start ?? '08:00',
+                          end: e.target.value,
+                        },
+                      },
+                    })
+                  }
+                  disabled={!memoryConfig.heartbeat?.enabled}
+                  placeholder="22:00"
+                  style={{ width: 100 }}
+                />
+              </Space>
+            </div>
+
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveConfig}
+              loading={savingConfig}
+            >
+              保存心跳配置
+            </Button>
+          </Card>
+
+          {/* HEARTBEAT.md 编辑 */}
+          <Card
+            title={
+              <Space>
+                <FileTextOutlined />
+                <span>心跳文档 (HEARTBEAT.md)</span>
+              </Space>
+            }
+            style={{ marginTop: 16 }}
+          >
+            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+              编辑 HEARTBEAT.md 来指定 agent 每次心跳时需要执行的任务清单。
+              内容为 Markdown 格式，以 <Text code>#</Text> 开头的行是注释，会被 agent 忽略。
+            </Text>
+
+            <TextArea
+              value={heartbeatDoc}
+              onChange={(e) => setHeartbeatDoc(e.target.value)}
+              placeholder="# HEARTBEAT.md&#10;&#10;# 在此添加心跳任务清单&#10;# 1. 检查最近日志并更新 MEMORY.md&#10;# 2. 检查未完成的训练计划"
+              autoSize={{ minRows: 10, maxRows: 20 }}
+              disabled={heartbeatDocLoading}
+              style={{ fontFamily: 'monospace', fontSize: 13 }}
+            />
+
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={handleSaveHeartbeatDoc}
+                loading={heartbeatDocSaving}
+              >
+                保存 HEARTBEAT.md
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={fetchHeartbeatDoc}
+                loading={heartbeatDocLoading}
+              >
+                刷新
+              </Button>
+            </div>
+          </Card>
           </Card>
         </Col>
       </Row>

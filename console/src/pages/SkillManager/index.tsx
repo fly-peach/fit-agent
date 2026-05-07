@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Card, Row, Col, Button, Switch, Modal, message, Upload, Tag, Tooltip, Spin,
-  Tabs, Descriptions, Alert, Space, Typography, Popconfirm, Input, Divider,
-  Tree, Empty
+  Card, Row, Col, Button, Switch, Modal, message, Tag, Tooltip, Spin,
+  Tabs, Descriptions, Alert, Space, Typography, Input, Divider,
+  Tree, Empty, Popconfirm
 } from 'antd'
 import {
-  UploadOutlined, DeleteOutlined, InfoCircleOutlined, ReloadOutlined,
-  SettingOutlined, DatabaseOutlined, SyncOutlined, ThunderboltOutlined
+  InfoCircleOutlined, ReloadOutlined, DownloadOutlined,
+  SettingOutlined, DatabaseOutlined, SyncOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons'
 import {
   skillApi, Skill, SkillDetail, SkillSystemConfig, SkillPackageConfig,
   SkillSyncStatus, InitializeConfigRequest, SyncConfigRequest,
   UpdateSkillPackageRequest
 } from '../../services/skills'
-import type { UploadFile } from 'antd/es/upload/interface'
 import type { DataNode } from 'antd/es/tree'
+import request from '../../utils/request'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -53,9 +54,9 @@ const buildFileTreeData = (paths: string[]): DataNode[] => {
 const SkillCard: React.FC<{
   skill: Skill
   onToggle: (skill: Skill) => void
-  onDelete: (name: string) => void
   onView: (skill: Skill) => void
-}> = ({ skill, onToggle, onDelete, onView }) => {
+  onExport: (skill: Skill) => void
+}> = ({ skill, onToggle, onView, onExport }) => {
   return (
     <Card
       hoverable
@@ -69,8 +70,8 @@ const SkillCard: React.FC<{
         <Tooltip title="查看详情">
           <Button type="text" icon={<InfoCircleOutlined />} onClick={() => onView(skill)} />
         </Tooltip>,
-        <Tooltip title="删除技能">
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => onDelete(skill.name)} />
+        <Tooltip title="导出技能">
+          <Button type="text" icon={<DownloadOutlined />} onClick={() => onExport(skill)} />
         </Tooltip>,
       ]}
     >
@@ -227,23 +228,28 @@ const SkillManager: React.FC = () => {
     }
   }
 
-  const handleDelete = (name: string) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定要删除技能 "${name}" 吗？此操作不可恢复。`,
-      okText: '删除',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await skillApi.delete(name)
-          message.success('技能已删除')
-          fetchAll()
-        } catch (error) {
-          message.error('删除失败')
-        }
-      },
-    })
+  const handleExport = async (skill: Skill) => {
+    try {
+      message.loading({ content: '正在导出...', key: 'export' })
+
+      const response = await request.get(`/agent/skills/${skill.name}/export`, {
+        responseType: 'blob',
+      })
+
+      // 创建下载链接
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${skill.name}.zip`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      message.success({ content: '导出成功', key: 'export' })
+    } catch (error) {
+      message.error({ content: '导出失败', key: 'export' })
+    }
   }
 
   const handleView = async (skill: Skill) => {
@@ -288,28 +294,6 @@ const SkillManager: React.FC = () => {
     } finally {
       setFileLoading(false)
     }
-  }
-
-  const handleUpload = async (file: UploadFile) => {
-    const rawFile = file.originFileObj
-    if (!rawFile) return false
-
-    if (rawFile.size > 200 * 1024 * 1024) {
-      message.error('技能包不能超过 200MB')
-      return false
-    }
-
-    setLoading(true)
-    try {
-      const result = await skillApi.upload(rawFile)
-      message.success(`技能 "${result.name}" 安装成功`)
-      fetchAll()
-    } catch (error) {
-      message.error('上传失败')
-    } finally {
-      setLoading(false)
-    }
-    return false
   }
 
   const handleInitialize = async () => {
@@ -382,32 +366,6 @@ const SkillManager: React.FC = () => {
     })
   }
 
-  const handleRestockTemplates = () => {
-    Modal.confirm({
-      title: '补充模板技能',
-      content: '将重新补充已删除的模板技能，不会覆盖您已修改的技能。确定继续吗？',
-      okText: '补充',
-      okType: 'primary',
-      cancelText: '取消',
-      onOk: async () => {
-        setLoading(true)
-        try {
-          const result = await skillApi.restockTemplates()
-          if (result.restocked.length > 0) {
-            message.success(`已补充 ${result.restocked.length} 个技能：${result.restocked.join('、')}`)
-          } else {
-            message.info('没有需要补充的技能')
-          }
-          fetchAll()
-        } catch {
-          message.error('补充失败')
-        } finally {
-          setLoading(false)
-        }
-      },
-    })
-  }
-
   return (
     <div className="fitagent-page-enter" style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -422,13 +380,6 @@ const SkillManager: React.FC = () => {
           >
             刷新
           </Button>
-          <Upload
-            beforeUpload={handleUpload}
-            accept=".zip"
-            showUploadList={false}
-          >
-            <Button type="primary" icon={<UploadOutlined />}>上传技能</Button>
-          </Upload>
         </Space>
       </div>
 
@@ -444,7 +395,7 @@ const SkillManager: React.FC = () => {
           >
             {skills.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 48, color: '#999' }}>
-                暂无技能，点击上方"上传技能"按钮安装新技能
+                暂无技能
               </div>
             ) : (
               <Row gutter={[16, 16]}>
@@ -453,8 +404,8 @@ const SkillManager: React.FC = () => {
                     <SkillCard
                       skill={skill}
                       onToggle={handleToggle}
-                      onDelete={handleDelete}
                       onView={handleView}
+                      onExport={handleExport}
                     />
                   </Col>
                 ))}
@@ -541,12 +492,6 @@ const SkillManager: React.FC = () => {
                         </Popconfirm>
                       </>
                     )}
-                    <Button
-                      icon={<DatabaseOutlined />}
-                      onClick={handleRestockTemplates}
-                    >
-                      补充模板技能
-                    </Button>
                   </Space>
                 </Card>
 

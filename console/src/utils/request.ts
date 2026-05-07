@@ -21,6 +21,10 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
+    // 对于 blob 类型，直接返回完整响应
+    if (response.config.responseType === 'blob') {
+      return response
+    }
     const { code, message: msg, data } = response.data
     if (code === 200) {
       return data

@@ -57,3 +57,8 @@ def update_last_used(db: Session, user_id: int) -> UserAgentConfig | None:
         db.commit()
         db.refresh(config)
     return config
+
+
+def get_all_agent_configs(db: Session) -> list[UserAgentConfig]:
+    """获取所有用户的 Agent 配置。"""
+    return db.query(UserAgentConfig).all()
