@@ -6,9 +6,7 @@ import { agentApi, workspaceApi, type AgentWorkspaceStatus } from '../../service
 import { contextApi, ContextStats, CacheEntry } from '../../services/context'
 
 const modelOptions = [
-  { value: 'qwen3.5-flash', label: 'Qwen3.5-Flash (多模态推荐，支持思考)', recommended: true },
-  { value: 'qwen3.5-plus', label: 'Qwen3.5-Plus (更强推理)' },
-  { value: 'qwen-turbo', label: 'Qwen Turbo (快速)' },
+  { value: 'qwen-turbo', label: 'Qwen Turbo (快速，推荐)', recommended: true },
   { value: 'qwen-plus', label: 'Qwen Plus (均衡)' },
   { value: 'qwen-max', label: 'Qwen Max (强大)' },
   { value: 'qwen-max-longcontext', label: 'Qwen Max LongContext (长文本)' },
@@ -313,7 +311,7 @@ const AgentConfig: React.FC = () => {
         agents_md: personalityPresets[0].agents_md,
         soul_md: personalityPresets[0].soul_md,
         api_key: '',
-        model_name: 'qwen3.5-flash',
+        model_name: 'qwen-turbo',
       })
       setSelectedPreset('rogers_default')
       setUseCustomModel(false)
@@ -615,7 +613,7 @@ const AgentConfig: React.FC = () => {
                         onClick={() => {
                           if (useCustomModel) {
                             setUseCustomModel(false)
-                            agentForm.setFieldValue('model_name', 'qwen3.5-flash')
+                            agentForm.setFieldValue('model_name', 'qwen-turbo')
                           } else {
                             setUseCustomModel(true)
                             agentForm.setFieldValue('model_name', '')

@@ -379,7 +379,7 @@ async def get_agent_config(
     # 加载用户级 agent.json
     user_config_path = user_dir / "agent.json"
     user_api_key = ""
-    model_name = "qwen3.5-flash"
+    model_name = "qwen-turbo"
 
     if user_config_path.exists():
         with open(user_config_path, encoding="utf-8") as f:
@@ -387,7 +387,7 @@ async def get_agent_config(
         model_config = user_config.get("model", {})
         if isinstance(model_config, dict):
             user_api_key = model_config.get("api_key", "")
-            model_name = model_config.get("model_name", "qwen3.5-flash")
+            model_name = model_config.get("model_name", "qwen-turbo")
 
     # API Key 只从用户配置读取，不再从环境变量读取
     is_custom_api_key = bool(user_api_key)
