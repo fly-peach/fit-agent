@@ -1,14 +1,13 @@
-"""CRUD operations for chat sessions and messages.
+"""CRUD operations for chat sessions.
 
 Moved from fitme/crud/chat.py to agents/harness/chats/crud.py.
 """
-import json
 import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from .models import ChatSession, ChatMessage
+from .models import ChatSession
 
 logger = logging.getLogger("fitagent")
 
@@ -82,35 +81,3 @@ def delete_session(db: Session, user_id: int, session_id: str) -> bool:
     logger.info(f"Deleted chat session: {session_id} for user {user_id}")
     return True
 
-
-# ==================== Message CRUD ====================
-
-
-def add_message(
-    db: Session,
-    session_id: str,
-    role: str,
-    content_json: str,
-    msg_status: str = "finished",
-) -> ChatMessage:
-    """添加消息到会话。"""
-    message = ChatMessage(
-        session_id=session_id,
-        role=role,
-        content=content_json,
-        msg_status=msg_status,
-    )
-    db.add(message)
-    db.commit()
-    db.refresh(message)
-    return message
-
-
-def get_messages(db: Session, session_id: str) -> list[ChatMessage]:
-    """获取会话的所有消息，按创建时间升序。"""
-    return (
-        db.query(ChatMessage)
-        .filter(ChatMessage.session_id == session_id)
-        .order_by(ChatMessage.created_at.asc())
-        .all()
-    )

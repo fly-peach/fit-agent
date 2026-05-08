@@ -189,12 +189,18 @@ async def query_func(
         yield Msg(name="Rogers", content="请先登录后再使用助手。", role="assistant"), True
         return
 
-    # 确保 chat_sessions 表中有该会话记录（仍用于会话列表）
+    # 只校验 session 是否存在，不再自动创建（由前端 POST /sessions 负责创建）
+    # 若 session 不存在则提示用户先创建对话
     db = UserSessionLocal()
     try:
         existing = get_session_crud(db, user_id, session_id)
         if existing is None:
-            create_session_crud(db, user_id, session_id, name="新对话")
+            yield Msg(
+                name="Rogers",
+                content="❌ 会话不存在，请先点击「新建对话」创建会话后再发送消息。",
+                role="assistant",
+            ), True
+            return
     finally:
         db.close()
 

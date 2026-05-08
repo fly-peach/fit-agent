@@ -21,7 +21,11 @@ class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
   }
 
   async createSession(session: Partial<IAgentScopeRuntimeWebUISession>): Promise<IAgentScopeRuntimeWebUISession[]> {
-    const res = await api.post('/agent/sessions', { name: session.name || '新对话' })
+    // 前端 SDK 生成的 session.id 必须传给后端，确保前后端 session_id 一致
+    const res = await api.post('/agent/sessions', {
+      id: session.id,
+      name: session.name || '新对话',
+    })
     return res as unknown as IAgentScopeRuntimeWebUISession[]
   }
 

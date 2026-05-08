@@ -52,8 +52,18 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # 不需要 JSONSession/UserSession — 对话历史由 AsyncSQLAlchemyMemory 持久化
-    # 异步引擎在 database.py 中已初始化为 async_agent_memory_engine
+    # 3. 初始化 agent_memory.db（FitAgentSQLMemory 专用，独立于主库）
+    from src.agents.harness.memory.fitagent_memory import FitAgentSQLMemory
+    from src.fitme.utils.database import async_agent_memory_engine
+    memory = FitAgentSQLMemory(
+        engine_or_session=async_agent_memory_engine,
+        user_id="_init",
+        session_id="_init",
+    )
+    try:
+        await memory._create_table()
+    finally:
+        await memory.close()
 
     try:
         yield
