@@ -1,255 +1,96 @@
-"""迁移脚本：为现有用户的工作区添加心跳 (heartbeat) 配置。
+﻿"""迁移存量用户的 agent.json，补充心跳配置字段。
 
-背景：
-    心跳系统是参考 CoPaw 的提示词驱动心跳管理实现的。
-    新用户通过 ``ensure_user_workspace()`` 创建时会自动获得完整配置，
-    但已有用户的工作区中 ``agent.json`` 和 ``memory_config.json`` 可能缺少
-    heartbeat 字段。
+用法: python scripts/migrate_heartbeat_config.py
 
-本脚本会遍历所有已有用户，为他们的工作区补全：
-1. ``agent.json`` → 添加 ``heartbeat`` 节（默认禁用）
-2. ``memory_config.json`` → 添加 ``heartbeat`` 节（默认禁用）
-3. ``HEARTBEAT.md`` → 如果不存在则从模板复制
-
-用法：
-    cd rogers
-    python scripts/migrate_heartbeat_config.py          # 扫描但不修改（dry-run）
-    python scripts/migrate_heartbeat_config.py --apply   # 实际应用迁移
+该脚本会扫描所有用户工作区中的 agent.json，为缺少 heartbeat 字段的
+配置文件补充默认心跳设置（默认关闭）。
 """
 from __future__ import annotations
 
-import argparse
 import json
+import logging
+import os
 import sys
 from pathlib import Path
 
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
-# 确保能导入项目模块
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_PROJECT_ROOT))
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=_project_root / ".env")
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+logger = logging.getLogger("migrate_heartbeat")
 
-DEFAULT_HEARTBEAT_CONFIG = {
-    "enabled": False,
-    "every": "6h",
-    "target": "main",
-    "active_hours": None,
-}
-
-DEFAULT_HEARTBEAT_IN_AGENT_JSON = {
-    "enabled": False,
-    "every": "6h",
-    "target": "main",
-}
-
-HEARTBEAT_TEMPLATE_CONTENT = """# HEARTBEAT.md
-
-# 保持此文件为空（或仅含注释）以跳过心跳 API 调用。
-# 在下文添加需要 agent 定期检查的任务。
-
-# 示例任务（取消注释使用）：
-# 1. 检查最近 3 天的 memory/*.md，更新 MEMORY.md
-# 2. 检查用户是否有未完成的训练计划
-# 3. 回顾用户的健康指标趋势
-"""
+DEFAULT_HEARTBEAT = {"enabled": False, "every": "6h", "target": "main"}
 
 
-def find_all_user_dirs() -> list[Path]:
-    """扫描所有可能的用户工作区目录。
-
-    策略：
-    1. 从数据库读取用户配置的 local_working_dir
-    2. 使用默认目录 ~/.fitagent
-    3. 检查旧版 workspace/users/{user_id} 目录
-    """
-    user_dirs: list[Path] = []
-    seen: set[str] = set()
-
-    def _add(p: Path) -> None:
-        resolved = p.resolve()
-        key = str(resolved).lower()
-        if resolved.is_dir() and key not in seen:
-            seen.add(key)
-            user_dirs.append(resolved)
-
-    # 方法1：从数据库读取
+def _find_agent_json_files() -> list[Path]:
+    files: list[Path] = []
     try:
         from src.fitme.utils.database import UserSessionLocal
-        from src.fitme.crud import agent_config as agent_crud
-
+        from src.fitme.crud.agent_config import get_all_agent_configs
         db = UserSessionLocal()
         try:
-            configs = agent_crud.get_all_agent_configs(db)
+            configs = get_all_agent_configs(db)
             for cfg in configs:
-                raw = cfg.local_working_dir
-                if raw and raw.strip():
-                    _add(Path(str(raw).strip()))
+                if cfg.local_working_dir:
+                    p = Path(str(cfg.local_working_dir)) / "agent.json"
+                    if p.exists():
+                        files.append(p)
         finally:
             db.close()
     except Exception as e:
-        print(f"  [!] 从数据库读取失败: {e}")
+        logger.warning("Failed to load configs from DB: %s", e)
 
-    # 方法2：检查默认目录 ~/.fitagent
-    _add(Path.home() / ".fitagent")
+    home = Path(os.environ.get("FITAGENT_HOME", Path.home() / ".fitagent"))
+    p = home / "agent.json"
+    if p.exists() and p not in files:
+        files.append(p)
 
-    # 方法3：检查旧版 workspace/users/{user_id} 目录
-    old_users_dir = _PROJECT_ROOT / "data" / "agent_db" / "workspace" / "users"
-    if old_users_dir.is_dir():
-        for child in sorted(old_users_dir.iterdir()):
-            if child.is_dir() and child.name.isdigit():
-                _add(child)
+    legacy_dir = _project_root / "data" / "agent_db" / "workspace" / "users"
+    if legacy_dir.exists():
+        for user_dir in legacy_dir.iterdir():
+            p = user_dir / "agent.json"
+            if p.exists() and p not in files:
+                files.append(p)
 
-    return user_dirs
+    return files
 
 
-def migrate_agent_json(user_dir: Path, apply: bool) -> list[str]:
-    """补全 agent.json 的 heartbeat 字段。
-
-    Args:
-        user_dir: 用户工作区目录
-        apply: 是否实际写入
-
-    Returns:
-        操作描述列表
-    """
-    reports: list[str] = []
-    agent_json = user_dir / "agent.json"
-
-    if not agent_json.exists():
-        reports.append(f"  - agent.json 不存在，跳过")
-        return reports
-
+def _migrate_file(filepath: Path) -> bool:
     try:
-        data = json.loads(agent_json.read_text(encoding="utf-8"))
-
-        if "heartbeat" in data and isinstance(data["heartbeat"], dict):
-            reports.append(f"  ✓ agent.json 已有 heartbeat，跳过")
-            return reports
-
-        data["heartbeat"] = dict(DEFAULT_HEARTBEAT_IN_AGENT_JSON)
-        reports.append(
-            f"  {'✓' if apply else '→'} agent.json → 添加 heartbeat 配置"
+        data = json.loads(filepath.read_text(encoding="utf-8"))
+    except Exception:
+        logger.warning("Skipping invalid JSON: %s", filepath)
+        return False
+    if "heartbeat" in data:
+        return False
+    data["heartbeat"] = DEFAULT_HEARTBEAT
+    try:
+        filepath.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
         )
-
-        if apply:
-            agent_json.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+        logger.info("Migrated: %s", filepath)
+        return True
     except Exception as e:
-        reports.append(f"  ✗ agent.json 处理失败: {e}")
-
-    return reports
-
-
-def migrate_memory_config_json(user_dir: Path, apply: bool) -> list[str]:
-    """补全 memory_config.json 的 heartbeat 字段。"""
-    reports: list[str] = []
-
-    # 检查 workspace/memory_config.json 或直接放在 user_dir 中
-    memory_config_paths = [
-        user_dir / "memory_config.json",
-        user_dir / "workspace" / "memory_config.json",
-    ]
-
-    for mcp in memory_config_paths:
-        if not mcp.exists():
-            continue
-
-        try:
-            data = json.loads(mcp.read_text(encoding="utf-8"))
-
-            if "heartbeat" in data and isinstance(data["heartbeat"], dict):
-                reports.append(
-                    f"  ✓ {mcp.name} 已有 heartbeat，跳过"
-                )
-                return reports
-
-            data["heartbeat"] = dict(DEFAULT_HEARTBEAT_CONFIG)
-            reports.append(
-                f"  {'✓' if apply else '→'} {mcp.name} → 添加 heartbeat 配置"
-            )
-
-            if apply:
-                mcp.write_text(
-                    json.dumps(data, indent=2, ensure_ascii=False),
-                    encoding="utf-8",
-                )
-            return reports
-        except Exception as e:
-            reports.append(f"  ✗ {mcp.name} 处理失败: {e}")
-
-    reports.append(f"  - memory_config.json 不存在")
-    return reports
+        logger.error("Failed to write %s: %s", filepath, e)
+        return False
 
 
-def ensure_heartbeat_md(user_dir: Path, apply: bool) -> list[str]:
-    """如果 HEARTBEAT.md 不存在则从模板复制。"""
-    reports: list[str] = []
-    hb_path = user_dir / "HEARTBEAT.md"
-
-    if hb_path.exists():
-        reports.append(f"  ✓ HEARTBEAT.md 已存在")
-        return reports
-
-    reports.append(
-        f"  {'✓' if apply else '→'} HEARTBEAT.md → 创建默认模板"
-    )
-
-    if apply:
-        hb_path.write_text(HEARTBEAT_TEMPLATE_CONTENT, encoding="utf-8")
-
-    return reports
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="迁移现有用户工作区，补全心跳配置",
-    )
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="实际应用迁移（默认 dry-run）",
-    )
-    args = parser.parse_args()
-
-    print("=" * 60)
-    print("  心跳配置迁移脚本")
-    print(f"  模式: {'APPLY (实际写入)' if args.apply else 'DRY-RUN (仅扫描)'}")
-    print("=" * 60)
-
-    user_dirs = find_all_user_dirs()
-
-    if not user_dirs:
-        print("\n没有找到用户工作区。")
-        return
-
-    print(f"\n发现 {len(user_dirs)} 个工作区:\n")
-
-    total_changes = 0
-    for i, user_dir in enumerate(user_dirs, 1):
-        print(f"[{i}/{len(user_dirs)}] {user_dir}")
-
-        reports = []
-        reports.extend(migrate_agent_json(user_dir, args.apply))
-        reports.extend(migrate_memory_config_json(user_dir, args.apply))
-        reports.extend(ensure_heartbeat_md(user_dir, args.apply))
-
-        for r in reports:
-            print(r)
-        print()
-
-        changes = sum(1 for r in reports if "→" in r)
-        total_changes += changes
-
-    print("=" * 60)
-    if args.apply:
-        print(f"  迁移完成！共处理 {total_changes} 个变更。")
-        print(f"  后续：用户登录后即可在「记忆管理」页面配置心跳。")
-    else:
-        print(f"  Dry-Run 完成。检测到 {total_changes} 个待迁移项。")
-        print(f"  执行 python scripts/migrate_heartbeat_config.py --apply 来应用。")
-    print("=" * 60)
+def main() -> None:
+    logger.info("Starting heartbeat config migration...")
+    files = _find_agent_json_files()
+    logger.info("Found %d agent.json files to check", len(files))
+    migrated = skipped = 0
+    for fp in files:
+        if _migrate_file(fp):
+            migrated += 1
+        else:
+            skipped += 1
+    logger.info("Migration complete: %d migrated, %d skipped", migrated, skipped)
 
 
 if __name__ == "__main__":

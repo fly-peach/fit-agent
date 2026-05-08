@@ -165,6 +165,7 @@ async def run_heartbeat_once(
     try:
         # 通过 agent(msg) 标准调用模式执行，静默处理
         # 不需要 stream_printing_messages — 心跳结果无需推送到客户端
+        agent.set_console_output_enabled(False)
         response = await agent(msg)
         logger.info(
             "heartbeat completed for agent %s (response: %s chars)",

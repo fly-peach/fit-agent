@@ -149,6 +149,20 @@ def _make_ui_message(msg: Msg, role: str, msg_status: str = "finished") -> str:
     return json.dumps(ui_msg, ensure_ascii=False)
 
 
+def _fmt_api_error(brief: str, detail: str) -> str:
+    """将 API 错误格式化为用户友好的 Markdown 消息。
+
+    简要放在外层，详细报错放在 <details> 折叠块中。
+    """
+    return (
+        f"❌ {brief}\n\n"
+        f"<details>\n"
+        f"<summary>查看详细错误</summary>\n\n"
+        f"```\n{detail}\n```\n"
+        f"</details>"
+    )
+
+
 @agent_app.query(framework="agentscope")
 async def query_func(
     self,
@@ -193,7 +207,20 @@ async def query_func(
     )
 
     # 每次创建全新的 agent 实例，传入 DB 记忆后端
-    agent = create_user_agent(user_id, db_memory=db_memory)
+    try:
+        agent = create_user_agent(user_id, db_memory=db_memory)
+    except ValueError as e:
+        msg = str(e)
+        if "API Key" in msg:
+            brief = "请先在「Agent 配置」页面设置 API Key"
+        else:
+            brief = "Agent 初始化失败"
+        yield _make_ui_message(
+            Msg(name="Rogers", content=_fmt_api_error(brief, msg), role="assistant"),
+            "assistant", "finished",
+        ), True
+        return
+
     agent.set_console_output_enabled(False)
     memory_manager = getattr(agent, "_memory_manager", None)
 
@@ -273,6 +300,69 @@ class DefaultConfigResponse(BaseModel):
     agents_md: str
     soul_md: str
     model_name: str
+
+
+class AgentStatusResponse(BaseModel):
+    """AI 助手的配置状态。"""
+    ready: bool
+    config_ok: bool
+    api_key_configured: bool
+    api_key_masked: str = ""
+    model: str = ""
+    model_configured: bool = False
+    message: str = ""
+
+
+@router.get("/config/status", response_model=AgentStatusResponse)
+async def check_agent_status(
+    authorization: str | None = Header(default=None),
+):
+    """检测 AI 助手的配置状态。
+
+    供前端在发送消息前调用，检查 API Key 和模型是否已配置。
+    未配置时返回 friendly message 供前端展示。
+    """
+    import json
+    try:
+        user_id = _get_user_id_from_auth(authorization)
+    except HTTPException:
+        return AgentStatusResponse(
+            ready=False, config_ok=False, api_key_configured=False,
+            message="请先登录",
+        )
+
+    user_dir = ensure_user_workspace(user_id)
+    user_config_path = user_dir / "agent.json"
+    api_key = ""
+    model_name = ""
+
+    if user_config_path.exists():
+        try:
+            user_config = json.loads(user_config_path.read_text(encoding="utf-8"))
+            m = user_config.get("model", {})
+            if isinstance(m, dict):
+                api_key = (m.get("api_key") or "").strip()
+                model_name = (m.get("model_name") or "").strip()
+        except Exception:
+            pass
+
+    if not api_key:
+        return AgentStatusResponse(
+            ready=False, config_ok=False, api_key_configured=False,
+            api_key_masked="", model=model_name, model_configured=bool(model_name),
+            message="请先在「Agent 配置」页面设置 API Key",
+        )
+    if not model_name:
+        return AgentStatusResponse(
+            ready=False, config_ok=False, api_key_configured=True,
+            api_key_masked=_mask_api_key(api_key), model="", model_configured=False,
+            message="请先在「Agent 配置」页面选择模型",
+        )
+    return AgentStatusResponse(
+            ready=True, config_ok=True, api_key_configured=True,
+            api_key_masked=_mask_api_key(api_key), model=model_name, model_configured=True,
+            message="AI 助手准备就绪",
+        )
 
 
 @router.get("/config", response_model=AgentConfigResponse)
@@ -466,3 +556,142 @@ async def delete_image(
     db.delete(image)
     db.commit()
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Session Management
+# ---------------------------------------------------------------------------
+
+class SessionUpdateRequest(BaseModel):
+    name: str | None = None
+    pinned: bool | None = None
+
+
+class SessionResponse(BaseModel):
+    id: str
+    name: str
+    updated_at: str | None = None
+
+
+@router.get("/sessions")
+async def list_sessions(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_user_db),
+):
+    """获取用户的所有会话。"""
+    user_id = _get_user_id_from_auth(authorization)
+    from src.agents.harness.chats.crud import get_sessions
+    
+    sessions = get_sessions(db, user_id)
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "pinned": bool(s.pinned),
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        for s in sessions
+    ]
+
+
+@router.get("/sessions/{session_id}")
+async def get_session_detail(
+    session_id: str,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_user_db),
+):
+    """获取指定会话详情。"""
+    user_id = _get_user_id_from_auth(authorization)
+    from src.agents.harness.chats.crud import get_session
+    
+    session = get_session(db, user_id, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    
+    return {
+        "id": session.id,
+        "name": session.name,
+        "updated_at": session.updated_at.isoformat() if session.updated_at else None,
+    }
+
+
+@router.post("/sessions")
+async def create_session_endpoint(
+    request: SessionUpdateRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_user_db),
+):
+    """创建新会话。"""
+    user_id = _get_user_id_from_auth(authorization)
+    from src.agents.harness.chats.crud import create_session, get_sessions
+    
+    session_id = str(uuid.uuid4())
+    new_session = create_session(db, user_id, session_id, name=request.name)
+    
+    # 返回更新后的所有会话列表
+    sessions = get_sessions(db, user_id)
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "pinned": bool(s.pinned),
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        for s in sessions
+    ]
+
+
+@router.put("/sessions/{session_id}")
+async def update_session_endpoint(
+    session_id: str,
+    request: SessionUpdateRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_user_db),
+):
+    """更新会话名称或置顶状态。"""
+    user_id = _get_user_id_from_auth(authorization)
+    from src.agents.harness.chats.crud import update_session, get_sessions
+    
+    session = update_session(db, user_id, session_id, 
+                             name=request.name, pinned=request.pinned)
+    if not session:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    
+    # 返回更新后的所有会话列表
+    sessions = get_sessions(db, user_id)
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "pinned": bool(s.pinned),
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        for s in sessions
+    ]
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session_endpoint(
+    session_id: str,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_user_db),
+):
+    """删除会话。"""
+    user_id = _get_user_id_from_auth(authorization)
+    from src.agents.harness.chats.crud import delete_session, get_sessions
+    
+    success = delete_session(db, user_id, session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    
+    # 返回删除后的所有会话列表
+    sessions = get_sessions(db, user_id)
+    return [
+        {
+            "id": s.id,
+            "name": s.name,
+            "pinned": bool(s.pinned),
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+        }
+        for s in sessions
+    ]

@@ -22,7 +22,7 @@ from .crud import (
     get_sessions,
     get_session as get_session_crud,
     create_session,
-    update_session_name,
+    update_session as update_session_crud,
     delete_session,
 )
 
@@ -48,7 +48,8 @@ class CreateSessionRequest(BaseModel):
 
 
 class UpdateSessionRequest(BaseModel):
-    name: str
+    name: str | None = None
+    pinned: bool | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +196,8 @@ async def update_session(
     user_id = _get_user_id(authorization)
     db = UserSessionLocal()
     try:
-        updated = update_session_name(db, user_id, session_id, body.name)
+        updated = update_session_crud(db, user_id, session_id, 
+                                       name=body.name, pinned=body.pinned)
         if updated is None:
             raise HTTPException(status_code=404, detail="Session not found")
         sessions = get_sessions(db, user_id)

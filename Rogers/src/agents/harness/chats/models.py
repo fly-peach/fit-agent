@@ -20,6 +20,7 @@ class ChatSession(Base):
     id = Column(String(50), primary_key=True)  # session_id
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     name = Column(String(100), default="新对话")
+    pinned = Column(Integer, default=0)  # 0=未置顶, 1=置顶
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

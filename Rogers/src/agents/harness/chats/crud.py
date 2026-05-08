@@ -54,14 +54,18 @@ def create_session(
     return session
 
 
-def update_session_name(
-    db: Session, user_id: int, session_id: str, name: str
+def update_session(
+    db: Session, user_id: int, session_id: str, 
+    name: str | None = None, pinned: bool | None = None,
 ) -> ChatSession | None:
-    """更新会话名称。"""
+    """更新会话名称或置顶状态。"""
     session = get_session(db, user_id, session_id)
     if session is None:
         return None
-    session.name = name
+    if name is not None:
+        session.name = name
+    if pinned is not None:
+        session.pinned = 1 if pinned else 0
     session.updated_at = datetime.now()
     db.commit()
     db.refresh(session)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Row, Col, Button, message, Input, List, Spin, Collapse, Popconfirm, Card, Space, Typography, Empty, Switch, Tag } from 'antd'
-import { SaveOutlined, ReloadOutlined, ExperimentOutlined, DeleteOutlined, CalendarOutlined, UndoOutlined, SearchOutlined, CopyOutlined, FileTextOutlined } from '@ant-design/icons'
+import { SaveOutlined, ReloadOutlined, DeleteOutlined, CalendarOutlined, UndoOutlined, SearchOutlined, CopyOutlined, FileTextOutlined } from '@ant-design/icons'
 import { memoryApi, MemoryContent, DailyLog, MemoryConfig } from '../../services/memory'
 
 const { TextArea } = Input
@@ -14,7 +14,6 @@ const MemoryManager: React.FC = () => {
   const [selectedLog, setSelectedLog] = useState<DailyLog | null>(null)
   const [logLoading, setLogLoading] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [optimizing, setOptimizing] = useState(false)
   const [activeLogDate, setActiveLogDate] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -129,23 +128,6 @@ const MemoryManager: React.FC = () => {
     }
   }
 
-  const handleOptimize = async () => {
-    setOptimizing(true)
-    try {
-      const result = await memoryApi.optimize()
-      if (result.success) {
-        message.success('记忆优化完成')
-        fetchMemory()
-      } else {
-        message.error(`优化失败: ${result.reason}`)
-      }
-    } catch (error) {
-      message.error('优化失败')
-    } finally {
-      setOptimizing(false)
-    }
-  }
-
   const handleViewLog = async (date: string) => {
     setLogLoading(true)
     setActiveLogDate(date)
@@ -239,13 +221,7 @@ const MemoryManager: React.FC = () => {
                 >
                   刷新
                 </Button>
-                <Button
-                  icon={<ExperimentOutlined />}
-                  onClick={handleOptimize}
-                  loading={optimizing}
-                >
-                  优化记忆
-                </Button>
+
                 <Button
                   type="primary"
                   icon={<SaveOutlined />}

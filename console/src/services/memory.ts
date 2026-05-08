@@ -10,13 +10,6 @@ export interface DailyLog {
   content: string
 }
 
-export interface OptimizationResult {
-  success: boolean
-  reason: string
-  date: string
-  backup_path: string | null
-}
-
 export interface ActiveHours {
   start: string
   end: string
@@ -42,10 +35,7 @@ export const memoryApi = {
     api.get(`/agent/memory/logs/${date}`),
   deleteLog: (date: string): Promise<{ status: string; date: string }> =>
     api.delete(`/agent/memory/logs/${date}`),
-  optimize: (): Promise<OptimizationResult> =>
-    api.post('/agent/memory/optimize'),
-
-  // 记忆更新 + 心跳配置
+  // 记忆 + 心跳配置
   getConfig: (): Promise<MemoryConfig> => api.get('/agent/memory/config'),
   updateConfig: (config: Partial<MemoryConfig>): Promise<{ status: string }> =>
     api.put('/agent/memory/config', config),

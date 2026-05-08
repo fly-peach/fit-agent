@@ -485,8 +485,9 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
 
                 if isinstance(merged.get("model"), dict):
                     user_model = user_data["model"]
-                    for key in ["api_key", "model_name"]:
-                        if key in user_model:
+                    # 只合并我们明确支持的字段，避免合并错误的 base_url
+                    for key in ["api_key", "model_name", "base_url", "provider", "stream"]:
+                        if key in user_model and user_model[key] is not None and user_model[key] != "":
                             merged["model"][key] = user_model[key]
                     del user_data["model"]
 

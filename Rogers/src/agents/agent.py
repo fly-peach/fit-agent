@@ -107,13 +107,13 @@ def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: i
         # 使用 PromptBuilder 加载 agents.md + soul.md，处理条件区块
         from src.agents.harness.workspace.user_workspace import (
             PromptBuilder,
+            load_user_sys_prompt,
         )
-        builder = PromptBuilder(
-            user_dir=working_path,
+        prompt = load_user_sys_prompt(
+            user_id,
             heartbeat_enabled=heartbeat_enabled,
             memory_prompt_enabled=True,
         )
-        prompt = builder.build()
         if prompt:
             parts.append(prompt)
 
@@ -217,6 +217,15 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
         "stream": True,
         "enable_thinking": True,
     }
+
+    # 确保 dashscope 使用正确的默认 URL
+    import dashscope
+    # 只有当 base_url 确实有效且非空时才设置它
+    if hasattr(model_cfg, "base_url") and model_cfg.base_url and model_cfg.base_url.strip():
+        model_kwargs["base_http_api_url"] = model_cfg.base_url
+    else:
+        # 确保使用默认的正确 URL
+        dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
 
     return DashScopeChatModel(
         model_name,
@@ -334,6 +343,20 @@ def create_user_agent(
     agent._lifecycle_hooks = lifecycle_hooks  # type: ignore[attr-defined]
     agent._memory_manager = memory_manager  # type: ignore[attr-defined]
     agent._skill_manager = skill_manager  # type: ignore[attr-defined]
+
+    # --- 心跳集成 ---
+    heartbeat_cfg = agent_cfg.heartbeat
+    if heartbeat_cfg.enabled:
+        from src.agents.memory.heartbeat_manager import HeartbeatManager
+        agent._heartbeat_manager = HeartbeatManager(  # type: ignore[attr-defined]
+            agent=agent,
+            agent_id=str(user_id),
+            workspace_dir=working_dir,
+            heartbeat_cfg=heartbeat_cfg,
+        )
+        agent._heartbeat_manager.start()  # type: ignore[attr-defined]
+    else:
+        agent._heartbeat_manager = None  # type: ignore[attr-defined]
 
     return agent
 
