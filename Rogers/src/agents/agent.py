@@ -44,6 +44,11 @@ from .harness import (
     update_profile,
     update_settings,
 )
+from .harness.tools.basic.memory_tools import (
+    read_memory_file,
+    write_memory_file,
+    append_daily_log,
+)
 from .harness.workspace.user_workspace import (
     ensure_user_workspace,
     load_user_sys_prompt,
@@ -100,7 +105,9 @@ def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: i
                 parts.append(prompt_path.read_text(encoding="utf-8"))
     else:
         # 使用 PromptBuilder 加载 agents.md + soul.md，处理条件区块
-        from src.agents.harness.workspace.user_workspace import PromptBuilder
+        from src.agents.harness.workspace.user_workspace import (
+            PromptBuilder,
+        )
         builder = PromptBuilder(
             user_dir=working_path,
             heartbeat_enabled=heartbeat_enabled,
@@ -156,6 +163,10 @@ def _build_toolkit(
         "delete_meal": delete_meal,
         "update_settings": update_settings,
         "add_custom_food": add_custom_food,
+        # AI 本地记忆编辑工具
+        "read_memory_file": read_memory_file,
+        "write_memory_file": write_memory_file,
+        "append_daily_log": append_daily_log,
     }
 
     for tool_name, tool_func in tool_functions.items():
@@ -323,28 +334,6 @@ def create_user_agent(
     agent._lifecycle_hooks = lifecycle_hooks  # type: ignore[attr-defined]
     agent._memory_manager = memory_manager  # type: ignore[attr-defined]
     agent._skill_manager = skill_manager  # type: ignore[attr-defined]
-
-    # --- Heartbeat 集成 ---
-    if agent_cfg.heartbeat.enabled:
-        from src.agents.harness.memory.heartbeat_manager import HeartbeatManager
-        hb_manager = HeartbeatManager(
-            agent=agent,
-            agent_id=str(user_id),
-            workspace_dir=Path(working_dir),
-        )
-        # 在事件循环中调度心跳启动
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                asyncio.create_task(hb_manager.start(agent_cfg.heartbeat))
-        except RuntimeError:
-            # 没有运行中的事件循环，使用 run
-            asyncio.run(hb_manager.start(agent_cfg.heartbeat))
-        agent._heartbeat_manager = hb_manager  # type: ignore[attr-defined]
-        logger.info(
-            "Heartbeat enabled for user %s: every=%s",
-            user_id, agent_cfg.heartbeat.every,
-        )
 
     return agent
 

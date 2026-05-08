@@ -1,5 +1,4 @@
 """长期记忆管理 API 路由。"""
-import json
 import logging
 from typing import List
 
@@ -120,89 +119,8 @@ async def optimize_memory(authorization: str | None = Header(default=None)):
     return OptimizationResponse(**result)
 
 
-# ---------------------------------------------------------------------------
-# Memory update config (nightly schedule + custom prompt)
-# ---------------------------------------------------------------------------
-
-
-class ActiveHoursModel(BaseModel):
-    start: str = "08:00"
-    end: str = "22:00"
-
-
-class HeartbeatConfigModel(BaseModel):
-    enabled: bool = False
-    every: str = "6h"
-    target: str = "main"
-    active_hours: ActiveHoursModel | None = None
-
-
-class MemoryConfigResponse(BaseModel):
-    heartbeat: HeartbeatConfigModel = HeartbeatConfigModel()
-
-
-class MemoryConfigRequest(BaseModel):
-    heartbeat: HeartbeatConfigModel | None = None
-
-
-def _merge_heartbeat_to_agent_json(
-    user_id: int,
-    hb: HeartbeatConfigModel,
-) -> None:
-    """将心跳配置同步写入 agent.json，供 load_agent_config() 加载。"""
-    try:
-        from src.agents.harness.workspace.user_workspace import get_user_workspace
-        user_dir = get_user_workspace(user_id)
-        agent_config_path = user_dir / "agent.json"
-        import json
-
-        agent_config = {}
-        if agent_config_path.exists():
-            with open(agent_config_path, encoding="utf-8") as f:
-                agent_config = json.load(f)
-
-        agent_config["heartbeat"] = {
-            "enabled": hb.enabled,
-            "every": hb.every,
-            "target": hb.target,
-        }
-        if hb.active_hours:
-            agent_config["heartbeat"]["active_hours"] = {
-                "start": hb.active_hours.start,
-                "end": hb.active_hours.end,
-            }
-
-        with open(agent_config_path, "w", encoding="utf-8") as f:
-            json.dump(agent_config, f, indent=2, ensure_ascii=False)
-    except Exception:
-        logger.exception("Failed to sync heartbeat config to agent.json")
-
-
-@router.get("/config", response_model=MemoryConfigResponse)
-async def get_memory_config(
-    authorization: str | None = Header(default=None),
-):
-    """获取记忆自动更新 + 心跳配置。"""
-    ltm, _ = _get_long_term_memory(authorization)
-    cfg = ltm.load_config()
-    return MemoryConfigResponse(**cfg)
-
-
-@router.put("/config")
-async def update_memory_config(
-    body: MemoryConfigRequest,
-    authorization: str | None = Header(default=None),
-):
-    """更新心跳配置。"""
-    ltm, user_id = _get_long_term_memory(authorization)
-    current = ltm.load_config()
-    if body.heartbeat is not None:
-        current["heartbeat"] = body.heartbeat.model_dump()
-        # 同步到 agent.json 供运行时加载
-        _merge_heartbeat_to_agent_json(user_id, body.heartbeat)
-    ltm.save_config(current)
-    return {"status": "ok"}
-
+# 心跳配置已统一到 agent.json，不再使用 memory_config.json 独立存储
+# GET/PUT /api/agent/memory/config 端点已在清理中移除
 
 # ---------------------------------------------------------------------------
 # HEARTBEAT.md 读写

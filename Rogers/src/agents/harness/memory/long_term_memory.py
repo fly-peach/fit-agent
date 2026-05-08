@@ -5,7 +5,6 @@
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 from datetime import datetime
@@ -16,16 +15,6 @@ logger = logging.getLogger("fitagent")
 MEMORY_FILENAME = "MEMORY.md"
 MEMORY_DIR_NAME = "memory"
 BACKUP_DIR_NAME = "backup"
-MEMORY_CONFIG_FILENAME = "memory_config.json"
-
-DEFAULT_MEMORY_CONFIG = {
-    "heartbeat": {
-        "enabled": False,
-        "every": "6h",
-        "target": "main",
-        "active_hours": None,
-    },
-}
 
 DEFAULT_MEMORY_TEMPLATE = """# 长期记忆
 
@@ -192,37 +181,5 @@ class LongTermMemory:
             raise ValueError(f"Invalid date format: {date}")
         return sanitized
 
-    # ------------------------------------------------------------------
-    # Memory update config (nightly schedule + custom prompt)
-    # ------------------------------------------------------------------
-
-    @property
-    def config_file(self) -> Path:
-        return self.working_dir / MEMORY_CONFIG_FILENAME
-
-    def load_config(self) -> dict:
-        """加载记忆更新配置。"""
-        if self.config_file.exists():
-            try:
-                data = json.loads(
-                    self.config_file.read_text(encoding="utf-8")
-                )
-                # 合并默认值
-                cfg = DEFAULT_MEMORY_CONFIG.copy()
-                cfg.update(data)
-                return cfg
-            except Exception:
-                pass
-        return DEFAULT_MEMORY_CONFIG.copy()
-
-    def save_config(self, cfg: dict) -> None:
-        """保存记忆更新配置。"""
-        valid = DEFAULT_MEMORY_CONFIG.copy()
-        for key in valid:
-            if key in cfg:
-                valid[key] = cfg[key]
-        self.config_file.write_text(
-            json.dumps(valid, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        logger.info(f"Saved memory config to {self.config_file}")
+    # 心跳配置已统一到 agent.json，不再使用 memory_config.json
+    # 参考: src.agents.config.HeartbeatConfig

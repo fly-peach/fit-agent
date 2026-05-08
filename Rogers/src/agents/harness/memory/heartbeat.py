@@ -19,7 +19,6 @@ from typing import Any, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from agentscope.message import Msg
-from agentscope.pipeline import stream_printing_messages
 
 from src.agents.config import HeartbeatConfig
 
@@ -164,14 +163,14 @@ async def run_heartbeat_once(
         )
 
     try:
-        # 通过 stream_printing_messages 流式消费 agent 输出
-        async for _msg, _last, *_ in stream_printing_messages(
-            agents=[agent],
-            coroutine_task=agent(msg),
-        ):
-            # 静默模式：不主动推送结果到客户端
-            pass
-        logger.info("heartbeat completed for agent %s", agent_id)
+        # 通过 agent(msg) 标准调用模式执行，静默处理
+        # 不需要 stream_printing_messages — 心跳结果无需推送到客户端
+        response = await agent(msg)
+        logger.info(
+            "heartbeat completed for agent %s (response: %s chars)",
+            agent_id,
+            len(str(getattr(response, "content", ""))),
+        )
     except asyncio.CancelledError:
         logger.info("heartbeat cancelled for agent %s", agent_id)
         raise

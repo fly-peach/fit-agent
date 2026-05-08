@@ -6,7 +6,6 @@
 用法：
     manager = HeartbeatManager(agent=my_agent, agent_id="default")
     await manager.start()   # 启动调度
-    await manager.reschedule(hb_config)  # 动态重调度
     await manager.stop()    # 停止调度
 """
 from __future__ import annotations
@@ -22,7 +21,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from src.agents.config import (
     HeartbeatConfig,
-    HEARTBEAT_DEFAULT_EVERY,
 )
 
 from .heartbeat import (
@@ -99,47 +97,6 @@ class HeartbeatManager:
             self._scheduler.shutdown(wait=False)
             self._started = False
             logger.info("HeartbeatManager stopped for agent %s", self._agent_id)
-
-    async def reschedule(self, hb_config: Optional[HeartbeatConfig] = None) -> None:
-        """重调度心跳任务（配置变更后调用）。
-
-        Args:
-            hb_config: 新的心跳配置
-        """
-        async with self._lock:
-            if not self._started:
-                logger.warning(
-                    "HeartbeatManager not started for agent %s, cannot reschedule",
-                    self._agent_id,
-                )
-                return
-
-            if hb_config is None:
-                hb_config = self._load_config()
-
-            # 移除现有任务
-            if self._scheduler.get_job(HEARTBEAT_JOB_ID):
-                self._scheduler.remove_job(HEARTBEAT_JOB_ID)
-
-            # 如果启用则添加新任务
-            if getattr(hb_config, "enabled", False):
-                trigger = self._build_trigger(hb_config.every)
-                self._scheduler.add_job(
-                    self._callback,
-                    trigger=trigger,
-                    id=HEARTBEAT_JOB_ID,
-                    replace_existing=True,
-                )
-                logger.info(
-                    "Heartbeat rescheduled for agent %s: every=%s",
-                    self._agent_id,
-                    hb_config.every,
-                )
-            else:
-                logger.info(
-                    "Heartbeat disabled for agent %s, job removed",
-                    self._agent_id,
-                )
 
     def is_running(self) -> bool:
         """调度器是否正在运行。"""
