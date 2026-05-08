@@ -373,6 +373,22 @@ class AppConfig(BaseModel):
         # 合并：文件值优先，环境变量填充缺失项
         merged: dict[str, Any] = env.model_dump()
         _deep_merge(merged, data)
+
+        # 清理所有模型配置中的 base_url
+        if "models" in merged and isinstance(merged["models"], dict):
+            for model_key in merged["models"]:
+                if isinstance(merged["models"][model_key], dict) and "base_url" in merged["models"][model_key]:
+                    del merged["models"][model_key]["base_url"]
+
+        # 清理所有 agent 配置中的 base_url
+        if "agents" in merged and isinstance(merged["agents"], dict):
+            for agent_key in merged["agents"]:
+                agent_config = merged["agents"][agent_key]
+                if isinstance(agent_config, dict) and "model" in agent_config:
+                    model_config = agent_config["model"]
+                    if isinstance(model_config, dict) and "base_url" in model_config:
+                        del model_config["base_url"]
+
         return cls(**merged)
 
     def get_active_agent(self) -> AgentConfig:
@@ -468,6 +484,12 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
     config = get_config(user_id)
     agent_cfg = config.get_active_agent()
 
+    # 清理全局配置中的 base_url
+    if hasattr(agent_cfg, "model"):
+        model_cfg = agent_cfg.model
+        if not isinstance(model_cfg, str) and hasattr(model_cfg, "base_url"):
+            object.__setattr__(model_cfg, "base_url", None)
+
     # 尝试从用户本地目录加载覆盖配置
     try:
         user_local_config = _get_user_local_config_path(int(user_id))
@@ -485,10 +507,13 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
 
                 if isinstance(merged.get("model"), dict):
                     user_model = user_data["model"]
-                    # 只合并我们明确支持的字段，避免合并错误的 base_url
-                    for key in ["api_key", "model_name", "base_url", "provider", "stream"]:
+                    # 只合并我们明确支持的字段，不处理 base_url
+                    for key in ["api_key", "model_name", "provider", "stream"]:
                         if key in user_model and user_model[key] is not None and user_model[key] != "":
                             merged["model"][key] = user_model[key]
+                    # 移除 base_url（不需要自定义）
+                    if "base_url" in merged["model"]:
+                        del merged["model"]["base_url"]
                     del user_data["model"]
 
             _deep_merge(merged, user_data)

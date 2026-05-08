@@ -6,6 +6,7 @@ import logging
 from dotenv import load_dotenv
 from pathlib import Path
 
+
 logger = logging.getLogger(__name__)
 
 # 确保在模块加载时就读取 .env
@@ -211,25 +212,12 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
     if hasattr(model_cfg, "model_name") and model_cfg.model_name:
         model_name = model_cfg.model_name
 
-    # 构建模型参数字典
-    model_kwargs: dict = {
-        "api_key": api_key,
-        "stream": True,
-        "enable_thinking": True,
-    }
-
-    # 确保 dashscope 使用正确的默认 URL
-    import dashscope
-    # 只有当 base_url 确实有效且非空时才设置它
-    if hasattr(model_cfg, "base_url") and model_cfg.base_url and model_cfg.base_url.strip():
-        model_kwargs["base_http_api_url"] = model_cfg.base_url
-    else:
-        # 确保使用默认的正确 URL
-        dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
-
+    # 最简单的调用方式，只传必要的参数
     return DashScopeChatModel(
-        model_name,
-        **model_kwargs
+        model_name=model_name,
+        api_key=api_key,
+        stream=True,
+        enable_thinking=True,
     )
 
 

@@ -215,10 +215,8 @@ async def query_func(
             brief = "请先在「Agent 配置」页面设置 API Key"
         else:
             brief = "Agent 初始化失败"
-        yield _make_ui_message(
-            Msg(name="Rogers", content=_fmt_api_error(brief, msg), role="assistant"),
-            "assistant", "finished",
-        ), True
+        await db_memory.close()
+        yield Msg(name="Rogers", content=_fmt_api_error(brief, msg), role="assistant"), True
         return
 
     agent.set_console_output_enabled(False)
@@ -242,6 +240,7 @@ async def query_func(
         finally:
             if memory_manager is not None:
                 await memory_manager.close()
+            await db_memory.close()
 
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
@@ -459,6 +458,10 @@ async def update_agent_config(
     if "model" not in user_config or not isinstance(user_config.get("model"), dict):
         user_config["model"] = {}
 
+    # 移除 base_url（不需要自定义，总是使用 DashScope 默认值）
+    if "base_url" in user_config["model"]:
+        del user_config["model"]["base_url"]
+
     # 只有在提供了新的 api_key 且不是占位符时才更新
     # 空字符串表示清除自定义 api_key
     if body.api_key is not None:
@@ -473,10 +476,9 @@ async def update_agent_config(
     if body.model_name is not None:
         user_config["model"]["model_name"] = body.model_name
 
-    # 只有在有模型配置更新时才写入
-    if body.api_key is not None or body.model_name is not None:
-        with open(user_config_path, "w", encoding="utf-8") as f:
-            json.dump(user_config, f, indent=2, ensure_ascii=False)
+    # 写入配置（总是写入以确保清理了 base_url）
+    with open(user_config_path, "w", encoding="utf-8") as f:
+        json.dump(user_config, f, indent=2, ensure_ascii=False)
 
     return {"status": "ok"}
 
