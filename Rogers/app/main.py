@@ -20,11 +20,11 @@ logger = logging.getLogger("fitagent")
 
 from src.fitme.core.config import settings
 from src.fitme.models import UserDBBase
-from src.fitme.utils.database import user_engine
+from src.fitme.utils.database import user_engine, async_agent_memory_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
 from .routers.agent import agent_app, router as agent_router, _auth_token
-from .routers import skills, memory, context
+from .routers import skills, context
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -134,7 +134,6 @@ app.include_router(agent_config_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
 app.include_router(agent_router)
 app.include_router(skills.router)
-app.include_router(memory.router)
 app.include_router(context.router)
 
 # AgentScope Runtime 会自动注册 "/" 根路由，导致前端首页被 JSON 响应覆盖。

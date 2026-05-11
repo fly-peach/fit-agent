@@ -12,26 +12,26 @@ def create_skill_resource_tool(skill_manager):
         """按需读取已启用技能的 `SKILL.md`、`references/` 或 `scripts/` 文件。
 
         Args:
-            skill_name: 技能名称。
+            skill_name: 技能名称（目录名）。
             file_path: 相对 skill 根目录的文件路径，只允许 `SKILL.md`、
-                `references/` 或 `scripts/`。
+                `references/` 或 `scripts/` 下的文件。
         """
         if skill_manager is None:
             return ToolResponse(
                 content=[TextBlock(type="text", text="技能系统未初始化")],
             )
 
-        skill = skill_manager.get_skill(skill_name)
-        if skill is None:
+        cfg = skill_manager.get_skill_config(skill_name)
+        if cfg is None:
             return ToolResponse(
                 content=[TextBlock(type="text", text=f"技能不存在: {skill_name}")],
             )
-        if not skill.enabled:
+        if not cfg.enabled:
             return ToolResponse(
                 content=[TextBlock(type="text", text=f"技能未启用: {skill_name}")],
             )
 
-        content = skill_manager.load_skill_file(skill_name, file_path)
+        content = skill_manager.read_skill_file(skill_name, file_path)
         if content is None:
             return ToolResponse(
                 content=[

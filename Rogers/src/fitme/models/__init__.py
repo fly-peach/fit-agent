@@ -4,7 +4,7 @@ from .base_db import Base as BaseDBBase, Exercise, FoodItem, RecommendedTraining
 from .user_db import Base as UserDBBase, User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary, StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem
 
 # Chat models are defined in agents module, re-exported here for convenience
-from src.agents.harness.chats.models import ChatSession, ChatMessage  # noqa: F401
+from src.agents.harness.chats.models import ChatSession  # noqa: F401
 
 # For backward compatibility - alias to UserDBBase
 Base = UserDBBase
@@ -30,7 +30,6 @@ __all__ = [
     "PlanExerciseItem",
     "CustomFoodItem",
     "ChatSession",
-    "ChatMessage",
     # Backward compatibility
     "Base",
 ]

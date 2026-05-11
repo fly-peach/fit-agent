@@ -27,17 +27,12 @@ class PromptBuilder:
     """从工作区 markdown 文件构建系统提示，支持条件区块。
 
     条件区块使用 HTML 注释标记：
-    - ``<!-- heartbeat:start -->`` / ``<!-- heartbeat:end -->``
     - ``<!-- memory:start -->`` / ``<!-- memory:end -->``
 
     当对应的功能启用时，区块内的内容会包含在 prompt 中（标记被移除）；
     禁用时，整个区块会被移除。
     """
 
-    HEARTBEAT_PATTERN = re.compile(
-        r"<!-- heartbeat:start -->.*?<!-- heartbeat:end -->",
-        re.DOTALL,
-    )
     MEMORY_PATTERN = re.compile(
         r"<!-- memory:start -->.*?<!-- memory:end -->",
         re.DOTALL,
@@ -46,11 +41,9 @@ class PromptBuilder:
     def __init__(
         self,
         user_dir: Path,
-        heartbeat_enabled: bool = False,
         memory_prompt_enabled: bool = True,
     ):
         self.user_dir = user_dir
-        self.heartbeat_enabled = heartbeat_enabled
         self.memory_prompt_enabled = memory_prompt_enabled
 
     def build(self) -> str:
@@ -60,7 +53,6 @@ class PromptBuilder:
         agents_md = self.user_dir / "agents.md"
         if agents_md.exists():
             content = agents_md.read_text(encoding="utf-8")
-            content = self._process_heartbeat_section(content)
             content = self._process_memory_section(content)
             parts.append(content)
 
@@ -71,23 +63,6 @@ class PromptBuilder:
             )
 
         return "\n\n".join(parts)
-
-    def _process_heartbeat_section(self, content: str) -> str:
-        """处理 heartbeat 条件区块。
-
-        - 无标记 → 原样返回
-        - heartbeat 启用 → 保留内容，移除标记
-        - heartbeat 禁用 → 移除整个区块
-        """
-        if "<!-- heartbeat:start -->" not in content:
-            return content
-
-        if self.heartbeat_enabled:
-            content = content.replace("<!-- heartbeat:start -->", "")
-            content = content.replace("<!-- heartbeat:end -->", "")
-            return content.strip()
-        else:
-            return self.HEARTBEAT_PATTERN.sub("", content).strip()
 
     def _process_memory_section(self, content: str) -> str:
         """处理 memory 条件区块。"""
@@ -127,7 +102,7 @@ def _get_user_local_dir(user_id: int) -> Path:
 
 def _sync_skill_manifest(user_dir: Path) -> None:
     """根据当前工作区技能目录刷新 manifest。"""
-    SkillManager(user_dir, skills_dir=_SKILLS_TEMPLATE_DIR).reconcile_manifest()
+    SkillManager(user_dir, skills_dir=_SKILLS_TEMPLATE_DIR).scan_skills()
 
 
 def get_user_workspace(user_id: int | str) -> Path:
@@ -156,7 +131,7 @@ def ensure_user_workspace(user_id: int | str) -> Path:
 
     user_dir.mkdir(parents=True, exist_ok=True)
 
-    # 复制模板文件（agents.md, soul.md, HEARTBEAT.md）- 仅首次创建时复制
+    # 复制模板文件（agents.md, soul.md）- 仅首次创建时复制
     if first_time and _TEMPLATE_DIR.exists():
         for template_file in _TEMPLATE_DIR.iterdir():
             if template_file.is_file() and template_file.suffix == ".md":
@@ -213,18 +188,15 @@ def restock_template_skills(user_id: int | str) -> list[str]:
 
 def load_user_sys_prompt(
     user_id: int | str,
-    heartbeat_enabled: bool = False,
     memory_prompt_enabled: bool = True,
 ) -> str:
     """通过读取 agents.md 和 soul.md 构建完整的系统提示。
 
     支持条件区块：
-    - ``<!-- heartbeat:start -->`` — 根据 heartbeat_enabled 决定是否包含
     - ``<!-- memory:start -->`` — 根据 memory_prompt_enabled 决定是否包含
 
     Args:
         user_id: 用户 ID
-        heartbeat_enabled: 是否启用心跳（决定 AGENTS.md 中心跳区块的可见性）
         memory_prompt_enabled: 是否包含记忆引导区块
 
     Returns:
@@ -233,7 +205,6 @@ def load_user_sys_prompt(
     user_dir = get_user_workspace(user_id)
     builder = PromptBuilder(
         user_dir=user_dir,
-        heartbeat_enabled=heartbeat_enabled,
         memory_prompt_enabled=memory_prompt_enabled,
     )
     return builder.build()

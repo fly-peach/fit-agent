@@ -1,8 +1,7 @@
-"""Context 管理模块 — 生命周期钩子、工具结果缓存、请求上下文。"""
+"""Context 管理模块 — 工具结果缓存、请求上下文。"""
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from src.agents.harness.context.lifecycle_hooks import LifecycleHooksManager
 from src.agents.harness.context.tool_result_cache import ToolResultCache, CacheEntry
 
 
@@ -28,12 +27,8 @@ async def agent_context(user_id: int) -> AsyncGenerator[int, None]:
 
     用法:
         async with agent_context(user_id):
-            await agent_app.state.session.load_session_state(
-                session_id=session_id, user_id=user_id, agent=agent)
             async for msg, last in stream_printing_messages(...):
                 yield msg, last
-            await agent_app.state.session.save_session_state(
-                session_id=session_id, user_id=user_id, agent=agent)
     """
     from src.fitme.utils.database import SessionLocal
     from src.agents.harness.tools.basic.read_data import _current_user_id, _current_db
@@ -53,5 +48,5 @@ async def agent_context(user_id: int) -> AsyncGenerator[int, None]:
             db.close()
 
 
-__all__ = ["LifecycleHooksManager", "ToolResultCache", "CacheEntry",
+__all__ = ["ToolResultCache", "CacheEntry",
            "agent_context", "NotAuthenticatedError", "get_user_id_from_token"]

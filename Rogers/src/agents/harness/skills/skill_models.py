@@ -1,4 +1,4 @@
-"""Skill 系统数据模型。"""
+"""Skill 系统数据模型（保持兼容的简化版本）。"""
 from __future__ import annotations
 
 from typing import Any
@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class SkillMetadata(BaseModel):
-    """Skill 元数据（从 `SKILL.md` frontmatter 解析）。"""
+    """Skill 元数据（从 SKILL.md frontmatter 解析）。"""
 
     name: str
     version: str = "1.0.0"

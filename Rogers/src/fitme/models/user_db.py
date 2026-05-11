@@ -285,6 +285,42 @@ class CustomFoodItem(Base):
     user = relationship("User")
 
 
+class UserMemory(Base):
+    """用户长期记忆表 - User DB
+
+    存储 MEMORY.md 内容
+    """
+    __tablename__ = "user_memory"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
+    content = Column(Text, default="")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User")
+
+
+class UserDailyLog(Base):
+    """用户每日日志表 - User DB
+
+    存储每日交互日志
+    """
+    __tablename__ = "user_daily_logs"
+    __table_args__ = (
+        Index("idx_user_log_date", "user_id", "log_date", unique=True),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    log_date = Column(Date, nullable=False)
+    content = Column(Text, default="")
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User")
+
+
 class UserAgentConfig(Base):
     """用户 Agent 本地配置表 - User DB
 

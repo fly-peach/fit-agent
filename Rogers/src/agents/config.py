@@ -78,36 +78,8 @@ def _default_builtin_tools() -> dict[str, BuiltinToolConfig]:
             enabled=True,
             description="按需读取技能 references/scripts 文件",
         ),
-        "get_user_profile": BuiltinToolConfig(name="get_user_profile", enabled=True),
-        "get_health_summary": BuiltinToolConfig(name="get_health_summary", enabled=True),
-        "get_health_history": BuiltinToolConfig(name="get_health_history", enabled=True),
-        "get_training_today": BuiltinToolConfig(name="get_training_today", enabled=True),
-        "get_training_weekly": BuiltinToolConfig(name="get_training_weekly", enabled=True),
-        "get_training_recommendations": BuiltinToolConfig(
-            name="get_training_recommendations", enabled=True,
-        ),
-        "get_diet_today": BuiltinToolConfig(name="get_diet_today", enabled=True),
-        "get_diet_weekly_trend": BuiltinToolConfig(
-            name="get_diet_weekly_trend", enabled=True,
-        ),
-        "get_food_recommendations": BuiltinToolConfig(
-            name="get_food_recommendations", enabled=True,
-        ),
-        "get_user_settings": BuiltinToolConfig(name="get_user_settings", enabled=True),
-        "get_full_overview": BuiltinToolConfig(name="get_full_overview", enabled=True),
-        "search_foods": BuiltinToolConfig(name="search_foods", enabled=True),
-        "update_profile": BuiltinToolConfig(name="update_profile", enabled=True),
-        "add_health_metric": BuiltinToolConfig(name="add_health_metric", enabled=True),
-        "add_training_plan": BuiltinToolConfig(name="add_training_plan", enabled=True),
-        "complete_training": BuiltinToolConfig(name="complete_training", enabled=True),
-        "delete_training_plan": BuiltinToolConfig(
-            name="delete_training_plan", enabled=True,
-        ),
-        "add_meal": BuiltinToolConfig(name="add_meal", enabled=True),
-        "update_meal": BuiltinToolConfig(name="update_meal", enabled=True),
-        "delete_meal": BuiltinToolConfig(name="delete_meal", enabled=True),
-        "update_settings": BuiltinToolConfig(name="update_settings", enabled=True),
-        "add_custom_food": BuiltinToolConfig(name="add_custom_food", enabled=True),
+        # 数据读写工具已迁移到 fitme-skills CLI，不再在此注册，
+        # Agent 通过 execute_shell_command 调用 cli.py 完成数据操作。
     }
 
 
@@ -199,48 +171,6 @@ class RunningConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Heartbeat 配置（参考 CoPaw HeartbeatConfig）
-# ---------------------------------------------------------------------------
-
-HEARTBEAT_DEFAULT_EVERY = "6h"
-HEARTBEAT_DEFAULT_TARGET = "main"
-HEARTBEAT_TARGET_LAST = "last"
-
-
-class ActiveHoursConfig(BaseModel):
-    """心跳活跃时段（例如 08:00–22:00）。"""
-
-    start: str = "08:00"
-    end: str = "22:00"
-
-
-class HeartbeatConfig(BaseModel):
-    """心跳：按固定间隔以 HEARTBEAT.md 内容作为查询运行 agent。
-
-    支持两种调度方式：
-    - interval 字符串：'30m', '1h', '2h30m', '90s'
-    - cron 表达式：'0 */6 * * *'
-    """
-
-    enabled: bool = Field(
-        default=False,
-        description="是否启用心跳",
-    )
-    every: str = Field(
-        default=HEARTBEAT_DEFAULT_EVERY,
-        description="调度间隔（interval 字符串如 '30m' / '6h'，或 cron 表达式如 '0 */6 * * *'）",
-    )
-    target: str = Field(
-        default=HEARTBEAT_DEFAULT_TARGET,
-        description="路由目标：'main' 静默执行，'last' 路由到上次活跃频道",
-    )
-    active_hours: Optional[ActiveHoursConfig] = Field(
-        default=None,
-        description="可选活跃时段，非活跃时段跳过心跳",
-    )
-
-
-# ---------------------------------------------------------------------------
 # 智能体配置（每个智能体实例的配置，参考 CoPaw 的 AgentProfileConfig）
 # ---------------------------------------------------------------------------
 
@@ -259,10 +189,6 @@ class AgentConfig(BaseModel):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     tool_groups: dict[str, ToolGroupConfig] = Field(default_factory=dict)
     running: RunningConfig = Field(default_factory=RunningConfig)
-    heartbeat: HeartbeatConfig = Field(
-        default_factory=HeartbeatConfig,
-        description="心跳配置（按固定间隔以 HEARTBEAT.md 为查询运行 agent）",
-    )
 
     # 已启用工具的派生列表
     def get_enabled_tools(self) -> list[str]:
@@ -478,8 +404,7 @@ def _load_config_for_user(user_id: int) -> AppConfig:
 def load_agent_config(user_id: int | str) -> AgentConfig:
     """加载指定用户的智能体配置。
 
-    返回全局 active_agent 配置，并可选地与用户本地目录中的
-    agent.json 覆盖配置合并。
+    返回全局 active_agent 配置，从数据库读取心跳配置。
     """
     config = get_config(user_id)
     agent_cfg = config.get_active_agent()
@@ -489,37 +414,6 @@ def load_agent_config(user_id: int | str) -> AgentConfig:
         model_cfg = agent_cfg.model
         if not isinstance(model_cfg, str) and hasattr(model_cfg, "base_url"):
             object.__setattr__(model_cfg, "base_url", None)
-
-    # 尝试从用户本地目录加载覆盖配置
-    try:
-        user_local_config = _get_user_local_config_path(int(user_id))
-        if user_local_config and user_local_config.exists():
-            with open(user_local_config, encoding="utf-8") as f:
-                user_data = json.load(f)
-            merged = agent_cfg.model_dump()
-
-            # 特殊处理 model 字段：
-            if "model" in user_data and isinstance(user_data["model"], dict):
-                if isinstance(merged.get("model"), str):
-                    model_key = merged["model"]
-                    if model_key in config.models:
-                        merged["model"] = config.models[model_key].model_dump()
-
-                if isinstance(merged.get("model"), dict):
-                    user_model = user_data["model"]
-                    # 只合并我们明确支持的字段，不处理 base_url
-                    for key in ["api_key", "model_name", "provider", "stream"]:
-                        if key in user_model and user_model[key] is not None and user_model[key] != "":
-                            merged["model"][key] = user_model[key]
-                    # 移除 base_url（不需要自定义）
-                    if "base_url" in merged["model"]:
-                        del merged["model"]["base_url"]
-                    del user_data["model"]
-
-            _deep_merge(merged, user_data)
-            return AgentConfig(**merged)
-    except Exception:
-        pass
 
     return agent_cfg
 

@@ -1,6 +1,5 @@
 """上下文管理 API 路由。"""
 import logging
-from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, HTTPException, Header
@@ -18,16 +17,9 @@ router = APIRouter(prefix="/api/agent/context", tags=["context"])
 class ContextStats(BaseModel):
     current_tokens: int = 0
     max_tokens: int = 131072
-    compaction_count_today: int = 0
-    compaction_count_total: int = 0
     cache_file_count: int = 0
     cache_total_size_bytes: int = 0
     avg_response_tokens: int = 0
-
-
-class CompactResponse(BaseModel):
-    success: bool
-    reason: str = ""
 
 
 def _get_tool_result_cache(authorization: str | None) -> tuple[ToolResultCache, int]:
@@ -74,41 +66,3 @@ async def clear_cache(authorization: str | None = Header(default=None)):
     cache, _ = _get_tool_result_cache(authorization)
     count = cache.clear_all()
     return {"status": "ok", "cleared": count}
-
-
-@router.post("/compact", response_model=CompactResponse)
-async def trigger_compact(authorization: str | None = Header(default=None)):
-    from src.agents.agent import create_user_agent
-
-    token = ""
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    try:
-        user_id = get_user_id_from_token(token)
-    except NotAuthenticatedError:
-        raise HTTPException(status_code=401, detail="请先登录")
-
-    agent = create_user_agent(user_id)
-    memory_manager = getattr(agent, "_memory_manager", None)
-
-    if not memory_manager:
-        return CompactResponse(success=False, reason="Memory manager not available")
-
-    try:
-        memory = agent.memory
-        messages = await memory.get_memory(prepend_summary=False)
-        previous_summary = memory.get_compressed_summary()
-
-        compact_result = await memory_manager.compact_memory(
-            messages=messages,
-            previous_summary=previous_summary,
-        )
-
-        if compact_result:
-            await memory.update_compressed_summary(compact_result)
-            return CompactResponse(success=True)
-        else:
-            return CompactResponse(success=False, reason="Compaction returned empty result")
-
-    except Exception as e:
-        return CompactResponse(success=False, reason=str(e))

@@ -266,6 +266,19 @@ async def delete_session_endpoint(
     """删除会话（从 chat_sessions 和 agent_memory.db 中删除）。"""
     _validate_session_id(session_id)
     user_id = _get_user_id(authorization)
+
+    # 1. 清理 agent_memory.db 中的消息
+    memory = FitAgentSQLMemory(
+        engine_or_session=async_agent_memory_engine,
+        user_id=str(user_id),
+        session_id=session_id,
+    )
+    try:
+        await memory.delete()
+    finally:
+        await memory.close()
+
+    # 2. 清理 chat_sessions 表
     db = UserSessionLocal()
     try:
         deleted = delete_session(db, user_id, session_id)

@@ -1,21 +1,19 @@
-"""Skill 管理 API 路由。"""
+"""Skill 管理 API 路由。
+
+重构为使用轻量 SkillManager，委托官方 AgentScope Toolkit API 处理技能注册和 prompt 生成。
+"""
 import logging
 import tempfile
 import shutil
 from pathlib import Path
-from typing import List, Any
-from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
 
 from src.agents.harness.context import get_user_id_from_token, NotAuthenticatedError
 from src.agents.harness.workspace.user_workspace import ensure_user_workspace
 from src.agents.harness.skills.skill_manager import SkillManager
-from src.agents.harness.skills.skill_config import (
-    SkillSystemConfig, SkillPackageConfig
-)
 from src.agents.harness.templates.templates import get_skills_template_path
 
 logger = logging.getLogger("fitagent")
@@ -23,66 +21,9 @@ logger = logging.getLogger("fitagent")
 router = APIRouter(prefix="/api/agent/skills", tags=["skills"])
 
 
-class SkillResponse(BaseModel):
-    name: str
-    version: str
-    description: str
-    enabled: bool
-    path: str
-    tags: List[str] = []
-    channels: List[str] = []
-    source: str = "workspace"
-
-
-class SkillDetailResponse(SkillResponse):
-    content: str
-    body: str
-    references: List[str] = []
-    scripts: List[str] = []
-    config: dict[str, Any] = Field(default_factory=dict)
-
-
-class SkillPackageConfigResponse(BaseModel):
-    name: str
-    enabled: bool = True
-    auto_update: bool = True
-    priority: int = 0
-    config: dict[str, Any] = Field(default_factory=dict)
-
-
-class SkillSystemConfigResponse(BaseModel):
-    version: str
-    initialized: bool
-    initialized_at: str | None = None
-    last_synced_at: str | None = None
-    default_skills_enabled: List[str] = Field(default_factory=list)
-    skill_packages: dict[str, SkillPackageConfigResponse] = Field(default_factory=dict)
-    global_settings: dict[str, Any] = Field(default_factory=dict)
-
-
-class SkillSyncStatusResponse(BaseModel):
-    initialized: bool
-    initialized_at: str | None = None
-    last_synced_at: str | None = None
-    total_skill_packages: int
-    total_scanned_skills: int
-    enabled_skills: List[str]
-
-
-class InitializeConfigRequest(BaseModel):
-    default_skill_names: List[str] = Field(default_factory=list)
-
-
-class UpdateSkillPackageRequest(BaseModel):
-    enabled: bool | None = None
-    auto_update: bool | None = None
-    priority: int | None = None
-    config: dict[str, Any] | None = None
-
-
-class SyncConfigRequest(BaseModel):
-    direction: str = "two-way"  # "two-way", "to-config", "from-config"
-
+# ---------------------------------------------------------------------------
+# Helper
+# ---------------------------------------------------------------------------
 
 def _get_skill_manager(authorization: str | None) -> SkillManager:
     token = ""
@@ -97,228 +38,23 @@ def _get_skill_manager(authorization: str | None) -> SkillManager:
     return SkillManager(user_dir, skills_dir=template_skills_dir)
 
 
-# ===== 技能配置管理 API (放在前面避免被 /{name} 路由捕获) =====
+# ---------------------------------------------------------------------------
+# 技能 CRUD API
+# ---------------------------------------------------------------------------
 
-@router.get("/config", response_model=SkillSystemConfigResponse)
-async def get_skill_config(authorization: str | None = Header(default=None)):
-    """获取技能系统配置"""
-    sm = _get_skill_manager(authorization)
-    config = sm.get_config()
-    return SkillSystemConfigResponse(
-        version=config.version,
-        initialized=config.initialized,
-        initialized_at=config.initialized_at,
-        last_synced_at=config.last_synced_at,
-        default_skills_enabled=config.default_skills_enabled,
-        skill_packages={
-            name: SkillPackageConfigResponse(
-                name=pkg.name,
-                enabled=pkg.enabled,
-                auto_update=pkg.auto_update,
-                priority=pkg.priority,
-                config=pkg.config
-            )
-            for name, pkg in config.skill_packages.items()
-        },
-        global_settings=config.global_settings
-    )
-
-
-@router.get("/config/sync-status", response_model=SkillSyncStatusResponse)
-async def get_sync_status(authorization: str | None = Header(default=None)):
-    """获取配置同步状态"""
-    sm = _get_skill_manager(authorization)
-    status = sm.get_sync_status()
-    return SkillSyncStatusResponse(**status)
-
-
-@router.post("/config/initialize", response_model=SkillSystemConfigResponse)
-async def initialize_config(
-    request: InitializeConfigRequest,
-    authorization: str | None = Header(default=None)
-):
-    """初始化技能配置系统"""
-    sm = _get_skill_manager(authorization)
-    config = sm.initialize_skill_config(request.default_skill_names)
-    return SkillSystemConfigResponse(
-        version=config.version,
-        initialized=config.initialized,
-        initialized_at=config.initialized_at,
-        last_synced_at=config.last_synced_at,
-        default_skills_enabled=config.default_skills_enabled,
-        skill_packages={
-            name: SkillPackageConfigResponse(
-                name=pkg.name,
-                enabled=pkg.enabled,
-                auto_update=pkg.auto_update,
-                priority=pkg.priority,
-                config=pkg.config
-            )
-            for name, pkg in config.skill_packages.items()
-        },
-        global_settings=config.global_settings
-    )
-
-
-@router.post("/config/sync", response_model=SkillSystemConfigResponse)
-async def sync_config(
-    request: SyncConfigRequest,
-    authorization: str | None = Header(default=None)
-):
-    """同步技能配置
-
-    direction:
-        - "two-way": 双向同步（默认）
-        - "to-config": 仅将技能状态同步到配置
-        - "from-config": 仅从配置同步到技能状态
-    """
-    sm = _get_skill_manager(authorization)
-
-    if request.direction == "from-config":
-        sm.sync_from_config()
-    elif request.direction == "to-config":
-        sm.sync_to_config()
-    else:
-        # 双向同步
-        sm.sync_to_config()
-        sm.sync_from_config()
-
-    config = sm.get_config()
-    return SkillSystemConfigResponse(
-        version=config.version,
-        initialized=config.initialized,
-        initialized_at=config.initialized_at,
-        last_synced_at=config.last_synced_at,
-        default_skills_enabled=config.default_skills_enabled,
-        skill_packages={
-            name: SkillPackageConfigResponse(
-                name=pkg.name,
-                enabled=pkg.enabled,
-                auto_update=pkg.auto_update,
-                priority=pkg.priority,
-                config=pkg.config
-            )
-            for name, pkg in config.skill_packages.items()
-        },
-        global_settings=config.global_settings
-    )
-
-
-@router.put("/config/packages/{name}", response_model=SkillSystemConfigResponse)
-async def update_skill_package_config(
-    name: str,
-    request: UpdateSkillPackageRequest,
-    authorization: str | None = Header(default=None)
-):
-    """更新单个技能包的配置"""
-    sm = _get_skill_manager(authorization)
-
-    config = sm.config_manager.update_skill_package(
-        name=name,
-        enabled=request.enabled,
-        auto_update=request.auto_update,
-        priority=request.priority,
-        config=request.config
-    )
-
-    # 如果启用状态有变化，同步到技能
-    if request.enabled is not None:
-        if request.enabled:
-            sm.enable_skill(name)
-        else:
-            sm.disable_skill(name)
-
-    return SkillSystemConfigResponse(
-        version=config.version,
-        initialized=config.initialized,
-        initialized_at=config.initialized_at,
-        last_synced_at=config.last_synced_at,
-        default_skills_enabled=config.default_skills_enabled,
-        skill_packages={
-            name: SkillPackageConfigResponse(
-                name=pkg.name,
-                enabled=pkg.enabled,
-                auto_update=pkg.auto_update,
-                priority=pkg.priority,
-                config=pkg.config
-            )
-            for name, pkg in config.skill_packages.items()
-        },
-        global_settings=config.global_settings
-    )
-
-
-@router.delete("/config/reset", response_model=SkillSystemConfigResponse)
-async def reset_skill_config(authorization: str | None = Header(default=None)):
-    """重置技能配置到初始状态"""
-    sm = _get_skill_manager(authorization)
-    config = sm.reset_config()
-    return SkillSystemConfigResponse(
-        version=config.version,
-        initialized=config.initialized,
-        initialized_at=config.initialized_at,
-        last_synced_at=config.last_synced_at,
-        default_skills_enabled=config.default_skills_enabled,
-        skill_packages={
-            name: SkillPackageConfigResponse(
-                name=pkg.name,
-                enabled=pkg.enabled,
-                auto_update=pkg.auto_update,
-                priority=pkg.priority,
-                config=pkg.config
-            )
-            for name, pkg in config.skill_packages.items()
-        },
-        global_settings=config.global_settings
-    )
-
-
-# ===== 技能基本管理 API =====
-
-@router.get("", response_model=List[SkillResponse])
+@router.get("")
 async def list_skills(authorization: str | None = Header(default=None)):
     sm = _get_skill_manager(authorization)
-    skills = sm.list_skills()
-    return [
-        SkillResponse(
-            name=s.name, version=s.version, description=s.description,
-            enabled=s.enabled, path=s.path, tags=s.tags,
-            channels=s.channels, source=s.source,
-        )
-        for s in skills
-    ]
+    return sm.list_skills()
 
 
-@router.get("/{name}", response_model=SkillDetailResponse)
+@router.get("/{name}")
 async def get_skill(name: str, authorization: str | None = Header(default=None)):
     sm = _get_skill_manager(authorization)
-    skill = sm.get_skill(name)
-    if not skill:
+    detail = sm.get_skill_detail(name)
+    if detail is None:
         raise HTTPException(status_code=404, detail="Skill not found")
-    return SkillDetailResponse(
-        name=skill.name, version=skill.version, description=skill.description,
-        enabled=skill.enabled, path=skill.path, tags=skill.tags, content=skill.content,
-        body=skill.body,
-        references=skill.references,
-        scripts=skill.scripts,
-        channels=skill.channels,
-        config=skill.config,
-        source=skill.source,
-    )
-
-
-@router.get("/{name}/sub-skills", response_model=list[SkillResponse])
-async def get_sub_skills(name: str, authorization: str | None = Header(default=None)):
-    sm = _get_skill_manager(authorization)
-    sub_skills = sm.get_sub_skills(name)
-    return [
-        SkillResponse(
-            name=s.name, version=s.version, description=s.description,
-            enabled=s.enabled, path=s.path, tags=s.tags,
-            channels=s.channels, source=s.source,
-        )
-        for s in sub_skills
-    ]
+    return detail
 
 
 @router.get("/{name}/files/{file_path:path}")
@@ -328,7 +64,7 @@ async def get_skill_file(
     authorization: str | None = Header(default=None),
 ):
     sm = _get_skill_manager(authorization)
-    content = sm.load_skill_file(name, file_path)
+    content = sm.read_skill_file(name, file_path)
     if content is None:
         raise HTTPException(status_code=404, detail="Skill file not found")
     return {"content": content}
@@ -339,8 +75,6 @@ async def enable_skill(name: str, authorization: str | None = Header(default=Non
     sm = _get_skill_manager(authorization)
     if not sm.enable_skill(name):
         raise HTTPException(status_code=404, detail="Skill not found")
-    # 同步到配置
-    sm.sync_to_config()
     return {"status": "ok", "name": name, "enabled": True}
 
 
@@ -349,10 +83,29 @@ async def disable_skill(name: str, authorization: str | None = Header(default=No
     sm = _get_skill_manager(authorization)
     if not sm.disable_skill(name):
         raise HTTPException(status_code=404, detail="Skill not found")
-    # 同步到配置
-    sm.sync_to_config()
     return {"status": "ok", "name": name, "enabled": False}
 
+
+@router.put("/{name}")
+async def update_skill(
+    name: str,
+    body: dict[str, Any],
+    authorization: str | None = Header(default=None),
+):
+    """更新技能配置（enabled / channels / priority / auto_update）。"""
+    sm = _get_skill_manager(authorization)
+    allowed_keys = {"enabled", "channels", "priority", "auto_update"}
+    updates = {k: v for k, v in body.items() if k in allowed_keys}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid config fields provided")
+    if not sm.update_config(name, **updates):
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return {"status": "ok", "name": name, **updates}
+
+
+# ---------------------------------------------------------------------------
+# ZIP 导出
+# ---------------------------------------------------------------------------
 
 @router.get("/{name}/export")
 async def export_skill(
@@ -362,17 +115,14 @@ async def export_skill(
 ):
     """导出技能为 ZIP 文件"""
     sm = _get_skill_manager(authorization)
-    skill = sm.get_skill(name)
-    if not skill:
+    if sm.get_skill_config(name) is None:
         raise HTTPException(status_code=404, detail="Skill not found")
 
-    # 创建临时 ZIP 文件
     temp_dir = tempfile.mkdtemp()
     zip_path = Path(temp_dir) / f"{name}.zip"
 
     try:
         sm.export_skill_to_zip(name, zip_path)
-        # 添加后台任务清理临时文件
         background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
         return FileResponse(
             path=zip_path,
@@ -383,4 +133,3 @@ async def export_skill(
         shutil.rmtree(temp_dir, ignore_errors=True)
         logger.error("Failed to export skill: %s", exc)
         raise HTTPException(status_code=500, detail="Export failed")
-

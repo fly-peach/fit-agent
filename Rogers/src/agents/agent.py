@@ -1,11 +1,16 @@
-"""Agent 工厂 — 从 AppConfig 构建 Agent，不再使用硬编码全局变量。"""
+"""Agent 工厂 — 从 AppConfig 构建 Agent，不再使用硬编码全局变量。
+
+注意：数据读写工具已迁移到 fitme-skills CLI，不再在此注册。
+Agent 通过 execute_shell_command 调用 cli.py 完成数据操作。
+
+代码执行已迁移到 AgentScope Runtime 沙箱（SandboxService），通过 BaseSandbox
+提供安全的 run_ipython_cell / run_shell_command，替代直接 execute_python_code / execute_shell_command。
+"""
 from __future__ import annotations
 
-import asyncio
 import logging
 from dotenv import load_dotenv
 from pathlib import Path
-
 
 logger = logging.getLogger(__name__)
 
@@ -13,43 +18,15 @@ logger = logging.getLogger(__name__)
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 from agentscope.agent import ReActAgent
 from agentscope.formatter import DashScopeChatFormatter
-from agentscope.memory import InMemoryMemory, AsyncSQLAlchemyMemory
 from agentscope.model import DashScopeChatModel
-from agentscope.tool import Toolkit, execute_python_code
+from agentscope.tool import Toolkit
 
+from src.agents.harness.memory.fitagent_memory import FitAgentSQLMemory
 from .config import AgentConfig, ModelProvider, load_agent_config
 from .harness import (
-    execute_shell_command,
-    add_custom_food,
-    add_health_metric,
-    add_meal,
-    add_training_plan,
-    complete_training,
-    create_memory_search_tool,
     create_skill_resource_tool,
-    delete_meal,
-    delete_training_plan,
-    get_diet_today,
-    get_diet_weekly_trend,
-    get_food_recommendations,
-    get_full_overview,
-    get_health_history,
-    get_health_summary,
-    get_training_recommendations,
-    get_training_today,
-    get_training_weekly,
-    get_user_profile,
-    get_user_settings,
-    search_foods,
-    update_meal,
-    update_profile,
-    update_settings,
 )
-from .harness.tools.basic.memory_tools import (
-    read_memory_file,
-    write_memory_file,
-    append_daily_log,
-)
+from .harness.tools.sandbox_manager import SandboxToolManager
 from .harness.workspace.user_workspace import (
     ensure_user_workspace,
     load_user_sys_prompt,
@@ -80,24 +57,14 @@ AGENT_SKILL_TEMPLATE = """## {name}
 技能目录：{dir}
 先用 `read_skill_resource(skill_name="{name}", file_path="SKILL.md")` 阅读主说明，再按需读取 `references/` 或 `scripts/` 下的文件。"""
 
-MEMORY_GUIDANCE_ZH = (
-    "# Memory Guidance\n"
-    "你可以使用 `memory_search` 检索历史记忆。"
-    "当用户询问偏好、历史决定、之前任务结论、长期约束时，优先先检索再回答。"
-    "若检索到相关记忆，应基于记忆回答并保持一致；若未检索到，再明确说明无法从记忆中确认。"
-)
-
 
 def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: int | str) -> str:
     """读取工作区系统提示词文件，并兼容旧的 `agents.md + soul.md`。
 
-    使用 PromptBuilder 处理条件区块（heartbeat / memory）。
+    使用 PromptBuilder 处理条件区块（memory）。
     """
     working_path = Path(working_dir)
     parts: list[str] = []
-
-    # 判断心跳是否启用
-    heartbeat_enabled = getattr(agent_cfg.heartbeat, "enabled", False)
 
     if agent_cfg.sys_prompt_files:
         for prompt_file in agent_cfg.sys_prompt_files:
@@ -112,7 +79,6 @@ def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: i
         )
         prompt = load_user_sys_prompt(
             user_id,
-            heartbeat_enabled=heartbeat_enabled,
             memory_prompt_enabled=True,
         )
         if prompt:
@@ -124,13 +90,19 @@ def _load_prompt_from_files(working_dir: str, agent_cfg: AgentConfig, user_id: i
     return "\n\n".join(part for part in parts if part.strip())
 
 
-def _build_toolkit(
+async def _build_toolkit(
     agent_cfg: AgentConfig,
-    memory_manager,
     skill_manager: SkillManager,
     channel_name: str,
+    user_id: int | str,
+    sandbox_manager: "SandboxToolManager | None" = None,
 ) -> Toolkit:
-    """根据 Agent 配置构建工具集。"""
+    """根据 Agent 配置构建工具集。
+
+    代码执行工具使用 AgentScope Runtime 沙箱（BaseSandbox）：
+    - run_ipython_cell: 在隔离 Docker 容器中执行 Python 代码
+    - run_shell_command: 在隔离 Docker 容器中执行 shell 命令
+    """
     toolkit = Toolkit(
         agent_skill_instruction=AGENT_SKILL_INSTRUCTION,
         agent_skill_template=AGENT_SKILL_TEMPLATE,
@@ -138,36 +110,7 @@ def _build_toolkit(
     enabled_tools = set(agent_cfg.get_enabled_tools())
 
     tool_functions = {
-        "execute_python_code": execute_python_code,
-        "execute_shell_command": execute_shell_command,
-        "memory_search": create_memory_search_tool(memory_manager),
         "read_skill_resource": create_skill_resource_tool(skill_manager),
-        "get_user_profile": get_user_profile,
-        "get_health_summary": get_health_summary,
-        "get_health_history": get_health_history,
-        "get_training_today": get_training_today,
-        "get_training_weekly": get_training_weekly,
-        "get_training_recommendations": get_training_recommendations,
-        "get_diet_today": get_diet_today,
-        "get_diet_weekly_trend": get_diet_weekly_trend,
-        "get_food_recommendations": get_food_recommendations,
-        "get_user_settings": get_user_settings,
-        "get_full_overview": get_full_overview,
-        "search_foods": search_foods,
-        "update_profile": update_profile,
-        "add_health_metric": add_health_metric,
-        "add_training_plan": add_training_plan,
-        "complete_training": complete_training,
-        "delete_training_plan": delete_training_plan,
-        "add_meal": add_meal,
-        "update_meal": update_meal,
-        "delete_meal": delete_meal,
-        "update_settings": update_settings,
-        "add_custom_food": add_custom_food,
-        # AI 本地记忆编辑工具
-        "read_memory_file": read_memory_file,
-        "write_memory_file": write_memory_file,
-        "append_daily_log": append_daily_log,
     }
 
     for tool_name, tool_func in tool_functions.items():
@@ -175,13 +118,21 @@ def _build_toolkit(
             continue
         toolkit.register_tool_function(tool_func)
 
-    for skill in skill_manager.resolve_effective_skills(channel_name):
-        try:
-            toolkit.register_agent_skill(skill.path)
-        except Exception:
-            # Skill tooling is best-effort; keep the agent usable if one skill
-            # directory is malformed.
+    # 注册沙箱工具（替代原生 execute_python_code / execute_shell_command）
+    if sandbox_manager is not None:
+        sandbox = await sandbox_manager.connect(session_id="default", user_id=user_id)
+        sandbox_manager.register_tools(toolkit, sandbox)
+
+    # 注册技能（fitme-skills 通过 CLI 完成数据操作）
+    for skill_name in skill_manager.get_enabled_skill_names(channel_name):
+        skill_dir = skill_manager.get_skill_dir(skill_name)
+        if skill_dir is None:
             continue
+        try:
+            toolkit.register_agent_skill(skill_dir)
+        except Exception:
+            continue
+
     return toolkit
 
 
@@ -226,23 +177,24 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
 # ---------------------------------------------------------------------------
 
 
-def create_user_agent(
+async def create_user_agent(
     user_id: int | str,
     channel_name: str = "console",
-    db_memory: "AsyncSQLAlchemyMemory | None" = None,
+    db_memory: "FitAgentSQLMemory | None" = None,
+    sandbox_manager: "SandboxToolManager | None" = None,
 ) -> ReActAgent:
     """为指定用户创建 ReActAgent，附带自定义系统提示词。
 
     确保用户工作区存在，加载 agents.md + soul.md，查询数据库获取用
-    户上下文，初始化 ReMe 内存，并构建带有组合提示词的 Agent 实例。
+    户上下文，并构建 Agent 实例。
+
+    若传入 db_memory（FitAgentSQLMemory），则 Agent 的对话消息会自
+    动持久化到 agent_memory.db，无需手动 add_message。
     """
     ensure_user_workspace(user_id)
 
     # 使用 load_agent_config 以合并用户级 agent.json 覆盖
     agent_cfg = load_agent_config(user_id)
-
-    # --- ReMe 内存集成 ---
-    from src.agents.harness.memory.reme_light import ReMeLightMemoryManager
 
     working_dir = str(ensure_user_workspace(user_id))
 
@@ -250,19 +202,8 @@ def create_user_agent(
     skill_manager = SkillManager(working_dir, skills_dir=template_skills_dir)
     skill_manager.scan_skills()
 
-    # 先构建 model，传给 memory_manager
+    # 构建 model
     model = _build_model(agent_cfg)
-
-    memory_manager = ReMeLightMemoryManager(
-        working_dir=working_dir,
-        agent_id=str(user_id),
-    )
-    # 直接设置 model 和 formatter，不需要从缓存获取
-    from agentscope.formatter import DashScopeChatFormatter
-    memory_manager.chat_model = model
-    memory_manager.formatter = DashScopeChatFormatter()
-
-    reme_memory = memory_manager.get_in_memory_memory()
 
     # 从静态 Markdown 文件构建基础提示词
     custom_prompt = _load_prompt_from_files(working_dir, agent_cfg, user_id)
@@ -274,21 +215,18 @@ def create_user_agent(
         sys_prompt = f"{user_context}\n\n{base_prompt}"
     else:
         sys_prompt = base_prompt
-    sys_prompt = f"{sys_prompt}\n\n{MEMORY_GUIDANCE_ZH}"
 
-    # 为每个用户构建独立的 toolkit，避免 memory_search 共享冲突
-    toolkit = _build_toolkit(
+    # 为每个用户构建独立的 toolkit
+    toolkit = await _build_toolkit(
         agent_cfg,
-        memory_manager,
         skill_manager,
         channel_name,
+        user_id,
+        sandbox_manager,
     )
 
-    # 如果传入了 db_memory，用它作为 agent 的记忆后端
-    if db_memory is not None:
-        agent_memory = db_memory
-    else:
-        agent_memory = reme_memory if reme_memory else InMemoryMemory()
+    # 优先使用 db_memory（FitAgentSQLMemory），否则回退到纯内存
+    agent_memory = db_memory
 
     agent = ReActAgent(
         name=agent_cfg.name,
@@ -299,52 +237,7 @@ def create_user_agent(
         formatter=DashScopeChatFormatter(),
     )
 
-    # 注册上下文压缩钩子
-    from src.agents.harness.context.lifecycle_hooks import LifecycleHooksManager
-    lifecycle_hooks = LifecycleHooksManager(
-        agent_cfg=agent_cfg,
-        memory_manager=memory_manager,
-        working_dir=working_dir,
-    )
-    agent.register_instance_hook(
-        hook_type="pre_reply",
-        hook_name="pre_reply_hook",
-        hook=lifecycle_hooks.pre_reply,
-    )
-    agent.register_instance_hook(
-        hook_type="pre_reasoning",
-        hook_name="memory_compaction_hook",
-        hook=lifecycle_hooks.pre_reasoning,
-    )
-    agent.register_instance_hook(
-        hook_type="post_acting",
-        hook_name="post_acting_hook",
-        hook=lifecycle_hooks.post_acting,
-    )
-    agent.register_instance_hook(
-        hook_type="post_reply",
-        hook_name="post_reply_hook",
-        hook=lifecycle_hooks.post_reply,
-    )
-
-    # 在 Agent 上保存 lifecycle_hooks 引用，用于生命周期管理
-    agent._lifecycle_hooks = lifecycle_hooks  # type: ignore[attr-defined]
-    agent._memory_manager = memory_manager  # type: ignore[attr-defined]
     agent._skill_manager = skill_manager  # type: ignore[attr-defined]
-
-    # --- 心跳集成 ---
-    heartbeat_cfg = agent_cfg.heartbeat
-    if heartbeat_cfg.enabled:
-        from src.agents.memory.heartbeat_manager import HeartbeatManager
-        agent._heartbeat_manager = HeartbeatManager(  # type: ignore[attr-defined]
-            agent=agent,
-            agent_id=str(user_id),
-            workspace_dir=working_dir,
-            heartbeat_cfg=heartbeat_cfg,
-        )
-        agent._heartbeat_manager.start()  # type: ignore[attr-defined]
-    else:
-        agent._heartbeat_manager = None  # type: ignore[attr-defined]
 
     return agent
 

@@ -1,9 +1,19 @@
-"""Skill 生命周期管理器。"""
+"""Skill 配置持久化层 — 轻量，其余委托官方 AgentScope Toolkit API。
+
+官方 API 参考：https://doc.agentscope.io/zh_CN/tutorial/task_agent_skill.html
+
+设计原则：
+- 扫描技能目录 → 收集 dir name → 调用 toolkit.register_agent_skill(dir) 注册
+- Prompt 生成 → 委托给 toolkit.get_agent_skill_prompt()
+- YAML frontmatter 解析 → 官方内部处理
+- enable/disable/channel → 仅通过 skill-config.json 持久化，供前端 UI 使用
+- 文件读取（load_skill_file）→ 保留白名单安全检查，供 read_skill_resource 工具使用
+- ZIP 安装 → 保留，用于技能包导入
+"""
 from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import shutil
 import tempfile
@@ -11,396 +21,372 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from src.agents.harness.skills.skill_models import (
-    SkillInfo,
-    SkillManifestEntry,
-)
-from src.agents.harness.skills.skill_config import (
-    SkillConfigManager,
-    SkillPackageConfig,
-    SkillSystemConfig,
-    SKILL_CONFIG_FILENAME,
-)
-
 logger = logging.getLogger("fitagent")
 
+SKILL_CONFIG_FILENAME = "skill-config.json"
 SKILL_MD_FILENAME = "SKILL.md"
-SKILL_MANIFEST_FILENAME = "skill-manifest.json"
-FRONTMATTER_PATTERN = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 MAX_SKILL_PACKAGE_SIZE = 200 * 1024 * 1024
 MAX_SKILL_FILE_SIZE = 10 * 1024 * 1024
-BLOCKED_SCRIPT_SUFFIXES = {
-    ".exe", ".bat", ".cmd", ".com", ".scr", ".msi", ".dll",
-}
+BLOCKED_SCRIPT_SUFFIXES = {".exe", ".bat", ".cmd", ".com", ".scr", ".msi", ".dll"}
+
+# 文件名和目录名白名单（只允许读取这些）
+SAFE_DIRS = {"SKILL.md", "references", "scripts"}
 
 
-def _parse_yaml_simple(text: str) -> dict[str, Any]:
-    """简单 YAML frontmatter 解析器（支持基础类型）。"""
-    result: dict[str, Any] = {}
-    for line in text.strip().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key = key.strip()
-        value = value.strip()
+# ---------------------------------------------------------------------------
+# 轻量配置模型（替代 Pydantic SkillInfo / SkillPackageConfig 等）
+# ---------------------------------------------------------------------------
 
-        if value.startswith("[") and value.endswith("]"):
-            items = value[1:-1].split(",")
-            result[key] = [item.strip().strip("'\"") for item in items if item.strip()]
-        elif value.startswith("{") and value.endswith("}"):
-            try:
-                result[key] = json.loads(value)
-            except json.JSONDecodeError:
-                result[key] = value
-        elif value.lower() in ("true", "yes"):
-            result[key] = True
-        elif value.lower() in ("false", "no"):
-            result[key] = False
-        elif value.isdigit():
-            result[key] = int(value)
-        else:
-            result[key] = value.strip("'\"")
-    return result
+class SkillConfig:
+    """单个技能的持久化配置。"""
+
+    __slots__ = ("enabled", "channels", "priority", "auto_update", "extras")
+
+    def __init__(
+        self,
+        enabled: bool = True,
+        channels: list[str] | None = None,
+        priority: int = 0,
+        auto_update: bool = True,
+        extras: dict[str, Any] | None = None,
+    ):
+        self.enabled = enabled
+        self.channels = channels if channels else ["all"]
+        self.priority = priority
+        self.auto_update = auto_update
+        self.extras = extras or {}
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "enabled": self.enabled,
+            "channels": self.channels,
+            "priority": self.priority,
+            "auto_update": self.auto_update,
+            "extras": self.extras,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SkillConfig":
+        return cls(
+            enabled=data.get("enabled", True),
+            channels=data.get("channels", ["all"]),
+            priority=data.get("priority", 0),
+            auto_update=data.get("auto_update", True),
+            extras=data.get("extras", {}),
+        )
 
 
-def _parse_skill_md(content: str) -> tuple[dict[str, Any], str]:
-    """解析 `SKILL.md` 文件，返回 `(frontmatter_dict, body_text)`。"""
-    match = FRONTMATTER_PATTERN.match(content)
-    if not match:
-        return {}, content
-
-    fm_text = match.group(1)
-    body = content[match.end():]
-    return _parse_yaml_simple(fm_text), body
+# ---------------------------------------------------------------------------
+# SkillManager
+# ---------------------------------------------------------------------------
 
 
 class SkillManager:
-    """管理工作目录中的 skills。"""
+    """轻量级技能管理器。
+
+    职责：
+    - 管理 skill-config.json 持久化（enable/disable/channel）
+    - 扫描技能目录，区分可用 skills
+    - 文件安全读取（供 read_skill_resource 工具）
+    - ZIP 安装/导出
+    - 委托官方 Toolkit API 完成注册和 prompt 生成
+
+    使用方式：
+        sm = SkillManager(working_dir, skills_dir)
+        sm.scan_skills()
+        # 在 _build_toolkit 中：
+        for name in sm.get_enabled_skill_names(channel):
+            toolkit.register_agent_skill(sm.get_skill_dir(name))
+    """
 
     def __init__(self, working_dir: str | Path, skills_dir: str | Path | None = None):
         self.working_dir = Path(working_dir)
-        self.workspace_dir = self.working_dir / "workspace"
-        if skills_dir:
+        if skills_dir is not None:
             self.skills_dir = Path(skills_dir)
         else:
-            self.skills_dir = self.workspace_dir / "skills"
-        self.manifest_path = self.workspace_dir / SKILL_MANIFEST_FILENAME
-        self._skills_cache: dict[str, SkillInfo] = {}
-        self.config_manager = SkillConfigManager(self.working_dir)
+            self.skills_dir = self.working_dir / "workspace" / "skills"
+        self.config_path = self.working_dir / SKILL_CONFIG_FILENAME
+        # name → SkillConfig
+        self._configs: dict[str, SkillConfig] = {}
+        # name → absolute dir path
+        self._skill_dirs: dict[str, Path] = {}
+        self._scanned = False
 
-    def _default_manifest(self) -> dict[str, Any]:
-        return {"version": "1.0.0", "skills": {}}
+    # ------------------------------------------------------------------
+    # 配置持久化
+    # ------------------------------------------------------------------
 
-    def _read_manifest(self) -> dict[str, Any]:
-        if not self.manifest_path.exists():
-            return self._default_manifest()
-        try:
-            with open(self.manifest_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if not isinstance(data, dict):
-                raise ValueError("manifest must be object")
-            data.setdefault("version", "1.0.0")
-            data.setdefault("skills", {})
-            return data
-        except Exception as exc:
-            logger.warning("Failed to read skill manifest, using default: %s", exc)
-            return self._default_manifest()
-
-    def _write_manifest(self, manifest: dict[str, Any]) -> None:
-        self.workspace_dir.mkdir(parents=True, exist_ok=True)
-        with open(self.manifest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest, f, indent=2, ensure_ascii=False)
-
-    @staticmethod
-    def _normalize_channels(channels: Any) -> list[str]:
-        if isinstance(channels, str) and channels.strip():
-            return [channels.strip()]
-        if isinstance(channels, list):
-            normalized = [str(item).strip() for item in channels if str(item).strip()]
-            if normalized:
-                return normalized
-        return ["all"]
-
-    @staticmethod
-    def _summarize_body(body: str, max_lines: int = 12, max_chars: int = 1200) -> str:
-        lines = [line.rstrip() for line in body.strip().splitlines() if line.strip()]
-        summary = "\n".join(lines[:max_lines])
-        if len(summary) > max_chars:
-            return summary[:max_chars].rstrip() + "\n..."
-        return summary
-
-    @staticmethod
-    def _list_relative_files(base_dir: Path) -> list[str]:
-        if not base_dir.exists():
-            return []
-        files: list[str] = []
-        for path in sorted(base_dir.rglob("*")):
-            if path.is_file():
-                files.append(path.relative_to(base_dir.parent).as_posix())
-        return files
-
-    def reconcile_manifest(self) -> dict[str, Any]:
-        """基于工作区真实目录更新 manifest。"""
-        self.skills_dir.mkdir(parents=True, exist_ok=True)
-        manifest = self._read_manifest()
-        existing = manifest.get("skills", {})
-        reconciled: dict[str, Any] = {}
-
-        for skill_dir in sorted(self.skills_dir.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            skill_md = skill_dir / SKILL_MD_FILENAME
-            if not skill_md.exists():
-                logger.warning("Skipping %s: no %s found", skill_dir, SKILL_MD_FILENAME)
-                continue
+    def _load_config(self) -> dict[str, dict[str, Any]]:
+        if self.config_path.exists():
             try:
-                content = skill_md.read_text(encoding="utf-8")
-                metadata, _ = _parse_skill_md(content)
-                skill_name = str(metadata.get("name") or skill_dir.name)
-                prior = existing.get(skill_name, {})
-                entry = SkillManifestEntry(
-                    enabled=bool(prior.get("enabled", metadata.get("enabled", True))),
-                    channels=self._normalize_channels(
-                        prior.get("channels", metadata.get("channels", ["all"])),
-                    ),
-                    config=prior.get("config", metadata.get("config", {})) or {},
-                    source=str(prior.get("source", metadata.get("source", "workspace"))),
-                    version=str(metadata.get("version", "1.0.0")),
-                    description=str(metadata.get("description", "")),
-                    tags=list(metadata.get("tags", [])),
-                )
-                reconciled[skill_name] = entry.model_dump()
+                with open(self.config_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return {k: v for k, v in data.items() if isinstance(v, dict)}
             except Exception as exc:
-                logger.error("Failed to reconcile skill from %s: %s", skill_dir, exc)
+                logger.warning("无法读取 skill-config.json，使用默认配置: %s", exc)
+        return {}
 
-        manifest["skills"] = reconciled
-        self._write_manifest(manifest)
-        return manifest
+    def _save_config(self) -> None:
+        self.working_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {name: cfg.to_dict() for name, cfg in self._configs.items()},
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
 
-    def scan_skills(self) -> dict[str, SkillInfo]:
-        """扫描 `skills/` 目录并刷新缓存。"""
-        self._skills_cache = {}
-        manifest = self.reconcile_manifest()
-        manifest_skills = manifest.get("skills", {})
+    # ------------------------------------------------------------------
+    # 扫描
+    # ------------------------------------------------------------------
 
-        for skill_dir in sorted(self.skills_dir.iterdir()) if self.skills_dir.exists() else []:
-            if not skill_dir.is_dir():
+    def scan_skills(self) -> dict[str, SkillConfig]:
+        """扫描技能目录，与持久化配置合并。
+
+        返回 name → SkillConfig 的字典。
+        """
+        self._skill_dirs.clear()
+        saved = self._load_config()
+
+        if self.skills_dir.exists():
+            for skill_dir in sorted(self.skills_dir.iterdir()):
+                if not skill_dir.is_dir():
+                    continue
+                skill_md = skill_dir / SKILL_MD_FILENAME
+                if not skill_md.exists():
+                    continue
+                name = skill_dir.name
+                self._skill_dirs[name] = skill_dir.resolve()
+                if name in saved:
+                    self._configs[name] = SkillConfig.from_dict(saved[name])
+                else:
+                    self._configs[name] = SkillConfig()
+                    saved[name] = self._configs[name].to_dict()
+
+        # 清理已不存在目录的配置
+        stale = set(saved) - set(self._skill_dirs)
+        for name in stale:
+            saved.pop(name, None)
+            self._configs.pop(name, None)
+
+        self._save_config()
+        self._scanned = True
+        logger.info("扫描到 %d 个技能: %s", len(self._skill_dirs), list(self._skill_dirs.keys()))
+        return self._configs
+
+    def ensure_scanned(self) -> None:
+        if not self._scanned:
+            self.scan_skills()
+
+    # ------------------------------------------------------------------
+    # 注入到 Toolkit 的辅助方法（委托官方 API）
+    # ------------------------------------------------------------------
+
+    def get_skill_dir(self, name: str) -> str | None:
+        """获取技能目录绝对路径（用于 toolkit.register_agent_skill）。"""
+        self.ensure_scanned()
+        path = self._skill_dirs.get(name)
+        return str(path) if path else None
+
+    def get_enabled_skill_names(self, channel_name: str = "all") -> list[str]:
+        """获取指定渠道下已启用的技能名称列表（按 priority 排序）。"""
+        self.ensure_scanned()
+        result: list[tuple[int, str]] = []
+        for name, cfg in self._configs.items():
+            if not cfg.enabled:
                 continue
-            try:
-                skill_info = self._load_skill_from_dir(skill_dir, manifest_skills)
-                if skill_info:
-                    self._skills_cache[skill_info.name] = skill_info
-            except Exception as exc:
-                logger.error("Failed to load skill from %s: %s", skill_dir, exc)
+            if "all" in cfg.channels or channel_name in cfg.channels:
+                result.append((cfg.priority, name))
+        result.sort(key=lambda x: x[0])
+        return [name for _, name in result]
 
-        logger.info("Scanned %d skills from %s", len(self._skills_cache), self.skills_dir)
-        return self._skills_cache
+    def get_all_skill_names(self) -> list[str]:
+        """获取所有技能名称（包括禁用的）。"""
+        self.ensure_scanned()
+        return sorted(self._skill_dirs.keys())
 
-    def _load_skill_from_dir(
-        self,
-        skill_dir: Path,
-        manifest_skills: dict[str, Any] | None = None,
-    ) -> SkillInfo | None:
-        """从单个技能目录加载结构化 skill 信息。"""
+    # ------------------------------------------------------------------
+    # 查询（供前端 API 使用）
+    # ------------------------------------------------------------------
+
+    def get_skill_config(self, name: str) -> SkillConfig | None:
+        self.ensure_scanned()
+        return self._configs.get(name)
+
+    def list_skills(self) -> list[dict[str, Any]]:
+        """列出所有技能的基本信息。"""
+        self.ensure_scanned()
+        result: list[dict[str, Any]] = []
+        for name in sorted(self._skill_dirs.keys()):
+            cfg = self._configs.get(name, SkillConfig())
+            result.append({
+                "name": name,
+                "path": str(self._skill_dirs[name]),
+                "enabled": cfg.enabled,
+                "channels": cfg.channels,
+                "priority": cfg.priority,
+                "auto_update": cfg.auto_update,
+            })
+        return result
+
+    def get_skill_detail(self, name: str) -> dict[str, Any] | None:
+        """获取单个技能详情（含 SKILL.md 内容）。"""
+        self.ensure_scanned()
+        skill_dir = self._skill_dirs.get(name)
+        if skill_dir is None:
+            return None
+        cfg = self._configs.get(name, SkillConfig())
+
+        content = ""
         skill_md = skill_dir / SKILL_MD_FILENAME
-        if not skill_md.exists():
-            return None
+        if skill_md.exists():
+            content = skill_md.read_text(encoding="utf-8")
 
-        content = skill_md.read_text(encoding="utf-8")
-        metadata, body = _parse_skill_md(content)
-        if "name" not in metadata:
-            logger.warning("Skill %s missing 'name' in frontmatter", skill_dir)
-            return None
+        files = self._list_skill_files(name)
+        return {
+            "name": name,
+            "path": str(skill_dir),
+            "enabled": cfg.enabled,
+            "channels": cfg.channels,
+            "priority": cfg.priority,
+            "auto_update": cfg.auto_update,
+            "content": content,
+            "references": files.get("references", []),
+            "scripts": files.get("scripts", []),
+        }
 
-        skill_name = str(metadata["name"])
-        entry_dict = (manifest_skills or {}).get(skill_name, {})
-        entry = SkillManifestEntry(
-            enabled=bool(entry_dict.get("enabled", metadata.get("enabled", True))),
-            channels=self._normalize_channels(
-                entry_dict.get("channels", metadata.get("channels", ["all"])),
-            ),
-            config=entry_dict.get("config", metadata.get("config", {})) or {},
-            source=str(entry_dict.get("source", metadata.get("source", "workspace"))),
-            version=str(metadata.get("version", "1.0.0")),
-            description=str(metadata.get("description", "")),
-            tags=list(metadata.get("tags", [])),
-        )
+    # ------------------------------------------------------------------
+    # 修改
+    # ------------------------------------------------------------------
 
-        return SkillInfo(
-            name=skill_name,
-            version=entry.version,
-            description=entry.description,
-            content=content,
-            body=body,
-            enabled=entry.enabled,
-            path=str(skill_dir),
-            tags=entry.tags,
-            channels=entry.channels,
-            config=entry.config,
-            references=self._list_relative_files(skill_dir / "references"),
-            scripts=self._list_relative_files(skill_dir / "scripts"),
-            source=entry.source,
-        )
-
-    def get_skill(self, name: str) -> SkillInfo | None:
-        if not self._skills_cache:
-            self.scan_skills()
-        return self._skills_cache.get(name)
-
-    def list_skills(self) -> list[SkillInfo]:
-        if not self._skills_cache:
-            self.scan_skills()
-        return list(self._skills_cache.values())
-
-    def _update_manifest_entry(self, name: str, **updates: Any) -> bool:
-        if not self._skills_cache:
-            self.scan_skills()
-        skill = self._skills_cache.get(name)
-        if not skill:
+    def set_enabled(self, name: str, enabled: bool) -> bool:
+        self.ensure_scanned()
+        if name not in self._configs:
             return False
-
-        manifest = self._read_manifest()
-        skills = manifest.setdefault("skills", {})
-        current = skills.get(name, {})
-        current.update(updates)
-        skills[name] = current
-        self._write_manifest(manifest)
+        self._configs[name].enabled = enabled
+        self._save_config()
         return True
-
-    def _update_frontmatter(self, skill: SkillInfo, **updates: Any) -> None:
-        skill_dir = Path(skill.path)
-        skill_md = skill_dir / SKILL_MD_FILENAME
-        if not skill_md.exists():
-            return
-        content = skill_md.read_text(encoding="utf-8")
-        metadata, body = _parse_skill_md(content)
-        metadata.update(updates)
-        new_content = self._rebuild_skill_md(metadata, body)
-        skill_md.write_text(new_content, encoding="utf-8")
 
     def enable_skill(self, name: str) -> bool:
-        skill = self.get_skill(name)
-        if not skill:
-            return False
-        skill.enabled = True
-        # Only update frontmatter if skills directory is writable
-        try:
-            if os.access(self.skills_dir, os.W_OK):
-                self._update_frontmatter(skill, enabled=True)
-        except Exception:
-            pass  # Skip if not writable
-        self._update_manifest_entry(name, enabled=True)
-        self._skills_cache[name] = skill
-        return True
+        return self.set_enabled(name, True)
 
     def disable_skill(self, name: str) -> bool:
-        skill = self.get_skill(name)
-        if not skill:
+        return self.set_enabled(name, False)
+
+    def set_channels(self, name: str, channels: list[str]) -> bool:
+        self.ensure_scanned()
+        if name not in self._configs:
             return False
-        skill.enabled = False
-        # Only update frontmatter if skills directory is writable
-        try:
-            if os.access(self.skills_dir, os.W_OK):
-                self._update_frontmatter(skill, enabled=False)
-        except Exception:
-            pass  # Skip if not writable
-        self._update_manifest_entry(name, enabled=False)
-        self._skills_cache[name] = skill
+        self._configs[name].channels = channels
+        self._save_config()
         return True
 
-    def update_skill_channels(self, name: str, channels: list[str]) -> bool:
-        skill = self.get_skill(name)
-        if not skill:
+    def update_config(self, name: str, **kwargs: Any) -> bool:
+        """批量更新配置字段。"""
+        self.ensure_scanned()
+        if name not in self._configs:
             return False
-        normalized = self._normalize_channels(channels)
-        skill.channels = normalized
-        self._update_frontmatter(skill, channels=normalized)
-        self._update_manifest_entry(name, channels=normalized)
-        self._skills_cache[name] = skill
+        cfg = self._configs[name]
+        if "enabled" in kwargs:
+            cfg.enabled = bool(kwargs["enabled"])
+        if "channels" in kwargs:
+            cfg.channels = kwargs["channels"]
+        if "priority" in kwargs:
+            cfg.priority = int(kwargs["priority"])
+        if "auto_update" in kwargs:
+            cfg.auto_update = bool(kwargs["auto_update"])
+        self._save_config()
         return True
 
     def delete_skill(self, name: str) -> bool:
-        skill = self.get_skill(name)
-        if not skill:
+        """删除技能目录及配置。"""
+        self.ensure_scanned()
+        path = self._skill_dirs.get(name)
+        if path is None:
             return False
-        skill_dir = Path(skill.path)
-        if skill_dir.exists():
-            shutil.rmtree(skill_dir)
-        self._skills_cache.pop(name, None)
-        manifest = self._read_manifest()
-        manifest.get("skills", {}).pop(name, None)
-        self._write_manifest(manifest)
+        shutil.rmtree(path, ignore_errors=True)
+        self._skill_dirs.pop(name, None)
+        self._configs.pop(name, None)
+        self._save_config()
         return True
 
-    def resolve_effective_skills(self, channel_name: str = "all") -> list[SkillInfo]:
-        if not self._skills_cache:
-            self.scan_skills()
-        resolved: list[SkillInfo] = []
-        for skill in sorted(self._skills_cache.values(), key=lambda item: item.name):
-            if not skill.enabled:
-                continue
-            if "all" in skill.channels or channel_name in skill.channels:
-                resolved.append(skill)
-        return resolved
+    # ------------------------------------------------------------------
+    # 安全文件读取（供 read_skill_resource 工具使用）
+    # ------------------------------------------------------------------
 
-    def get_enabled_skills_content(self, channel_name: str = "all") -> str:
-        """返回适合注入 prompt 的精简 skill 摘要。"""
-        effective_skills = self.resolve_effective_skills(channel_name)
-        if not effective_skills:
-            return ""
+    def read_skill_file(self, skill_name: str, file_path: str) -> str | None:
+        """安全读取技能目录内的文件。
 
-        parts = [
-            "\n## 可用技能扩展",
-            "以下技能已启用。默认先参考技能描述，只有在需要更多细节时，才使用 `read_skill_resource` 工具按需读取 skill 的 references/ 或 scripts/ 文件。",
-        ]
-        for skill in effective_skills:
-            parts.append(f"\n### {skill.name} (v{skill.version})")
-            if skill.description:
-                parts.append(skill.description)
-            parts.append(f"生效渠道：{', '.join(skill.channels)}")
-            if skill.references:
-                parts.append("可读参考文件：")
-                parts.extend(f"- {path}" for path in skill.references)
-            if skill.scripts:
-                parts.append("可读脚本文件：")
-                parts.extend(f"- {path}" for path in skill.scripts)
-            summary = self._summarize_body(skill.body)
-            if summary:
-                parts.append("技能摘要：")
-                parts.append(summary)
-        return "\n".join(parts)
+        只允许读取：
+        - SKILL.md
+        - references/ 下的文件
+        - scripts/ 下的文件
 
-    def load_skill_file(self, skill_name: str, file_path: str) -> str | None:
-        """按白名单路径读取 skill 内容。"""
-        skill = self.get_skill(skill_name)
-        if not skill:
+        Args:
+            skill_name: 技能名称（目录名）
+            file_path: 相对路径，如 "SKILL.md" 或 "references/api.md"
+
+        Returns:
+            文件内容，或 None
+        """
+        self.ensure_scanned()
+        skill_dir = self._skill_dirs.get(skill_name)
+        if skill_dir is None:
+            logger.warning("技能不存在: %s", skill_name)
             return None
 
         normalized = Path(file_path.replace("\\", "/"))
         normalized_text = normalized.as_posix().lstrip("/")
         if not normalized_text or normalized.is_absolute() or ".." in normalized.parts:
-            return None
-        if normalized_text != "SKILL.md" and not (
-            normalized_text.startswith("references/")
-            or normalized_text.startswith("scripts/")
-        ):
+            logger.warning("非法的文件路径: %s", file_path)
             return None
 
-        target_path = Path(skill.path) / normalized_text
+        parts = normalized_text.split("/")
+        if parts[0] not in SAFE_DIRS:
+            logger.warning("不允许读取的路径前缀: %s (仅允许 %s)", parts[0], SAFE_DIRS)
+            return None
+
+        target = skill_dir / normalized_text
         try:
-            resolved = target_path.resolve(strict=True)
+            resolved = target.resolve(strict=True)
         except FileNotFoundError:
             return None
 
-        skill_root = Path(skill.path).resolve()
-        if skill_root not in resolved.parents:
+        if skill_dir not in resolved.parents and resolved != skill_dir:
+            logger.warning("路径越权: %s", file_path)
             return None
-        if not resolved.is_file():
-            return None
+
         return resolved.read_text(encoding="utf-8")
+
+    # ---- 兼容旧 API 别名 ----
+    load_skill_file = read_skill_file
+
+    # ------------------------------------------------------------------
+    # 技能文件列表
+    # ------------------------------------------------------------------
+
+    def _list_skill_files(self, name: str) -> dict[str, list[str]]:
+        """列出技能目录下 SAFE_DIRS 中的文件。"""
+        skill_dir = self._skill_dirs.get(name)
+        if skill_dir is None:
+            return {}
+        result: dict[str, list[str]] = {}
+        for safe_dir in SAFE_DIRS:
+            p = skill_dir / safe_dir
+            if p.is_file():
+                result[safe_dir] = [safe_dir]
+            elif p.is_dir():
+                files = []
+                for f in sorted(p.rglob("*")):
+                    if f.is_file():
+                        files.append(f.relative_to(skill_dir).as_posix())
+                result[safe_dir] = files
+        return result
+
+    # ------------------------------------------------------------------
+    # ZIP 安装 / 导出
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _find_skill_root(extract_root: Path) -> Path:
@@ -414,29 +400,6 @@ class SkillManager:
         if not sanitized:
             raise ValueError("Skill name is empty")
         return sanitized
-
-    def _validate_skill_tree(self, skill_root: Path) -> tuple[str, dict[str, Any]]:
-        skill_md = skill_root / SKILL_MD_FILENAME
-        content = skill_md.read_text(encoding="utf-8")
-        metadata, _ = _parse_skill_md(content)
-        skill_name = metadata.get("name")
-        if not skill_name:
-            raise ValueError("Skill name not found in SKILL.md")
-
-        for file_path in skill_root.rglob("*"):
-            if not file_path.is_file():
-                continue
-            relative = file_path.relative_to(skill_root).as_posix()
-            if file_path.stat().st_size > MAX_SKILL_FILE_SIZE:
-                raise ValueError(f"Skill file too large: {relative}")
-            if relative.startswith("scripts/"):
-                suffix = file_path.suffix.lower()
-                if suffix in BLOCKED_SCRIPT_SUFFIXES:
-                    raise ValueError(f"Blocked executable script: {relative}")
-                if file_path.name.startswith(".") and suffix:
-                    raise ValueError(f"Hidden script is not allowed: {relative}")
-
-        return self._sanitize_skill_name(str(skill_name)), metadata
 
     def install_skill_from_zip(
         self,
@@ -468,7 +431,7 @@ class SkillManager:
                 zf.extractall(temp_dir)
 
             skill_root = self._find_skill_root(temp_dir)
-            extracted_name, metadata = self._validate_skill_tree(skill_root)
+            extracted_name = self._sanitize_skill_name(skill_root.name)
             skill_name = self._sanitize_skill_name(target_name or extracted_name)
             target_dir = self.skills_dir / skill_name
             staging_dir = self.skills_dir / f".tmp-{skill_name}"
@@ -479,128 +442,16 @@ class SkillManager:
                 shutil.rmtree(target_dir)
             staging_dir.replace(target_dir)
 
-            self.reconcile_manifest()
-            if metadata.get("enabled", True):
-                self.enable_skill(skill_name)
-            else:
-                self.disable_skill(skill_name)
             self.scan_skills()
             return skill_name
 
-    @staticmethod
-    def _rebuild_skill_md(metadata: dict[str, Any], body: str) -> str:
-        """重建 `SKILL.md` 内容。"""
-        fm_lines = ["---"]
-        for key, value in metadata.items():
-            if isinstance(value, list):
-                fm_lines.append(f"{key}: [{', '.join(str(v) for v in value)}]")
-            elif isinstance(value, bool):
-                fm_lines.append(f"{key}: {'true' if value else 'false'}")
-            elif isinstance(value, dict):
-                fm_lines.append(f"{key}: {json.dumps(value, ensure_ascii=False)}")
-            else:
-                fm_lines.append(f"{key}: {value}")
-        fm_lines.append("---")
-        fm_lines.append("")
-        return "\n".join(fm_lines) + body
-
-    def initialize_skill_config(
-        self,
-        default_skill_names: list[str] | None = None,
-    ) -> SkillSystemConfig:
-        if not self._skills_cache:
-            self.scan_skills()
-        config = self.config_manager.initialize_config(default_skill_names)
-        self.sync_to_config()
-        return config
-
-    def sync_to_config(self) -> SkillSystemConfig:
-        if not self._skills_cache:
-            self.scan_skills()
-        config = self.config_manager.get_config()
-        for name, skill in self._skills_cache.items():
-            if name not in config.skill_packages:
-                config.skill_packages[name] = SkillPackageConfig(
-                    name=name,
-                    enabled=skill.enabled,
-                    config=skill.config,
-                )
-            else:
-                config.skill_packages[name].enabled = skill.enabled
-                config.skill_packages[name].config = skill.config
-        self.config_manager.save_config(config)
-        return config
-
-    def sync_from_config(self) -> None:
-        if not self._skills_cache:
-            self.scan_skills()
-        config = self.config_manager.get_config()
-        for name, pkg_config in config.skill_packages.items():
-            if name not in self._skills_cache:
-                continue
-            skill = self._skills_cache[name]
-            if skill.enabled != pkg_config.enabled:
-                if pkg_config.enabled:
-                    self.enable_skill(name)
-                else:
-                    self.disable_skill(name)
-
-    def get_config(self) -> SkillSystemConfig:
-        return self.config_manager.get_config()
-
-    def get_sync_status(self) -> dict[str, Any]:
-        if not self._skills_cache:
-            self.scan_skills()
-        status = self.config_manager.get_sync_status()
-        status["total_scanned_skills"] = len(self._skills_cache)
-        return status
-
-    def reset_config(self) -> SkillSystemConfig:
-        return self.config_manager.reset_config()
-
-    def export_skill_to_zip(self, name: str, output_path: str | Path) -> None:
-        """将技能导出为 ZIP 文件"""
-        skill = self.get_skill(name)
-        if not skill:
+    def export_skill_to_zip(self, name: str, zip_path: str | Path) -> None:
+        """导出 skill 为 ZIP 文件。"""
+        self.ensure_scanned()
+        skill_dir = self._skill_dirs.get(name)
+        if skill_dir is None:
             raise ValueError(f"Skill not found: {name}")
-
-        skill_dir = Path(skill.path)
-        if not skill_dir.exists():
-            raise ValueError(f"Skill directory not found: {skill_dir}")
-
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in sorted(skill_dir.rglob("*")):
-                if not file_path.is_file():
-                    continue
-                relative_path = file_path.relative_to(skill_dir)
-                zf.write(file_path, relative_path)
-
-        logger.info("Exported skill %s to %s", name, output_path)
-
-    def get_sub_skills(self, parent_name: str) -> list[SkillInfo]:
-        """获取某个技能目录下的子技能"""
-        parent_skill = self.get_skill(parent_name)
-        if not parent_skill:
-            return []
-
-        parent_dir = Path(parent_skill.path)
-        sub_skills: list[SkillInfo] = []
-
-        # 扫描父技能目录下的直接子目录
-        for sub_dir in parent_dir.iterdir():
-            if not sub_dir.is_dir():
-                continue
-            skill_md = sub_dir / SKILL_MD_FILENAME
-            if not skill_md.exists():
-                continue
-            try:
-                skill_info = self._load_skill_from_dir(sub_dir, {})
-                if skill_info:
-                    sub_skills.append(skill_info)
-            except Exception as exc:
-                logger.error("Failed to load sub-skill from %s: %s", sub_dir, exc)
-
-        return sub_skills
+        tmp_base = Path(tempfile.mkdtemp())
+        shutil.make_archive(str(tmp_base / name), "zip", skill_dir.parent, skill_dir.name)
+        Path(str(tmp_base / name) + ".zip").rename(zip_path)
+        shutil.rmtree(tmp_base, ignore_errors=True)

@@ -2,7 +2,6 @@ import json
 import logging
 import base64
 import uuid
-import datetime
 from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
@@ -120,35 +119,6 @@ def _extract_image_id(url: str) -> int | None:
     return None
 
 
-def _msg_content_to_ui_text(msg: Msg) -> str:
-    """将 Msg.content 提取为纯文本（用于前端展示）。"""
-    content = msg.content
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        texts = []
-        for block in content:
-            if isinstance(block, dict):
-                if block.get("type") == "text":
-                    texts.append(block.get("text", ""))
-                elif block.get("type") == "image":
-                    texts.append("[图片]")
-        return "\n".join(texts)
-    return str(content) if content else ""
-
-
-def _make_ui_message(msg: Msg, role: str, msg_status: str = "finished") -> str:
-    """将 Msg 转换为 IAgentScopeRuntimeWebUIMessage 格式的 JSON 字符串。"""
-    text = _msg_content_to_ui_text(msg)
-    ui_msg = {
-        "id": str(uuid.uuid4()),
-        "role": role,
-        "cards": [{"code": "markdown", "data": text}],
-        "msgStatus": msg_status,
-    }
-    return json.dumps(ui_msg, ensure_ascii=False)
-
-
 def _fmt_api_error(brief: str, detail: str) -> str:
     """将 API 错误格式化为用户友好的 Markdown 消息。
 
@@ -212,9 +182,14 @@ async def query_func(
         session_id=session_id,
     )
 
-    # 每次创建全新的 agent 实例，传入 DB 记忆后端
+    # 创建沙箱工具管理器（嵌入式模式，使用本地 Docker）
+    from src.agents.harness.tools.sandbox_manager import SandboxToolManager
+    sandbox_manager = SandboxToolManager()
+
+    # 每次创建全新的 agent 实例，传入 DB 记忆后端 + 沙箱
     try:
-        agent = create_user_agent(user_id, db_memory=db_memory)
+        await sandbox_manager.start()
+        agent = await create_user_agent(user_id, db_memory=db_memory, sandbox_manager=sandbox_manager)
     except ValueError as e:
         msg = str(e)
         if "API Key" in msg:
@@ -226,13 +201,9 @@ async def query_func(
         return
 
     agent.set_console_output_enabled(False)
-    memory_manager = getattr(agent, "_memory_manager", None)
 
     async with agent_context(user_id):
         try:
-            if memory_manager is not None:
-                await memory_manager.start()
-
             # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
             with harness_get_db() as db:
                 msgs = _resolve_images_to_base64(msgs, db)
@@ -244,8 +215,8 @@ async def query_func(
                 yield msg, last
 
         finally:
-            if memory_manager is not None:
-                await memory_manager.close()
+            await sandbox_manager.release(session_id, user_id)
+            await sandbox_manager.stop()
             await db_memory.close()
 
 

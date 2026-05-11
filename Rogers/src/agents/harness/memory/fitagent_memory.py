@@ -1,10 +1,7 @@
 """FitAgent SQL Memory — 继承 AsyncSQLAlchemyMemory，补齐压缩摘要相关方法。
 
-AsyncSQLAlchemyMemory 来自 AgentScope，拥有完整的 DB 持久化能力，
-但缺少 ``get_compressed_summary()`` 和 ``mark_messages_compressed()``，
-这两个方法被 memory_compaction hook 依赖。
-
-本适配器通过继承 + 组合补全这些缺失方法。
+AsyncSQLAlchemyMemory 来自 AgentScope，拥有完整的 DB 持久化能力。
+本适配器通过继承 + 组合补全缺失方法。
 """
 from __future__ import annotations
 
@@ -53,15 +50,17 @@ class FitAgentSQLMemory(AsyncSQLAlchemyMemory):
         messages: list[Msg],
         **kwargs: Any,
     ) -> None:
-        """将消息标记为已压缩（通过 update_messages_mark 实现）。"""
+        """将消息标记为已压缩（通过 update_messages_mark 实现）。
+
+        update_messages_mark 内部会调用 _make_message_id 将简单 ID
+        转换为复合 ID，因此直接传入 Msg.id 即可。
+        """
         if not messages:
             return
 
-        # 收集所有消息 ID
         msg_ids = [msg.id for msg in messages if msg.id]
         if not msg_ids:
             return
 
-        # 给所有待压缩消息添加 "_compressed" 标记
-        await self._add_message_mark(msg_ids, "_compressed")
+        await self.update_messages_mark(new_mark="_compressed", msg_ids=msg_ids)
         logger.info("Marked %d messages as compressed", len(msg_ids))
