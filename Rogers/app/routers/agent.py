@@ -26,6 +26,9 @@ from src.agents.harness.chats.crud import (
     get_session as get_session_crud,
     create_session as create_session_crud,
 )
+from src.fitme.core.config import settings
+from src.agents.harness.templates.templates import get_template_path, get_soul_template_path
+
 
 logger = logging.getLogger("fitagent")
 
@@ -182,41 +185,93 @@ async def query_func(
         session_id=session_id,
     )
 
-    # 创建沙箱工具管理器（嵌入式模式，使用本地 Docker）
-    from src.agents.harness.tools.sandbox_manager import SandboxToolManager
-    sandbox_manager = SandboxToolManager()
+    # 加载 Agent 配置（含 pipeline 设置）
+    from src.agents.config import load_agent_config, get_config
+    from src.agents.pipeline import PipelineController
+    from src.agents.utils.api_key_cache import api_key_cache
+    from src.fitme.utils.agent_directory import get_default_agent_directory
 
-    # 每次创建全新的 agent 实例，传入 DB 记忆后端 + 沙箱
-    try:
-        await sandbox_manager.start()
-        agent = await create_user_agent(user_id, db_memory=db_memory, sandbox_manager=sandbox_manager)
-    except ValueError as e:
-        msg = str(e)
-        if "API Key" in msg:
-            brief = "请先在「Agent 配置」页面设置 API Key"
-        else:
-            brief = "Agent 初始化失败"
+    # 使用默认工作目录（不再依赖用户配置）
+    working_dir = get_default_agent_directory()
+
+    agent_cfg = load_agent_config(user_id)
+    app_cfg = get_config(user_id)
+
+    # 获取 API Key — 从缓存读取
+    api_key = api_key_cache.get(user_id) or ""
+
+    if not api_key:
         await db_memory.close()
-        yield Msg(name="Rogers", content=_fmt_api_error(brief, msg), role="assistant"), True
+        yield Msg(name="Rogers", content="❌ 请先在「Agent 配置」页面设置 API Key", role="assistant"), True
         return
 
-    agent.set_console_output_enabled(False)
+    # 刷新 API Key 缓存过期时间
+    api_key_cache.refresh_ttl(user_id)
+
+    # 构建 base_sys_prompt（兼容已有逻辑）
+    from src.agents.harness.workspace.user_workspace import (
+        load_user_sys_prompt,
+        load_user_context,
+    )
+    from src.agents.harness.templates.templates import get_skills_template_path
+    from src.agents.harness.skills.skill_manager import SkillManager
+
+    template_skills_dir = get_skills_template_path()
+    skill_manager = SkillManager(working_dir, skills_dir=template_skills_dir)
+    skill_manager.scan_skills()
+
+    custom_prompt = load_user_sys_prompt(user_id, memory_prompt_enabled=True)
+    base_prompt = custom_prompt or (
+        "你是 Rogers，一个专业的健身和健康管理助手。"
+    )
+    user_context = load_user_context(user_id)
+    if user_context:
+        base_sys_prompt = f"{user_context}\n\n{base_prompt}"
+    else:
+        base_sys_prompt = base_prompt
+
+    # 判断是否使用 Pipeline
+    pipeline_cfg = app_cfg.pipeline if hasattr(app_cfg, "pipeline") else None
+    if pipeline_cfg and pipeline_cfg.enabled:
+        controller = PipelineController(
+            pipeline_cfg=pipeline_cfg,
+            skill_manager=skill_manager,
+            api_key=api_key,
+            working_dir=working_dir,
+        )
+    else:
+        controller = None
 
     async with agent_context(user_id):
         try:
-            # 将消息中的本地图片 URL 转换为 base64，让视觉模型能看到图片
+            # 将消息中的本地图片 URL 转换为 base64
             with harness_get_db() as db:
                 msgs = _resolve_images_to_base64(msgs, db)
 
-            async for msg, last, *_ in stream_printing_messages(
-                agents=[agent],
-                coroutine_task=agent(msgs),
-            ):
-                yield msg, last
+            if controller is not None:
+                # 使用 Pipeline 模式
+                async for msg, last in controller.run(
+                    msgs,
+                    user_id=str(user_id),
+                    base_sys_prompt=base_sys_prompt,
+                ):
+                    yield msg, last
+            else:
+                # 回退到单 Agent 模式
+                agent = await create_user_agent(
+                    user_id,
+                    api_key,
+                    db_memory=db_memory,
+                )
+                agent.set_console_output_enabled(False)
+
+                async for msg, last, *_ in stream_printing_messages(
+                    agents=[agent],
+                    coroutine_task=agent(msgs),
+                ):
+                    yield msg, last
 
         finally:
-            await sandbox_manager.release(session_id, user_id)
-            await sandbox_manager.stop()
             await db_memory.close()
 
 
@@ -227,9 +282,7 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 # Per-user agent configuration management
 # ---------------------------------------------------------------------------
 
-# 使用统一配置
-from src.fitme.core.config import settings
-from src.agents.harness.templates.templates import get_template_path, get_soul_template_path
+
 
 # 默认配置路径
 DEFAULT_AGENT_JSON = settings.AGENT_DB_DIR / "agent.json"
@@ -284,8 +337,8 @@ class AgentStatusResponse(BaseModel):
     config_ok: bool
     api_key_configured: bool
     api_key_masked: str = ""
-    model: str = ""
-    model_configured: bool = False
+    model: str = "qwen-max"
+    model_configured: bool = True
     message: str = ""
 
 

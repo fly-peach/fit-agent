@@ -1,30 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Form, Input, Button, message, Space, Tag, Select, Row, Col, Alert, Modal, Table, Statistic, Spin, Popconfirm } from 'antd'
-import { Bot, Key, Cpu, Sparkles, FolderOpen, CheckCircle2 } from 'lucide-react'
+import { Card, Typography, Form, Input, Button, message, Space, Tag, Row, Col, Alert, Modal, Table, Statistic, Spin, Popconfirm, Select } from 'antd'
+import { Bot, Key, Cpu, Sparkles } from 'lucide-react'
 import { EyeOutlined, ReloadOutlined, DeleteOutlined, ExperimentOutlined } from '@ant-design/icons'
-import { agentApi, workspaceApi, type AgentWorkspaceStatus } from '../../services/user'
+import { agentApi, type PromptTemplatesResponse } from '../../services/user'
 import { contextApi, ContextStats, CacheEntry } from '../../services/context'
 
-const modelOptions = [
-  { value: 'qwen-turbo', label: 'Qwen Turbo (快速，推荐)', recommended: true },
-  { value: 'qwen-plus', label: 'Qwen Plus (均衡)' },
-  { value: 'qwen-max', label: 'Qwen Max (强大)' },
-  { value: 'qwen-max-longcontext', label: 'Qwen Max LongContext (长文本)' },
-  { value: 'qwen2.5-72b-instruct', label: 'Qwen2.5 72B (最强)' },
-  { value: 'qwen2.5-32b-instruct', label: 'Qwen2.5 32B' },
-  { value: 'qwen2.5-14b-instruct', label: 'Qwen2.5 14B' },
-  { value: 'qwen2.5-7b-instruct', label: 'Qwen2.5 7B (轻量)' },
-  { value: 'qwen-vl-max', label: 'Qwen2.5-VL Max (视觉理解最强)' },
-  { value: 'qwen-vl-plus', label: 'Qwen2.5-VL Plus (视觉理解均衡)' },
-  { value: 'qwen2.5-vl-72b', label: 'Qwen2.5-VL 72B (开源视觉理解)' },
-  { value: 'qwen2.5-vl-32b', label: 'Qwen2.5-VL 32B (视觉性价比)' },
-  { value: 'qwen2.5-vl-7b', label: 'Qwen2.5-VL 7B (视觉轻量)' },
-  { value: 'qwen3-vl-plus', label: 'Qwen3-VL Plus (新一代视觉)' },
-  { value: 'qwen3-vl-flash', label: 'Qwen3-VL Flash (新一代视觉快速)' },
-]
-
 // ---------------------------------------------------------------------------
-// 智能体人格预设
+// 智能体人格预设（保持不变）
 // ---------------------------------------------------------------------------
 
 interface PersonalityPreset {
@@ -57,9 +39,7 @@ const personalityPresets: PersonalityPreset[] = [
 - 如果用户没有登录，提示他们先登录
 - 如果数据不存在，返回友好的提示而不是错误
 - 用中文回答`,
-    soul_md: `你是一个专业、耐心、温暖的健身教练。你关心用户的健康，
-会用鼓励性的语言帮助用户坚持训练和健康饮食。
-你尊重每个用户的个体差异，提供个性化的建议。`,
+    soul_md: `你是一个专业、耐心、温暖的健身教练。你关心用户的健康，会用鼓励性的语言帮助用户坚持训练和健康饮食。你尊重每个用户的个体差异，提供个性化的建议。`,
   },
   {
     key: 'captain_rogers',
@@ -176,19 +156,11 @@ const useIsMobile = () => {
 const AgentConfig: React.FC = () => {
   const [agentForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
-  const [apiKeyMasked, setApiKeyMasked] = useState('')
-  const [useCustomModel, setUseCustomModel] = useState(false)
+  const [apiKeyLoading, setApiKeyLoading] = useState(false)
+  const [hasApiKey, setHasApiKey] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string>('')
-  const [hasApiKeyInput, setHasApiKeyInput] = useState(false)
 
-  const [savingModel, setSavingModel] = useState(false)
   const isMobile = useIsMobile()
-
-  // 工作目录状态
-  const [workspaceStatus, setWorkspaceStatus] = useState<AgentWorkspaceStatus | null>(null)
-  const [workspaceLoading, setWorkspaceLoading] = useState(false)
-  const [workspaceSaving, setWorkspaceSaving] = useState(false)
-  const [customWorkspacePath, setCustomWorkspacePath] = useState('')
 
   // 上下文管理状态
   const [contextStats, setContextStats] = useState<ContextStats | null>(null)
@@ -197,37 +169,6 @@ const AgentConfig: React.FC = () => {
   const [compactLoading, setCompactLoading] = useState(false)
   const [cacheContent, setCacheContent] = useState<string | null>(null)
   const [cacheModalVisible, setCacheModalVisible] = useState(false)
-
-  const fetchWorkspaceStatus = async () => {
-    setWorkspaceLoading(true)
-    try {
-      const status = await workspaceApi.getStatus()
-      setWorkspaceStatus(status)
-      if (status.local_working_dir) {
-        setCustomWorkspacePath(status.local_working_dir)
-      }
-    } catch {
-      // 忽略错误
-    } finally {
-      setWorkspaceLoading(false)
-    }
-  }
-
-  const handleCreateWorkspace = async (useCustomPath: boolean = false) => {
-    setWorkspaceSaving(true)
-    try {
-      const data = useCustomPath && customWorkspacePath
-        ? { local_working_dir: customWorkspacePath }
-        : {}
-      await workspaceApi.createOrUpdate(data)
-      message.success('工作目录配置成功！')
-      await fetchWorkspaceStatus()
-    } catch (e: any) {
-      message.error(e?.detail || '配置失败，请检查路径')
-    } finally {
-      setWorkspaceSaving(false)
-    }
-  }
 
   const fetchContextData = async () => {
     setContextLoading(true)
@@ -284,82 +225,84 @@ const AgentConfig: React.FC = () => {
 
   useEffect(() => {
     fetchConfig()
-    fetchWorkspaceStatus()
     fetchContextData()
   }, [])
 
   const fetchConfig = async () => {
     try {
-      const data = await agentApi.getConfig()
+      const [apiStatus, promptsData] = await Promise.all([
+        agentApi.getApiKeyStatus(),
+        agentApi.getPrompts(),
+      ])
+
+      setHasApiKey(apiStatus.has_api_key)
       agentForm.setFieldsValue({
-        agents_md: data.agents_md,
-        soul_md: data.soul_md,
-        api_key: '',
-        model_name: data.model_name,
+        agents_md: promptsData.agents_md,
+        soul_md: promptsData.soul_md,
       })
-      const isPreset = modelOptions.some(opt => opt.value === data.model_name)
-      setUseCustomModel(!isPreset)
+
       const matchedPreset = personalityPresets.find(
-        p => p.key !== 'custom' && p.agents_md === data.agents_md && p.soul_md === data.soul_md,
+        p => p.key !== 'custom' && p.agents_md === promptsData.agents_md && p.soul_md === promptsData.soul_md,
       )
-      setSelectedPreset(matchedPreset ? matchedPreset.key : (data.agents_md || data.soul_md ? 'custom' : 'rogers_default'))
-      setApiKeyMasked(data.api_key_masked)
-      setHasApiKeyInput(false)
+      setSelectedPreset(matchedPreset ? matchedPreset.key : (promptsData.agents_md || promptsData.soul_md ? 'custom' : 'rogers_default'))
     } catch {
-      // 配置未找到时使用默认值，引导用户完成首次配置
       agentForm.setFieldsValue({
         agents_md: personalityPresets[0].agents_md,
         soul_md: personalityPresets[0].soul_md,
-        api_key: '',
-        model_name: 'qwen-turbo',
       })
       setSelectedPreset('rogers_default')
-      setUseCustomModel(false)
-      setApiKeyMasked('')
-      setHasApiKeyInput(false)
-      message.info('首次使用，请配置 DashScope API Key 后保存即可开始使用')
-    }
-  }
-  const handleSaveModel = async () => {
-    try {
-      setSavingModel(true)
-      const values = agentForm.getFieldsValue(['api_key', 'model_name'])
-      // 如果用户没有输入新的 api_key，不传这个字段，避免覆盖
-      const payload: any = { model_name: values.model_name }
-      if (hasApiKeyInput && values.api_key) {
-        payload.api_key = values.api_key
-      } else if (hasApiKeyInput && !values.api_key) {
-        // 用户清空了输入，表示要清除自定义 api_key
-        payload.api_key = ''
-      }
-      await agentApi.updateConfig(payload)
-      message.success('模型配置已保存')
-      fetchConfig()
-    } catch {
-      message.error('保存失败')
-    } finally {
-      setSavingModel(false)
+      setHasApiKey(false)
+      message.info('首次使用，请配置 DashScope API Key')
     }
   }
 
-  const handleSave = async () => {
+  const handleSaveApiKey = async () => {
+    try {
+      setApiKeyLoading(true)
+      const values = await agentForm.validateFields(['api_key'])
+      if (!values.api_key) {
+        message.warning('请输入 API Key')
+        return
+      }
+      await agentApi.setApiKey({ api_key: values.api_key })
+      message.success('API Key 已保存')
+      setHasApiKey(true)
+      agentForm.setFieldValue('api_key', '')
+    } catch {
+      message.error('保存失败')
+    } finally {
+      setApiKeyLoading(false)
+    }
+  }
+
+  const handleDeleteApiKey = async () => {
+    Modal.confirm({
+      title: '确认删除 API Key',
+      content: '确定要删除已保存的 API Key 吗？删除后需要重新配置才能使用 AI 助手。',
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await agentApi.deleteApiKey()
+          message.success('API Key 已删除')
+          setHasApiKey(false)
+        } catch {
+          message.error('删除失败')
+        }
+      },
+    })
+  }
+
+  const handleSavePrompts = async () => {
     try {
       setSaving(true)
-      const values = await agentForm.validateFields()
-      // 如果用户没有输入新的 api_key，不传这个字段，避免覆盖
-      const payload: any = {
+      const values = await agentForm.validateFields(['agents_md', 'soul_md'])
+      await agentApi.updatePrompts({
         agents_md: values.agents_md,
         soul_md: values.soul_md,
-        model_name: values.model_name,
-      }
-      if (hasApiKeyInput && values.api_key) {
-        payload.api_key = values.api_key
-      } else if (hasApiKeyInput && !values.api_key) {
-        // 用户清空了输入，表示要清除自定义 api_key
-        payload.api_key = ''
-      }
-      await agentApi.updateConfig(payload)
-      message.success('Agent 配置已保存')
+      })
+      message.success('配置已保存')
       fetchConfig()
     } catch {
       message.error('保存失败')
@@ -406,137 +349,24 @@ const AgentConfig: React.FC = () => {
         <Typography.Title level={4} style={{ margin: 0 }}>AI Agent 配置</Typography.Title>
       </div>
 
-      <Form form={agentForm} layout="vertical" onFinish={handleSave}>
+      <Form form={agentForm} layout="vertical">
         <Space direction="vertical" size={isMobile ? 16 : 24} style={{ width: '100%' }}>
-          {/* 工作目录配置卡片 */}
+          {/* API Key 配置卡片 */}
           <Card
             title={
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FolderOpen size={16} style={{ color: '#10B981' }} />
-                <span>AI 工作目录</span>
+                <Key size={16} style={{ color: '#0EA5E9' }} />
+                <span>API Key 配置</span>
               </div>
-            }
-            style={{ border: 'none' }}
-          >
-            <Spin spinning={workspaceLoading}>
-              {workspaceStatus?.is_configured ? (
-                <Alert
-                  type="success"
-                  showIcon
-                  icon={<CheckCircle2 size={20} />}
-                  message={
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>
-                        目录已配置
-                        <Tag color="success" style={{ marginLeft: 8 }}>
-                          就绪
-                        </Tag>
-                      </span>
-                      <Button
-                        type="text"
-                        size="small"
-                        onClick={() => Modal.confirm({
-                          title: '更改工作目录',
-                          content: (
-                            <div style={{ marginTop: 16 }}>
-                              <Typography.Text type="secondary">
-                                当前目录：{workspaceStatus.local_working_dir}
-                              </Typography.Text>
-                              <Input
-                                style={{ marginTop: 12 }}
-                                placeholder="输入新的目录路径（留空使用默认）"
-                                value={customWorkspacePath}
-                                onChange={(e) => setCustomWorkspacePath(e.target.value)}
-                              />
-                            </div>
-                          ),
-                          okText: '确认更改',
-                          cancelText: '取消',
-                          onOk: () => handleCreateWorkspace(true),
-                        })}
-                      >
-                        更改目录
-                      </Button>
-                    </div>
-                  }
-                  description={
-                    <Typography.Text code style={{ marginTop: 8, display: 'block' }}>
-                      {workspaceStatus.local_working_dir}
-                    </Typography.Text>
-                  }
-                />
-              ) : (
-                <Alert
-                  type="info"
-                  showIcon
-                  message="首次使用：配置工作目录"
-                  description={
-                    <div style={{ marginTop: 12 }}>
-                      <Typography.Paragraph type="secondary">
-                        AI Agent 需要一个本地目录来存储对话记录、记忆和技能。
-                        默认使用 <code>~/.fitagent</code> 目录。
-                      </Typography.Paragraph>
-                      <Space direction="vertical" style={{ width: '100%', marginTop: 12 }}>
-                        <Button
-                          type="primary"
-                          loading={workspaceSaving}
-                          onClick={() => handleCreateWorkspace(false)}
-                          icon={<FolderOpen size={16} />}
-                        >
-                          使用默认目录
-                        </Button>
-                        <div>
-                          <Typography.Text type="secondary" style={{ marginRight: 8 }}>
-                            或自定义目录：
-                          </Typography.Text>
-                          <Input
-                            placeholder="输入自定义目录路径"
-                            style={{ width: 300, marginRight: 8 }}
-                            value={customWorkspacePath}
-                            onChange={(e) => setCustomWorkspacePath(e.target.value)}
-                          />
-                          <Button
-                            loading={workspaceSaving}
-                            onClick={() => handleCreateWorkspace(true)}
-                            disabled={!customWorkspacePath}
-                          >
-                            使用此目录
-                          </Button>
-                        </div>
-                      </Space>
-                    </div>
-                  }
-                />
-              )}
-            </Spin>
-          </Card>
-
-          {/* 模型配置卡片 */}
-          <Card
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Cpu size={16} style={{ color: '#0EA5E9' }} />
-                <span>模型配置</span>
-              </div>
-            }
-            extra={
-              <Button
-                type="primary"
-                size="small"
-                loading={savingModel}
-                onClick={handleSaveModel}
-              >
-                保存模型配置
-              </Button>
             }
             style={{ border: 'none' }}
           >
             <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
-              配置 DashScope API Key 和模型参数，控制 Agent 的响应能力和思考模式。
+              配置 DashScope API Key，AI 助手使用 <Tag color="blue">qwen-max</Tag>（推理）和 <Tag color="blue">qwen-vl-max</Tag>（视觉）模型（内部固定）。
             </Typography.Paragraph>
 
             {/* API Key 状态提示 */}
-            {apiKeyMasked && (
+            {hasApiKey && (
               <Alert
                 type="success"
                 showIcon
@@ -544,16 +374,19 @@ const AgentConfig: React.FC = () => {
                 message={
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>
-                      当前 API Key：{apiKeyMasked}
+                      API Key 已配置
                       <Tag color="#10B981" style={{ marginLeft: 8 }}>
-                        已配置
+                        就绪
                       </Tag>
                     </span>
+                    <Button danger size="small" onClick={handleDeleteApiKey}>
+                      删除 Key
+                    </Button>
                   </div>
                 }
               />
             )}
-            {!apiKeyMasked && (
+            {!hasApiKey && (
               <Alert
                 type="warning"
                 showIcon
@@ -561,7 +394,7 @@ const AgentConfig: React.FC = () => {
                 message="首次使用配置"
                 description={
                   <span>
-                    请在下方填入您的 DashScope API Key 后点击「保存模型配置」即可开始使用 AI 助手。
+                    请在下方填入您的 DashScope API Key 后点击「保存 API Key」即可开始使用 AI 助手。
                     获取 API Key 请访问{' '}
                     <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener noreferrer">
                       阿里云百炼控制台
@@ -581,82 +414,21 @@ const AgentConfig: React.FC = () => {
                       <span>DashScope API Key</span>
                     </div>
                   }
-                  help={
-                    hasApiKeyInput
-                      ? '输入新的 API Key 以替换当前配置；留空则清除已配置的 Key'
-                      : '填入您的 DashScope API Key，从阿里云百炼控制台获取'
-                  }
                 >
                   <Input.Password
-                    placeholder={
-                      apiKeyMasked
-                        ? '输入新的 API Key 或留空清除配置'
-                        : '输入您的 DashScope API Key'
-                    }
+                    placeholder={hasApiKey ? '输入新的 API Key 或留空' : '输入您的 DashScope API Key'}
                     style={{ borderRadius: 10 }}
-                    onChange={() => setHasApiKeyInput(true)}
                   />
                 </Form.Item>
               </Col>
             </Row>
-            <Row gutter={16}>
-              <Col span={24}>
-                <Form.Item
-                  name="model_name"
-                  label={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span>模型选择</span>
-                      <Button
-                        type="link"
-                        size="small"
-                        style={{ padding: 0, height: 'auto', fontSize: 12 }}
-                        onClick={() => {
-                          if (useCustomModel) {
-                            setUseCustomModel(false)
-                            agentForm.setFieldValue('model_name', 'qwen-turbo')
-                          } else {
-                            setUseCustomModel(true)
-                            agentForm.setFieldValue('model_name', '')
-                          }
-                        }}
-                      >
-                        {useCustomModel ? '切换预设' : '自定义模型'}
-                      </Button>
-                    </div>
-                  }
-                  help={
-                    useCustomModel
-                      ? '输入阿里云百炼的模型 ID，如 qwen3.5-flash、qwen3-32b 等'
-                      : '选择适合的模型，越强大的模型响应越准确但速度较慢'
-                  }
-                >
-                  {useCustomModel ? (
-                    <Input
-                      placeholder="输入模型 ID，如 qwen3.5-flash"
-                      style={{ borderRadius: 10 }}
-                      allowClear
-                    />
-                  ) : (
-                    <Select
-                      options={modelOptions}
-                      style={{ borderRadius: 10 }}
-                      placeholder="选择模型"
-                      showSearch
-                      optionFilterProp="label"
-                    />
-                  )}
-                </Form.Item>
-                <div style={{ marginTop: -8, marginBottom: 12 }}>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    更多模型请访问{' '}
-                    <a href="https://bailian.console.aliyun.com/cn-beijing/?tab=model#/model-market" target="_blank" rel="noopener noreferrer">
-                      阿里云百炼模型市场
-                    </a>
-                    {' '}选择适合的视觉/多模态模型 ID
-                  </Typography.Text>
-                </div>
-              </Col>
-            </Row>
+            <Button
+              type="primary"
+              loading={apiKeyLoading}
+              onClick={handleSaveApiKey}
+            >
+              保存 API Key
+            </Button>
           </Card>
 
           {/* 智能体人格配置 */}
@@ -666,6 +438,16 @@ const AgentConfig: React.FC = () => {
                 <Bot size={16} style={{ color: '#A78BFA' }} />
                 <span>智能体人格配置</span>
               </div>
+            }
+            extra={
+              <Button
+                type="primary"
+                size="small"
+                loading={saving}
+                onClick={handleSavePrompts}
+              >
+                保存人格配置
+              </Button>
             }
             style={{ border: 'none' }}
           >
@@ -850,10 +632,6 @@ const AgentConfig: React.FC = () => {
               />
             </Spin>
           </Card>
-
-          <Button type="primary" loading={saving} htmlType="submit" size="large">
-            保存配置
-          </Button>
         </Space>
       </Form>
 

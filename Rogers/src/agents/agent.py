@@ -2,9 +2,6 @@
 
 注意：数据读写工具已迁移到 fitme-skills CLI，不再在此注册。
 Agent 通过 execute_shell_command 调用 cli.py 完成数据操作。
-
-代码执行已迁移到 AgentScope Runtime 沙箱（SandboxService），通过 BaseSandbox
-提供安全的 run_ipython_cell / run_shell_command，替代直接 execute_python_code / execute_shell_command。
 """
 from __future__ import annotations
 
@@ -26,7 +23,7 @@ from .config import AgentConfig, ModelProvider, load_agent_config
 from .harness import (
     create_skill_resource_tool,
 )
-from .harness.tools.sandbox_manager import SandboxToolManager
+from .harness.tools.safe_shell import create_safe_shell_tool
 from .harness.workspace.user_workspace import (
     ensure_user_workspace,
     load_user_sys_prompt,
@@ -95,13 +92,12 @@ async def _build_toolkit(
     skill_manager: SkillManager,
     channel_name: str,
     user_id: int | str,
-    sandbox_manager: "SandboxToolManager | None" = None,
+    skill_filter: list[str] | None = None,
 ) -> Toolkit:
     """根据 Agent 配置构建工具集。
 
-    代码执行工具使用 AgentScope Runtime 沙箱（BaseSandbox）：
-    - run_ipython_cell: 在隔离 Docker 容器中执行 Python 代码
-    - run_shell_command: 在隔离 Docker 容器中执行 shell 命令
+    Args:
+        skill_filter: 如果提供，只注册这些名称的技能（用于 SubAgent）
     """
     toolkit = Toolkit(
         agent_skill_instruction=AGENT_SKILL_INSTRUCTION,
@@ -111,6 +107,7 @@ async def _build_toolkit(
 
     tool_functions = {
         "read_skill_resource": create_skill_resource_tool(skill_manager),
+        "execute_shell_command": create_safe_shell_tool(),
     }
 
     for tool_name, tool_func in tool_functions.items():
@@ -118,13 +115,9 @@ async def _build_toolkit(
             continue
         toolkit.register_tool_function(tool_func)
 
-    # 注册沙箱工具（替代原生 execute_python_code / execute_shell_command）
-    if sandbox_manager is not None:
-        sandbox = await sandbox_manager.connect(session_id="default", user_id=user_id)
-        sandbox_manager.register_tools(toolkit, sandbox)
-
     # 注册技能（fitme-skills 通过 CLI 完成数据操作）
-    for skill_name in skill_manager.get_enabled_skill_names(channel_name):
+    skill_names = skill_filter if skill_filter is not None else skill_manager.get_enabled_skill_names(channel_name)
+    for skill_name in skill_names:
         skill_dir = skill_manager.get_skill_dir(skill_name)
         if skill_dir is None:
             continue
@@ -136,40 +129,6 @@ async def _build_toolkit(
     return toolkit
 
 
-def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
-    """根据 Agent 的模型配置创建模型实例。"""
-    model_cfg = agent_cfg.model
-
-    # 处理 model_cfg 可能是字符串的情况（引用）
-    if isinstance(model_cfg, str):
-        from src.agents.config import get_config
-        config = get_config()
-        if model_cfg in config.models:
-            model_cfg = config.models[model_cfg]
-        else:
-            # 回退到默认模型
-            model_cfg = ModelProvider()
-
-    # API Key 只从用户配置读取，不再从环境变量读取
-    api_key = model_cfg.api_key if hasattr(model_cfg, "api_key") else ""
-
-    if not api_key:
-        raise ValueError(
-            "未配置 API Key！请在「Agent 配置」页面填入您的 API Key"
-        )
-
-    # 获取模型名称，设置默认值以防万一
-    model_name = "qwen-turbo"
-    if hasattr(model_cfg, "model_name") and model_cfg.model_name:
-        model_name = model_cfg.model_name
-
-    # 最简单的调用方式，只传必要的参数
-    return DashScopeChatModel(
-        model_name=model_name,
-        api_key=api_key,
-        stream=True,
-        enable_thinking=True,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -177,68 +136,128 @@ def _build_model(agent_cfg: AgentConfig) -> DashScopeChatModel:
 # ---------------------------------------------------------------------------
 
 
-async def create_user_agent(
+async def create_main_agent(
     user_id: int | str,
+    api_key: str,
     channel_name: str = "console",
     db_memory: "FitAgentSQLMemory | None" = None,
-    sandbox_manager: "SandboxToolManager | None" = None,
+    agent_cfg: AgentConfig | None = None,
 ) -> ReActAgent:
-    """为指定用户创建 ReActAgent，附带自定义系统提示词。
+    """为主子 Agent 创建 ReActAgent，拥有所有技能和数据访问权限。
 
-    确保用户工作区存在，加载 agents.md + soul.md，查询数据库获取用
-    户上下文，并构建 Agent 实例。
-
-    若传入 db_memory（FitAgentSQLMemory），则 Agent 的对话消息会自
-    动持久化到 agent_memory.db，无需手动 add_message。
+    用于视觉分析后的复杂度判断和基础回复。如果任务复杂，主子 Agent
+    会输出结构化标记触发 Fanout Pipeline。
     """
-    ensure_user_workspace(user_id)
-
-    # 使用 load_agent_config 以合并用户级 agent.json 覆盖
-    agent_cfg = load_agent_config(user_id)
+    if agent_cfg is None:
+        agent_cfg = load_agent_config(user_id)
 
     working_dir = str(ensure_user_workspace(user_id))
-
     template_skills_dir = get_skills_template_path()
     skill_manager = SkillManager(working_dir, skills_dir=template_skills_dir)
     skill_manager.scan_skills()
 
-    # 构建 model
-    model = _build_model(agent_cfg)
-
-    # 从静态 Markdown 文件构建基础提示词
-    custom_prompt = _load_prompt_from_files(working_dir, agent_cfg, user_id)
-    base_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
-
-    # 从数据库获取用户上下文（姓名、目标、健康指标、连续记录）并前置
-    user_context = load_user_context(user_id)
-    if user_context:
-        sys_prompt = f"{user_context}\n\n{base_prompt}"
-    else:
-        sys_prompt = base_prompt
-
-    # 为每个用户构建独立的 toolkit
-    toolkit = await _build_toolkit(
-        agent_cfg,
-        skill_manager,
-        channel_name,
-        user_id,
-        sandbox_manager,
+    # 主子 Agent 用 reasoning_model（deepseek-v4-flash）
+    model = DashScopeChatModel(
+        model_name="deepseek-v4-flash",
+        api_key=api_key,
+        stream=True,
+        enable_thinking=True,
     )
 
-    # 优先使用 db_memory（FitAgentSQLMemory），否则回退到纯内存
+    custom_prompt = _load_prompt_from_files(working_dir, agent_cfg, user_id)
+    base_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
+    user_context = load_user_context(user_id)
+    sys_prompt = f"{user_context}\n\n{base_prompt}" if user_context else base_prompt
+
+    toolkit = await _build_toolkit(agent_cfg, skill_manager, channel_name, user_id)
     agent_memory = db_memory
 
     agent = ReActAgent(
-        name=agent_cfg.name,
+        name=f"{agent_cfg.name}-main",
         model=model,
         sys_prompt=sys_prompt,
         toolkit=toolkit,
         memory=agent_memory,
         formatter=DashScopeChatFormatter(),
     )
-
-    agent._skill_manager = skill_manager  # type: ignore[attr-defined]
-
+    agent._skill_manager = skill_manager
     return agent
+
+
+async def create_sub_agent(
+    user_id: int | str,
+    api_key: str,
+    sub_type: str,
+    agent_cfg: AgentConfig | None = None,
+) -> ReActAgent:
+    """创建附子 Agent（diet / training）。
+
+    附子 Agent 只挂载对应数据集相关的 skills，不挂载无关技能。
+    """
+    if agent_cfg is None:
+        agent_cfg = load_agent_config(user_id)
+
+    working_dir = str(ensure_user_workspace(user_id))
+    template_skills_dir = get_skills_template_path()
+    skill_manager = SkillManager(working_dir, skills_dir=template_skills_dir)
+    skill_manager.scan_skills()
+
+    model = DashScopeChatModel(
+        model_name="deepseek-v4-flash",
+        api_key=api_key,
+        stream=True,
+        enable_thinking=True,
+    )
+
+    # 根据子 Agent 类型筛选技能
+    sub_skills = {
+        "diet": ["fitme-diet"],
+        "training": ["fitme-training", "fitme-exercise"],
+    }
+    skill_filter = sub_skills.get(sub_type, [])
+    if not skill_filter:
+        raise ValueError(f"Unknown sub agent type: {sub_type}")
+
+    toolkit = await _build_toolkit(
+        agent_cfg, skill_manager, "console", user_id,
+        skill_filter=skill_filter,
+    )
+
+    sys_prompt = (
+        f"你是 {sub_type} 分析子 Agent。你只能使用以下技能分析数据：{', '.join(skill_filter)}。\n"
+        f"调用 CLI 时只使用与 {sub_type} 相关的命令。\n"
+        f"将分析结果以结构化格式返回，供主 Agent 汇总。"
+    )
+
+    agent = ReActAgent(
+        name=f"{sub_type}-analyzer",
+        model=model,
+        sys_prompt=sys_prompt,
+        toolkit=toolkit,
+        formatter=DashScopeChatFormatter(),
+    )
+    agent._skill_manager = skill_manager
+    return agent
+
+
+async def create_vision_agent(
+    api_key: str,
+) -> "DashScopeChatModel | None":
+    """创建视觉识别模型实例（无工具，纯图像理解）。
+
+    如果未配置 vision API Key，返回 None，表示跳过视觉分析。
+    """
+    if not api_key:
+        return None
+
+    return DashScopeChatModel(
+        model_name="qwen-vl-max",
+        api_key=api_key,
+        stream=False,
+    )
+
+
+# 保留旧别名兼容已调用的地方
+create_user_agent = create_main_agent
 
 

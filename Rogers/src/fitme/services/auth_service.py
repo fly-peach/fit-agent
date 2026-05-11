@@ -103,6 +103,14 @@ class AuthService:
         }
 
     @staticmethod
+    def get_user_id_from_token(token: str) -> Optional[int]:
+        """仅从 Token 获取用户 ID（不查询数据库）"""
+        payload = AuthService.decode_token(token)
+        if payload and "user_id" in payload:
+            return int(payload["user_id"])
+        return None
+
+    @staticmethod
     def get_user_from_token(db: Session, token: str) -> Optional[User]:
         """从Token获取用户"""
         payload = AuthService.decode_token(token)

@@ -10,8 +10,18 @@ export interface DailyLog {
   content: string
 }
 
+export interface HeartbeatConfig {
+  enabled: boolean;
+  every: string;
+  target: string;
+  last_beat?: string;
+}
 
-export interface MemoryConfig {}
+export interface MemoryConfig {
+  heartbeat: HeartbeatConfig;
+}
+
+export const memoryApi = {
   get: (): Promise<MemoryContent> => api.get('/agent/memory'),
   update: (content: string): Promise<{ status: string }> =>
     api.put('/agent/memory', { content }),

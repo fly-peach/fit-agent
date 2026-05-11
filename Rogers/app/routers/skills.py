@@ -39,6 +39,137 @@ def _get_skill_manager(authorization: str | None) -> SkillManager:
 
 
 # ---------------------------------------------------------------------------
+# 配置管理（必须先于 /{name} 定义，避免被 {name} 拦截）
+# ---------------------------------------------------------------------------
+
+@router.get("/config")
+async def get_skill_config(authorization: str | None = Header(default=None)):
+    """获取技能系统配置（基于 skill-config.json）。"""
+    sm = _get_skill_manager(authorization)
+    sm.ensure_scanned()
+    return {
+        "version": "1.0.0",
+        "initialized": sm.config_path.exists(),
+        "initialized_at": None,
+        "last_synced_at": None,
+        "default_skills_enabled": list(sm._configs.keys()),
+        "skill_packages": {
+            name: cfg.to_dict()
+            for name, cfg in sm._configs.items()
+        },
+        "global_settings": {},
+    }
+
+
+@router.get("/config/sync-status")
+async def get_sync_status(authorization: str | None = Header(default=None)):
+    """获取技能同步状态。"""
+    sm = _get_skill_manager(authorization)
+    sm.ensure_scanned()
+    return {
+        "initialized": sm.config_path.exists(),
+        "initialized_at": None,
+        "last_synced_at": None,
+        "total_skill_packages": len(sm._configs),
+        "total_scanned_skills": len(sm._skill_dirs),
+        "enabled_skills": sm.get_enabled_skill_names("all"),
+    }
+
+
+@router.post("/config/initialize")
+async def initialize_skill_config(
+    body: dict[str, Any],
+    authorization: str | None = Header(default=None),
+):
+    """初始化技能配置。"""
+    sm = _get_skill_manager(authorization)
+    sm.ensure_scanned()
+    return {
+        "version": "1.0.0",
+        "initialized": True,
+        "initialized_at": None,
+        "last_synced_at": None,
+        "default_skills_enabled": body.get("default_skill_names", []),
+        "skill_packages": {
+            name: cfg.to_dict()
+            for name, cfg in sm._configs.items()
+        },
+        "global_settings": {},
+    }
+
+
+@router.post("/config/sync")
+async def sync_skill_config(
+    body: dict[str, Any],
+    authorization: str | None = Header(default=None),
+):
+    """同步技能配置。"""
+    sm = _get_skill_manager(authorization)
+    sm.ensure_scanned()
+    return {
+        "version": "1.0.0",
+        "initialized": sm.config_path.exists(),
+        "initialized_at": None,
+        "last_synced_at": None,
+        "default_skills_enabled": sm.get_enabled_skill_names("all"),
+        "skill_packages": {
+            name: cfg.to_dict()
+            for name, cfg in sm._configs.items()
+        },
+        "global_settings": {},
+    }
+
+
+@router.put("/config/packages/{pkg_name}")
+async def update_skill_package(
+    pkg_name: str,
+    body: dict[str, Any],
+    authorization: str | None = Header(default=None),
+):
+    """更新技能包配置。"""
+    sm = _get_skill_manager(authorization)
+    allowed_keys = {"enabled", "auto_update", "priority", "config"}
+    updates = {k: v for k, v in body.items() if k in allowed_keys}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No valid config fields provided")
+    sm.update_config(pkg_name, **updates)
+    sm.ensure_scanned()
+    return {
+        "version": "1.0.0",
+        "initialized": sm.config_path.exists(),
+        "initialized_at": None,
+        "last_synced_at": None,
+        "default_skills_enabled": sm.get_enabled_skill_names("all"),
+        "skill_packages": {
+            name: cfg.to_dict()
+            for name, cfg in sm._configs.items()
+        },
+        "global_settings": {},
+    }
+
+
+@router.delete("/config/reset")
+async def reset_skill_config(authorization: str | None = Header(default=None)):
+    """重置技能配置。"""
+    sm = _get_skill_manager(authorization)
+    if sm.config_path.exists():
+        sm.config_path.unlink()
+    sm.scan_skills()
+    return {
+        "version": "1.0.0",
+        "initialized": True,
+        "initialized_at": None,
+        "last_synced_at": None,
+        "default_skills_enabled": sm.get_enabled_skill_names("all"),
+        "skill_packages": {
+            name: cfg.to_dict()
+            for name, cfg in sm._configs.items()
+        },
+        "global_settings": {},
+    }
+
+
+# ---------------------------------------------------------------------------
 # 技能 CRUD API
 # ---------------------------------------------------------------------------
 
@@ -133,3 +264,17 @@ async def export_skill(
         shutil.rmtree(temp_dir, ignore_errors=True)
         logger.error("Failed to export skill: %s", exc)
         raise HTTPException(status_code=500, detail="Export failed")
+
+
+# ---------------------------------------------------------------------------
+# 子技能
+# ---------------------------------------------------------------------------
+
+@router.get("/{name}/sub-skills")
+async def list_sub_skills(
+    name: str,
+    authorization: str | None = Header(default=None),
+):
+    """列出指定技能下的子技能。"""
+    sm = _get_skill_manager(authorization)
+    return sm.list_sub_skills(name)

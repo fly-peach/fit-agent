@@ -119,6 +119,15 @@ const MemoryManager: React.FC = () => {
     message.info("已恢复到最近一次保存内容");
   };
 
+  const hasChanges = editingContent !== (memory?.content ?? "");
+  const lineCount = editingContent.split("\n").length;
+  const charCount = editingContent.length;
+
+  const filteredLogs = useMemo(
+    () => logs.filter((d) => d.includes(logSearch)),
+    [logs, logSearch],
+  );
+
   return (
       <Row gutter={24}>
         <Col xs={24} lg={14}>
@@ -300,7 +309,6 @@ const MemoryManager: React.FC = () => {
           </Card>
         </Col>
       </Row>
-    </div>
   );
 };
 

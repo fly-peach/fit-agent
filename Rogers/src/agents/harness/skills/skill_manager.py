@@ -21,6 +21,8 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 logger = logging.getLogger("fitagent")
 
 SKILL_CONFIG_FILENAME = "skill-config.json"
@@ -206,6 +208,107 @@ class SkillManager:
         self.ensure_scanned()
         return sorted(self._skill_dirs.keys())
 
+    def get_skill_dirs(self, names: list[str] | None = None) -> list[str]:
+        """获取指定技能名称的目录路径列表（用于 toolkit.register_agent_skill）。
+
+        如果 names 为 None，返回所有已启用技能的目录路径。
+        只返回在 _skill_dirs 中实际存在的技能，跳过不存在的名称。
+
+        Args:
+            names: 技能名称列表，为 None 时返回所有已启用技能
+
+        Returns:
+            技能目录的绝对路径列表
+        """
+        self.ensure_scanned()
+        if names is None:
+            names = self.get_enabled_skill_names()
+        result: list[str] = []
+        for name in names:
+            path = self._skill_dirs.get(name)
+            if path is not None:
+                result.append(str(path))
+        return result
+
+    # ------------------------------------------------------------------
+    # YAML frontmatter 解析
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse_frontmatter_from_dir(skill_dir: Path) -> dict[str, Any]:
+        """从 SKILL.md 的 YAML frontmatter 中解析元数据。"""
+        skill_md = skill_dir / SKILL_MD_FILENAME
+        if not skill_md.exists():
+            return {}
+        content = skill_md.read_text(encoding="utf-8")
+        match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+        if not match:
+            return {}
+        try:
+            return yaml.safe_load(match.group(1)) or {}
+        except Exception:
+            return {}
+
+    def _parse_frontmatter(self, name: str) -> dict[str, Any]:
+        """解析指定技能的 YAML frontmatter。"""
+        skill_dir = self._skill_dirs.get(name)
+        if skill_dir is None:
+            return {}
+        return self._parse_frontmatter_from_dir(skill_dir)
+
+    def _skill_to_dict(self, name: str, cfg: SkillConfig | None = None) -> dict[str, Any]:
+        """构造前端 Skill 接口所需的字典。"""
+        if cfg is None:
+            cfg = self._configs.get(name, SkillConfig())
+        meta = self._parse_frontmatter(name)
+        return {
+            "name": name,
+            "version": meta.get("version", "1.0.0"),
+            "description": meta.get("description", ""),
+            "tags": meta.get("tags", []),
+            "source": meta.get("source", "template"),
+            "path": str(self._skill_dirs.get(name, "")),
+            "enabled": cfg.enabled,
+            "channels": cfg.channels,
+            "priority": cfg.priority,
+            "auto_update": cfg.auto_update,
+        }
+
+    # ------------------------------------------------------------------
+    # 子技能
+    # ------------------------------------------------------------------
+
+    def list_sub_skills(self, name: str) -> list[dict[str, Any]]:
+        """列出指定技能下的子技能（目录下含 SKILL.md 的子目录）。"""
+        self.ensure_scanned()
+        skill_dir = self._skill_dirs.get(name)
+        if skill_dir is None:
+            return []
+        result: list[dict[str, Any]] = []
+        for sub_dir in sorted(skill_dir.iterdir()):
+            if not sub_dir.is_dir():
+                continue
+            if not (sub_dir / SKILL_MD_FILENAME).exists():
+                continue
+            sub_name = sub_dir.name
+            meta = self._parse_frontmatter_from_dir(sub_dir)
+            cfg = SkillConfig()
+            if sub_name in self._configs:
+                cfg = self._configs[sub_name]
+            result.append({
+                "name": sub_name,
+                "version": meta.get("version", "1.0.0"),
+                "description": meta.get("description", ""),
+                "tags": meta.get("tags", []),
+                "source": meta.get("source", "template"),
+                "path": str(sub_dir),
+                "enabled": cfg.enabled,
+                "channels": cfg.channels,
+                "priority": cfg.priority,
+                "auto_update": cfg.auto_update,
+            })
+        return result
+
     # ------------------------------------------------------------------
     # 查询（供前端 API 使用）
     # ------------------------------------------------------------------
@@ -217,21 +320,13 @@ class SkillManager:
     def list_skills(self) -> list[dict[str, Any]]:
         """列出所有技能的基本信息。"""
         self.ensure_scanned()
-        result: list[dict[str, Any]] = []
-        for name in sorted(self._skill_dirs.keys()):
-            cfg = self._configs.get(name, SkillConfig())
-            result.append({
-                "name": name,
-                "path": str(self._skill_dirs[name]),
-                "enabled": cfg.enabled,
-                "channels": cfg.channels,
-                "priority": cfg.priority,
-                "auto_update": cfg.auto_update,
-            })
-        return result
+        return [
+            self._skill_to_dict(name)
+            for name in sorted(self._skill_dirs.keys())
+        ]
 
     def get_skill_detail(self, name: str) -> dict[str, Any] | None:
-        """获取单个技能详情（含 SKILL.md 内容）。"""
+        """获取单个技能详情（含 SKILL.md 内容和文件树）。"""
         self.ensure_scanned()
         skill_dir = self._skill_dirs.get(name)
         if skill_dir is None:
@@ -244,14 +339,11 @@ class SkillManager:
             content = skill_md.read_text(encoding="utf-8")
 
         files = self._list_skill_files(name)
+        base = self._skill_to_dict(name, cfg)
         return {
-            "name": name,
-            "path": str(skill_dir),
-            "enabled": cfg.enabled,
-            "channels": cfg.channels,
-            "priority": cfg.priority,
-            "auto_update": cfg.auto_update,
+            **base,
             "content": content,
+            "body": content,
             "references": files.get("references", []),
             "scripts": files.get("scripts", []),
         }

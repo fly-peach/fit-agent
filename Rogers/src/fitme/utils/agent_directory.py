@@ -50,54 +50,20 @@ def is_valid_directory(local_dir: str) -> bool:
 
 
 def initialize_agent_directory(local_dir: str) -> bool:
-    """初始化 Agent 工作目录结构
+    """初始化 Agent 配置目录。
 
-    创建必要的子目录并复制默认配置文件
+    仅创建根目录，不再创建 workspace/sessions/memory/skills/file_store 子目录
+    （数据已迁移到数据库）。
 
     Args:
-        local_dir: Agent 工作目录路径
+        local_dir: Agent 配置目录路径
 
     Returns:
         bool: 初始化成功返回 True
     """
     try:
         dir_path = Path(local_dir).resolve()
-
-        # 创建必要的子目录
-        workspace_dir = dir_path / "workspace"
-        sessions_dir = workspace_dir / "sessions"
-        memory_dir = workspace_dir / "memory"
-        skills_dir = workspace_dir / "skills"
-        file_store_dir = workspace_dir / "file_store"
-
-        for d in [workspace_dir, sessions_dir, memory_dir, skills_dir, file_store_dir]:
-            d.mkdir(exist_ok=True, parents=True)
-
-        # 复制默认配置文件（如果有模板）
-        project_root = Path(__file__).parent.parent.parent.parent
-        default_config_path = project_root / "data" / "agent_db" / "agent.json"
-        target_config_path = dir_path / "agent.json"
-
-        if default_config_path.exists() and not target_config_path.exists():
-            shutil.copy2(default_config_path, target_config_path)
-
-        # 复制默认技能模板（如果有）
-        default_skills_path = project_root / "data" / "agent_db" / "templates" / "skills"
-        if default_skills_path.exists() and not any(skills_dir.iterdir()):
-            for skill_dir in default_skills_path.iterdir():
-                if skill_dir.is_dir():
-                    shutil.copytree(skill_dir, skills_dir / skill_dir.name)
-
-        # 复制默认的 AGENTS.md SOUL.md 等模板
-        template_files = ["AGENTS.md", "SOUL.md"]
-        templates_dir = project_root / "data" / "agent_db" / "templates"
-        for template_file in template_files:
-            src = templates_dir / template_file
-            if src.exists():
-                dst = dir_path / template_file
-                if not dst.exists():
-                    shutil.copy2(src, dst)
-
+        dir_path.mkdir(parents=True, exist_ok=True)
         return True
     except Exception as e:
         print(f"初始化目录失败: {e}")
@@ -135,41 +101,3 @@ def get_agent_workspace_path(user_id: int, local_dir: str | None = None) -> str:
     if local_dir:
         return os.path.abspath(local_dir)
     return get_default_agent_directory()
-
-
-def get_agent_subdirectory(local_dir: str, subdir: str) -> Path:
-    """获取 Agent 目录下的子目录路径
-
-    Args:
-        local_dir: Agent 工作目录
-        subdir: 子目录名称（如 'sessions', 'memory', 'skills'）
-
-    Returns:
-        Path: 子目录的完整路径
-    """
-    return Path(local_dir) / "workspace" / subdir
-
-
-def is_directory_structure_complete(local_dir: str) -> bool:
-    """检查 Agent 目录结构是否完整
-
-    Args:
-        local_dir: Agent 工作目录
-
-    Returns:
-        bool: 目录结构完整返回 True
-    """
-    try:
-        dir_path = Path(local_dir).resolve()
-        if not dir_path.exists():
-            return False
-
-        required_subdirs = ["workspace", "agent.json"]
-        for subdir in required_subdirs:
-            item = dir_path / subdir
-            if not item.exists():
-                return False
-
-        return True
-    except Exception:
-        return False

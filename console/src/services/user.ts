@@ -35,6 +35,7 @@ export const userApi = {
     api.put('/user/settings', data),
 }
 
+// --- 旧的配置接口类型（保留兼容性） ---
 export interface AgentConfig {
   agents_md: string
   soul_md: string
@@ -43,7 +44,6 @@ export interface AgentConfig {
   is_custom_api_key: boolean
 }
 
-// Update request type can still include api_key
 export interface AgentConfigUpdate {
   agents_md?: string
   soul_md?: string
@@ -57,7 +57,37 @@ export interface DefaultConfig {
   model_name: string
 }
 
+// --- 新的配置接口类型 ---
+
+// API Key 相关
+export interface SetApiKeyRequest {
+  api_key: string
+}
+
+export interface ApiKeyStatusResponse {
+  has_api_key: boolean
+}
+
+// 提示词相关
+export interface PromptTemplatesResponse {
+  agents_md: string
+  soul_md: string
+  updated_at: string | null
+}
+
+export interface UpdatePromptsRequest {
+  agents_md?: string
+  soul_md?: string
+}
+
+// 综合状态
+export interface AgentConfigStatusV2 {
+  has_api_key: boolean
+  has_prompts: boolean
+}
+
 export const agentApi = {
+  // --- 旧的 API（保留兼容性，建议使用新的 API） ---
   getConfig: (): Promise<AgentConfig> =>
     api.get('/agent/config'),
 
@@ -66,8 +96,31 @@ export const agentApi = {
 
   getDefaults: (): Promise<DefaultConfig> =>
     api.get('/agent/defaults'),
+
+  // --- 新的 API ---
+  // API Key 管理
+  setApiKey: (data: SetApiKeyRequest): Promise<void> =>
+    api.post('/agent/config/api-key', data),
+
+  deleteApiKey: (): Promise<void> =>
+    api.delete('/agent/config/api-key'),
+
+  getApiKeyStatus: (): Promise<ApiKeyStatusResponse> =>
+    api.get('/agent/config/api-key/status'),
+
+  // 提示词管理
+  getPrompts: (): Promise<PromptTemplatesResponse> =>
+    api.get('/agent/config/prompts'),
+
+  updatePrompts: (data: UpdatePromptsRequest): Promise<PromptTemplatesResponse> =>
+    api.put('/agent/config/prompts', data),
+
+  // 综合状态
+  getConfigStatus: (): Promise<AgentConfigStatusV2> =>
+    api.get('/agent/config/status'),
 }
 
+// --- 工作区 API（已废弃） ---
 export interface AgentWorkspaceStatus {
   is_configured: boolean
   local_working_dir: string | null

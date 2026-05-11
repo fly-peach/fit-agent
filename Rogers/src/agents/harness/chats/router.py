@@ -274,7 +274,11 @@ async def delete_session_endpoint(
         session_id=session_id,
     )
     try:
-        await memory.delete()
+        # AsyncSQLAlchemyMemory.delete() 需要 msg_ids 参数
+        msgs = await memory.get_memory()
+        msg_ids = [m.id for m in msgs if m.id]
+        if msg_ids:
+            await memory.delete(msg_ids)
     finally:
         await memory.close()
 

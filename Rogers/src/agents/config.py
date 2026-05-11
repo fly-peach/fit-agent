@@ -30,11 +30,13 @@ from src.fitme.core.config import settings
 # ---------------------------------------------------------------------------
 
 class ModelProvider(BaseModel):
-    """单个 LLM 提供方端点的配置。"""
+    """单个 LLM 提供方端点的配置。
+
+    注意：model_name 不再可配置，内部固定使用 qwen-vl-max（视觉）和 qwen-max（推理）
+    """
     provider: Literal["dashscope", "openai", "custom"] = "dashscope"
     api_key: str = ""
     base_url: Optional[str] = None
-    model_name: str = "qwen-turbo"
     stream: bool = True
 
 
@@ -58,11 +60,6 @@ class BuiltinToolConfig(BaseModel):
 
 def _default_builtin_tools() -> dict[str, BuiltinToolConfig]:
     return {
-        "execute_python_code": BuiltinToolConfig(
-            name="execute_python_code",
-            enabled=True,
-            description="执行 Python 代码",
-        ),
         "execute_shell_command": BuiltinToolConfig(
             name="execute_shell_command",
             enabled=True,
@@ -78,8 +75,7 @@ def _default_builtin_tools() -> dict[str, BuiltinToolConfig]:
             enabled=True,
             description="按需读取技能 references/scripts 文件",
         ),
-        # 数据读写工具已迁移到 fitme-skills CLI，不再在此注册，
-        # Agent 通过 execute_shell_command 调用 cli.py 完成数据操作。
+        # 数据读写工具已迁移到 fitme-skills CLI，通过 execute_shell_command 调用
     }
 
 
@@ -202,6 +198,50 @@ class AgentConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Pipeline 配置 — 多智能体管道工作流
+# ---------------------------------------------------------------------------
+
+class PipelineConfig(BaseModel):
+    """管道工作流配置。
+
+    控制视觉识别→主子Agent路由→Fanout并行分析→汇总的完整流程。
+
+    注意：vision_model 和 reasoning_model 内部固定，不可配置。
+    """
+    enabled: bool = True
+    fanout_enabled: bool = True  # 用户可关闭复杂任务分析
+
+    @property
+    def vision_model(self) -> str:
+        """视觉模型，固定为 qwen-vl-max。"""
+        return "qwen-vl-max"
+
+    @property
+    def reasoning_model(self) -> str:
+        """推理模型，固定为 qwen-max。"""
+        return "qwen-max"
+
+    def get_vision_model(self, api_key: str) -> "DashScopeChatModel":
+        """创建视觉模型实例（qwen-vl-max）。"""
+        from agentscope.model import DashScopeChatModel
+        return DashScopeChatModel(
+            model_name=self.vision_model,
+            api_key=api_key,
+            stream=False,
+        )
+
+    def get_reasoning_model(self, api_key: str) -> "DashScopeChatModel":
+        """创建推理模型实例（qwen-max）。"""
+        from agentscope.model import DashScopeChatModel
+        return DashScopeChatModel(
+            model_name=self.reasoning_model,
+            api_key=api_key,
+            stream=True,
+            enable_thinking=True,
+        )
+
+
+# ---------------------------------------------------------------------------
 # 根应用配置
 # ---------------------------------------------------------------------------
 
@@ -226,6 +266,9 @@ class AppConfig(BaseModel):
 
     # 智能体（以智能体 id 作为键）
     agents: dict[str, AgentConfig] = Field(default_factory=dict)
+
+    # Pipeline 管道配置
+    pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
 
     # 活动智能体（处理请求的智能体）
     active_agent: str = "default"
@@ -258,12 +301,12 @@ class AppConfig(BaseModel):
         """纯从环境变量构建配置。
 
         API Key 不再从环境变量读取，只能通过 Agent 配置页面由用户自行设置。
+        注意：model_name 不再可配置，内部固定使用 qwen-vl-max 和 qwen-max。
         """
         # 注册默认模型（不含 API Key，需用户在配置页面填入）
         models: dict[str, ModelProvider] = {
             "primary": ModelProvider(
                 provider="dashscope",
-                model_name=os.getenv("DASHSCOPE_MODEL", "qwen-turbo"),
             ),
         }
 
@@ -272,7 +315,6 @@ class AppConfig(BaseModel):
             models["fallback"] = ModelProvider(
                 provider="openai",
                 base_url=openai_base_url or None,
-                model_name=os.getenv("OPENAI_MODEL", "gpt-4o"),
             )
 
         return cls(

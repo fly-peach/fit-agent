@@ -68,7 +68,13 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        print("AgentApp is shutting down...")
+        logger.info("Shutting down FitAgent...")
+        # 主动关闭 AgentApp 的内部组件，防止进程挂住
+        try:
+            agent_app.close_interrupt_service()
+        except Exception as exc:
+            logger.warning("Interrupt service close failed: %s", exc)
+        logger.info("FitAgent shutdown complete.")
 
 
 

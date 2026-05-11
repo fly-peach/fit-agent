@@ -6,6 +6,7 @@ from typing import Optional
 from src.fitme.utils.database import get_user_db
 from src.fitme.services.auth_service import AuthService
 from src.fitme.schemas.auth import LoginRequest, LoginResponse, LogoutResponse, RegisterRequest, RegisterResponse
+from src.agents.utils.api_key_cache import api_key_cache
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
@@ -39,4 +40,12 @@ def logout(
     authorization: Optional[str] = Header(None)
 ):
     """用户登出"""
+    if authorization:
+        token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+        try:
+            user_id = AuthService.get_user_id_from_token(token)
+            if user_id:
+                api_key_cache.delete(user_id)
+        except Exception:
+            pass
     return LogoutResponse()

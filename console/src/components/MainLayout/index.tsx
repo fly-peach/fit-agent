@@ -15,7 +15,7 @@ import {
   UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons'
-import { LayoutDashboard, Heart, Dumbbell, Utensils, User, Bot, Wrench, Book } from 'lucide-react'
+import { LayoutDashboard, Heart, Dumbbell, Utensils, User, Bot, Wrench } from 'lucide-react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import type { MenuProps } from 'antd'
 import AIAssistant from '../AIAssistant'
@@ -52,7 +52,6 @@ const navItems: NavItem[] = [
   { key: '/user', icon: <IconWrapper color="#8B5CF6"><User size={16} /></IconWrapper>, label: '个人中心' },
   { key: '/agent-config', icon: <IconWrapper color="#A78BFA"><Bot size={16} /></IconWrapper>, label: 'Agent 配置' },
   { key: '/skills', icon: <IconWrapper color="#F97316"><Wrench size={16} /></IconWrapper>, label: '技能管理' },
-  { key: '/memory', icon: <IconWrapper color="#EC4899"><Book size={16} /></IconWrapper>, label: '记忆管理' },
 ]
 
 const menuItems: MenuProps['items'] = navItems.map(item => ({ ...item }))

@@ -1,7 +1,12 @@
 """FitMe Models Module - Split into base_db and user_db"""
 # New split models
 from .base_db import Base as BaseDBBase, Exercise, FoodItem, RecommendedTraining, RecommendedFood
-from .user_db import Base as UserDBBase, User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary, StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem
+from .user_db import (
+    Base as UserDBBase,
+    User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary,
+    StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem,
+    UserAgentConfig, UserPromptTemplate, UserMemory, UserDailyLog
+)
 
 # Chat models are defined in agents module, re-exported here for convenience
 from src.agents.harness.chats.models import ChatSession  # noqa: F401
@@ -29,6 +34,10 @@ __all__ = [
     "UserPinnedExercise",
     "PlanExerciseItem",
     "CustomFoodItem",
+    "UserAgentConfig",
+    "UserPromptTemplate",
+    "UserMemory",
+    "UserDailyLog",
     "ChatSession",
     # Backward compatibility
     "Base",

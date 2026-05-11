@@ -10,11 +10,9 @@ from .tools.skill_resource import create_skill_resource_tool
 from .tools.sandbox_manager import SandboxToolManager
 from .workspace.user_workspace import (
     get_user_workspace,
-    get_user_sessions_dir,
     ensure_user_workspace,
     load_user_sys_prompt,
     load_user_context,
-    restock_template_skills,
 )
 from .templates.templates import (
     get_template_path,
@@ -39,11 +37,9 @@ __all__ = [
     "SandboxToolManager",
     # 工作区
     "get_user_workspace",
-    "get_user_sessions_dir",
     "ensure_user_workspace",
     "load_user_sys_prompt",
     "load_user_context",
-    "restock_template_skills",
     # 模板
     "get_template_path",
     "get_skills_template_path",
