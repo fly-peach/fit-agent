@@ -65,6 +65,20 @@ const AIAssistant: React.FC = () => {
         rightHeader: <ChatActionGroup />,
         leftHeader: <ChatHeaderTitle />,
       },
+      chat: {
+        showThinking: true,
+        showToolCalling: true,
+        showToolResult: true,
+        showReasoning: true,
+        thinking: {
+          display: true,
+        },
+      },
+      message: {
+        showThinking: true,
+        showToolCalling: true,
+        showToolResult: true,
+      },
       sender: {
         attachments: {
           customRequest: async ({ file, onSuccess, onError }: any) => {

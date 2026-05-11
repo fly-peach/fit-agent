@@ -91,8 +91,9 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
   const handleSessionClick = useCallback(
     (sessionId: string) => {
       setCurrentSessionId(sessionId)
+      props.onClose()
     },
-    [setCurrentSessionId],
+    [setCurrentSessionId, props.onClose],
   )
 
   const handleDelete = useCallback(

@@ -129,8 +129,14 @@ class PipelineController:
     def _make_vision_model(self) -> DashScopeChatModel:
         return self.cfg.get_vision_model(self.api_key)
 
-    def _make_reasoning_model(self) -> DashScopeChatModel:
-        return self.cfg.get_reasoning_model(self.api_key)
+    def _make_reasoning_model(self, stream: bool = True) -> DashScopeChatModel:
+        """创建推理模型。"""
+        return DashScopeChatModel(
+            model_name=self.cfg.reasoning_model,
+            api_key=self.api_key,
+            stream=stream,
+            enable_thinking=True,
+        )
 
     # ------------------------------------------------------------------
     # SubAgent 创建
@@ -143,14 +149,7 @@ class PipelineController:
         skill_names: list[str],
         stream: bool = False,
     ) -> ReActAgent:
-        """创建一个带有特定技能集的 SubAgent。
-
-        Args:
-            name: Agent 名称
-            sys_prompt: 系统提示词
-            skill_names: 需要的技能名称列表
-            stream: 是否流式输出
-        """
+        """创建一个带有特定技能集的 SubAgent。"""
         from agentscope.tool import Toolkit
 
         model = DashScopeChatModel(
@@ -175,16 +174,16 @@ class PipelineController:
         return agent
 
     def _get_or_create_master_agent(
-        self, base_sys_prompt: str, user_id: int | str
+        self, base_sys_prompt: str, user_id: int | str, stream: bool = True
     ) -> ReActAgent:
         """获取或创建主子Agent（懒初始化）。"""
-        if self.master_agent is None:
+        if self.master_agent is None or stream != (getattr(self.master_agent.model, "stream", True)):
             full_prompt = base_sys_prompt + MASTER_SYS_PROMPT_ADDON
             self.master_agent = self._make_sub_agent(
                 name="Rogers",
                 sys_prompt=full_prompt,
                 skill_names=SKILL_BINDINGS["all"],
-                stream=True,
+                stream=stream,
             )
         return self.master_agent
 
@@ -242,52 +241,31 @@ class PipelineController:
         return Msg(name="VisionAnalyzer", content=desc, role="assistant")
 
     # ------------------------------------------------------------------
-    # Step 2+4: 主子Agent
+    # Step 2: 主子Agent (非流式，用于检测标记)
     # ------------------------------------------------------------------
 
-    async def _master_step(
+    async def _master_step_detect_marker(
         self, input_msgs, base_sys_prompt: str, user_id: int | str
-    ) -> tuple[list[Msg], dict | None]:
-        """运行主子Agent，返回 (输出消息列表, pipeline标记或None)。"""
-        agent = self._get_or_create_master_agent(base_sys_prompt, user_id)
+    ) -> tuple[str, dict | None]:
+        """运行主子Agent（非流式），返回 (完整文本, pipeline标记或None)。"""
+        # 使用非流式模型来获取完整输出
+        agent = self._get_or_create_master_agent(base_sys_prompt, user_id, stream=False)
         agent.set_console_output_enabled(False)
 
-        # 收集流式输出
-        output_msgs: list[Msg] = []
-        full_text = ""
-        async for msg, last in stream_printing_messages(
-            agents=[agent],
-            coroutine_task=agent(input_msgs),
-        ):
-            output_msgs.append(msg)
-            text = msg.get_text_content() if hasattr(msg, "get_text_content") else str(msg)
-            if text:
-                full_text += text
+        # 直接运行agent获取完整输出
+        result = await agent(input_msgs)
+        full_text = result.get_text_content() if hasattr(result, "get_text_content") else str(result)
 
         # 解析 pipeline 标记
         marker = _parse_pipeline_marker(full_text)
-        if marker:
-            # 移除 pipeline 标记本身，保留其余内容
-            clean_text = re.sub(
-                r"```pipeline\s*\{.*?\}\s*```", "", full_text, flags=re.DOTALL
-            ).strip()
-            if clean_text:
-                last_msg = output_msgs[-1]
-                if hasattr(last_msg, "content"):
-                    if isinstance(last_msg.content, list):
-                        for block in last_msg.content:
-                            if isinstance(block, dict) and block.get("type") == "text":
-                                block["text"] = clean_text
-                                break
-
-        return output_msgs, marker
+        return full_text, marker
 
     # ------------------------------------------------------------------
     # Step 3: Fanout 并行分析
     # ------------------------------------------------------------------
 
     async def _fanout_step(
-        self, user_msg, marker: dict
+        self, user_msg_text: str, marker: dict
     ) -> dict[str, Msg]:
         """运行 Fanout 管道，并行分析饮食和训练数据。"""
         needs = marker.get("needs", ["diet", "training"])
@@ -308,7 +286,7 @@ class PipelineController:
         analysis_msg = Msg(
             name="user",
             content=(
-                f"用户原始问题：{user_msg}\n\n"
+                f"用户原始问题：{user_msg_text}\n\n"
                 "请调用你的技能查询数据并给出专业分析报告。只输出分析结果，不要对话。"
             ),
             role="user",
@@ -343,13 +321,13 @@ class PipelineController:
         Yields:
             (Msg, bool) — 流式输出消息和完成标志
         """
-        user_msg = msgs
+        user_msg_text = ""
         if isinstance(msgs, list) and msgs:
-            user_msg = msgs[-1]
-            if isinstance(user_msg, Msg):
-                pass
-            else:
-                user_msg = msgs
+            last_msg = msgs[-1]
+            if isinstance(last_msg, Msg):
+                user_msg_text = last_msg.get_text_content() if hasattr(last_msg, "get_text_content") else str(last_msg)
+        elif isinstance(msgs, Msg):
+            user_msg_text = msgs.get_text_content() if hasattr(msgs, "get_text_content") else str(msgs)
 
         # Step 1: 视觉分析
         vision_desc = await self._vision_step(msgs)
@@ -359,34 +337,25 @@ class PipelineController:
             elif isinstance(msgs, Msg):
                 msgs = [msgs, vision_desc]
 
-        # Step 2: 主子Agent — 判断复杂度
-        master_msgs, marker = await self._master_step(
+        # Step 2: 先非流式运行 Master Agent 检测是否需要 pipeline
+        full_text, marker = await self._master_step_detect_marker(
             msgs, base_sys_prompt, user_id
         )
 
         # 如果不需要 Fanout，直接流式输出 master 的结果
         if marker is None or not self.cfg.fanout_enabled:
-            # 重新运行以流式输出
-            agent = self._get_or_create_master_agent(base_sys_prompt, user_id)
+            # 使用流式模型输出给用户
+            agent = self._get_or_create_master_agent(base_sys_prompt, user_id, stream=True)
             agent.set_console_output_enabled(False)
             async for msg, last in stream_printing_messages(
                 agents=[agent],
                 coroutine_task=agent(msgs),
             ):
-                # 过滤掉 pipeline 标记
-                text = msg.get_text_content() if hasattr(msg, "get_text_content") else str(msg)
-                if text and _parse_pipeline_marker(text) is None:
-                    yield msg, last
-                elif not text:
-                    yield msg, last
+                yield msg, last
             return
 
-        # Step 3: Fanout 并行分析
-        user_msg_text = ""
-        if isinstance(user_msg, Msg):
-            user_msg_text = user_msg.get_text_content() if hasattr(user_msg, "get_text_content") else str(user_msg)
-        elif isinstance(user_msg, str):
-            user_msg_text = user_msg
+        # Step 3: 需要 Fanout，执行并行分析
+        logger.info("Pipeline marker detected: %s", marker)
         fanout_results = await self._fanout_step(user_msg_text, marker)
 
         # 先输出子 Agent 的分析结果
@@ -394,7 +363,6 @@ class PipelineController:
         if "diet" in fanout_results:
             diet_text = fanout_results["diet"].get_text_content() if hasattr(fanout_results["diet"], "get_text_content") else str(fanout_results["diet"])
             summary_parts.append(f"## 饮食分析\n{diet_text}")
-            # 输出饮食子 Agent 的结果
             diet_msg = Msg(
                 name="DietAnalyst",
                 content=f"🍎 **饮食分析**\n\n{diet_text}",
@@ -404,7 +372,6 @@ class PipelineController:
         if "training" in fanout_results:
             train_text = fanout_results["training"].get_text_content() if hasattr(fanout_results["training"], "get_text_content") else str(fanout_results["training"])
             summary_parts.append(f"## 训练分析\n{train_text}")
-            # 输出训练子 Agent 的结果
             train_msg = Msg(
                 name="TrainingAnalyst",
                 content=f"💪 **训练分析**\n\n{train_text}",
@@ -412,7 +379,7 @@ class PipelineController:
             )
             yield train_msg, False
 
-        # Step 4: 主子Agent 汇总
+        # Step 4: 主子Agent 汇总并流式输出最终结果
         if summary_parts:
             summary_msg = Msg(
                 name="user",
@@ -423,12 +390,11 @@ class PipelineController:
                 ),
                 role="user",
             )
-            agent = self._get_or_create_master_agent(base_sys_prompt, user_id)
+            agent = self._get_or_create_master_agent(base_sys_prompt, user_id, stream=True)
             agent.set_console_output_enabled(False)
             async for msg, last in stream_printing_messages(
                 agents=[agent],
                 coroutine_task=agent(summary_msg),
             ):
-                # 修改主 Agent 的名称，让它更明显
                 msg.name = "Rogers"
                 yield msg, last
