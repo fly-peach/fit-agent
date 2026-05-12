@@ -1,4 +1,4 @@
-.fitagent-chat {
+.agentscope-runtime-webui {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -14,7 +14,7 @@
    侧边栏独立滚动
    ======================================== */
 
-.fitagent-chat .fitagent-chat-chat-anywhere-layout-left {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-layout-left {
   width: var(--sidebar-width) !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -24,7 +24,7 @@
   overflow: hidden !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions {
   height: 100% !important;
   max-height: 100% !important;
   display: flex !important;
@@ -32,11 +32,11 @@
   overflow: hidden !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-header {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-header {
   flex-shrink: 0 !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-content {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-content {
   flex: 1 !important;
   height: 0 !important;
   min-height: 0 !important;
@@ -45,11 +45,11 @@
   overflow: hidden !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-adder {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-adder {
   flex-shrink: 0 !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list {
   flex: 1 !important;
   height: auto !important;
   min-height: 0 !important;
@@ -60,27 +60,27 @@
   -ms-overflow-style: auto !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar {
   display: block !important;
   width: var(--scrollbar-width) !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-track {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-track {
   background: var(--scrollbar-track) !important;
   border-radius: 4px !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-thumb {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb) !important;
   border-radius: 4px !important;
   transition: background 0.2s !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-sessions-list::-webkit-scrollbar-thumb:hover {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover) !important;
 }
 
-.fitagent-chat .fitagent-chat-conversations {
+.agentscope-runtime-webui .agentscope-runtime-webui-conversations {
   overflow-y: visible !important;
   height: auto !important;
 }
@@ -89,7 +89,7 @@
    对话区独立滚动
    ======================================== */
 
-.fitagent-chat .fitagent-chat-chat-anywhere-layout-right {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-layout-right {
   height: 100% !important;
   max-height: 100% !important;
   flex: 1 !important;
@@ -99,7 +99,7 @@
   overflow: hidden !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-chat {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-chat {
   flex: 1 !important;
   height: 0 !important;
   min-height: 0 !important;
@@ -108,7 +108,7 @@
   overflow: hidden !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list {
   flex: 1 !important;
   height: 0 !important;
   min-height: 0 !important;
@@ -116,7 +116,7 @@
   flex-direction: column !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll {
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
   scrollbar-width: thin !important;
@@ -124,27 +124,27 @@
   -ms-overflow-style: auto !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar {
   display: block !important;
   width: var(--scrollbar-width) !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-track {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-track {
   background: var(--scrollbar-track) !important;
   border-radius: 4px !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-thumb {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb) !important;
   border-radius: 4px !important;
   transition: background 0.2s !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-message-list .fitagent-chat-bubble-list-scroll::-webkit-scrollbar-thumb:hover {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover) !important;
 }
 
-.fitagent-chat .fitagent-chat-chat-anywhere-input {
+.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-input {
   flex-shrink: 0 !important;
 }
 
@@ -152,14 +152,14 @@
    整体布局约束
    ======================================== */
 
-.fitagent-chat-chat-anywhere-layout {
+.agentscope-runtime-webui-chat-anywhere-layout {
   height: 100% !important;
   max-height: 100% !important;
   display: flex !important;
   overflow: hidden !important;
 }
 
-.fitagent-chat-chat-anywhere-layout-main {
+.agentscope-runtime-webui-chat-anywhere-layout-main {
   height: 100% !important;
   max-height: 100% !important;
   display: flex !important;
@@ -172,27 +172,27 @@
    Drawer 约束
    ======================================== */
 
-.fitagent-chat-drawer {
+.agentscope-runtime-webui-drawer {
   position: absolute !important;
   height: 100% !important;
   width: auto !important;
   max-width: 100% !important;
 }
 
-.fitagent-chat-drawer .ant-drawer-content {
+.agentscope-runtime-webui-drawer .ant-drawer-content {
   height: 100% !important;
   max-height: 100% !important;
 }
 
-.fitagent-chat-drawer .ant-drawer-wrapper-body {
+.agentscope-runtime-webui-drawer .ant-drawer-wrapper-body {
   height: 100% !important;
   max-height: 100% !important;
 }
 
-.fitagent-chat-drawer .ant-drawer-mask {
+.agentscope-runtime-webui-drawer .ant-drawer-mask {
   position: absolute !important;
 }
 
-.fitagent-chat .ant-drawer {
+.agentscope-runtime-webui .ant-drawer {
   max-width: 100% !important;
 }

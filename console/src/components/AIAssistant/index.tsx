@@ -1,6 +1,6 @@
 import { AgentScopeRuntimeWebUI, IAgentScopeRuntimeWebUIOptions } from '@agentscope-ai/chat'
 import { ConfigProvider } from 'antd'
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import sessionApi from './sessionApi'
 import ChatActionGroup from './components/ChatActionGroup'
 import ChatHeaderTitle from './components/ChatHeaderTitle'
@@ -11,47 +11,13 @@ import './components/ChatHeaderTitle/index.css'
 import './index.css'
 
 const AIAssistant: React.FC = () => {
-  const originalFetchRef = useRef<Window['fetch'] | null>(null)
-
-  // 拦截 fetch，为 /process 请求注入 Authorization header
-  useEffect(() => {
-    const originalFetch = window.fetch
-    originalFetchRef.current = originalFetch
-
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      if (url.includes('/process')) {
-        const token = localStorage.getItem('token')
-        if (token) {
-          const headers = new Headers(init?.headers || {})
-          headers.set('Authorization', `Bearer ${token}`)
-          init = { ...init, headers }
-        }
-      }
-      return originalFetch.call(window, input, init)
-    }
-
-    return () => {
-      window.fetch = originalFetchRef.current || originalFetch
-    }
-  }, [])
 
   const options = useMemo(() => {
+    const token = localStorage.getItem('token')
     return {
       api: {
         baseURL: BASE_URL,
-        requestInterceptors: [
-          (config: Record<string, any>) => {
-            const token = localStorage.getItem('token')
-            if (token) {
-              config.headers = {
-                ...(config.headers || {}),
-                Authorization: `Bearer ${token}`,
-              }
-            }
-            return config
-          },
-        ],
+        token: token || '',
       },
       session: {
         multiple: true,
@@ -59,25 +25,11 @@ const AIAssistant: React.FC = () => {
         hideBuiltInSessionList: true,
       },
       theme: {
-        colorPrimary: '#0EA5E9',
+        colorPrimary: '#615CED',
         darkMode: false,
-        prefix: 'fitagent-chat',
+        prefix: 'agentscope-runtime-webui',
         rightHeader: <ChatActionGroup />,
         leftHeader: <ChatHeaderTitle />,
-      },
-      chat: {
-        showThinking: true,
-        showToolCalling: true,
-        showToolResult: true,
-        showReasoning: true,
-        thinking: {
-          display: true,
-        },
-      },
-      message: {
-        showThinking: true,
-        showToolCalling: true,
-        showToolResult: true,
       },
       sender: {
         attachments: {
@@ -86,8 +38,6 @@ const AIAssistant: React.FC = () => {
             formData.append('file', file)
             const token = localStorage.getItem('token')
             try {
-              // Use /api/... path (matched by Vite '/api' proxy) instead of ${BASE_URL}/api/...
-              // which becomes /process/api/... (not a valid backend route)
               const resp = await fetch('/api/agent/upload', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
@@ -101,7 +51,7 @@ const AIAssistant: React.FC = () => {
             }
           },
         },
-        maxLength: 2000,
+        maxLength: 10000,
       },
       welcome: {
         greeting: '你好，我是你的健身助手！',
@@ -117,8 +67,8 @@ const AIAssistant: React.FC = () => {
   }, [])
 
   return (
-    <ConfigProvider getPopupContainer={() => document.querySelector('.fitagent-chat') as HTMLElement}>
-      <div className="fitagent-chat">
+    <ConfigProvider getPopupContainer={() => document.querySelector('.agentscope-runtime-webui') as HTMLElement}>
+      <div className="agentscope-runtime-webui">
         <AgentScopeRuntimeWebUI options={options} />
       </div>
     </ConfigProvider>

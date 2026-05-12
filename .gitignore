@@ -58,7 +58,6 @@ Thumbs.db
 .coverage
 htmlcov/
 .pytest_cache/
-test/
 
 # Pencil design files
 *.pen.operations

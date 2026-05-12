@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Layout,
   Menu,
@@ -83,6 +83,65 @@ const MainLayout: React.FC = () => {
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const isMobile = useIsMobile()
+
+  // Resizable sidebar state
+  const [aiPanelWidth, setAiPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('aiPanelWidth')
+    return saved ? parseInt(saved, 10) : 480
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragStartXRef = useRef(0)
+  const dragStartWidthRef = useRef(0)
+
+  const MIN_AI_PANEL_WIDTH = 360
+  const MAX_AI_PANEL_WIDTH = 800
+
+  // Save width to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('aiPanelWidth', aiPanelWidth.toString())
+  }, [aiPanelWidth])
+
+  // Handle drag start
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+    dragStartXRef.current = e.clientX
+    dragStartWidthRef.current = aiPanelWidth
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [aiPanelWidth])
+
+  // Handle drag move
+  const handleDragMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return
+    const deltaX = dragStartXRef.current - e.clientX
+    let newWidth = dragStartWidthRef.current + deltaX
+    newWidth = Math.max(MIN_AI_PANEL_WIDTH, Math.min(MAX_AI_PANEL_WIDTH, newWidth))
+    setAiPanelWidth(newWidth)
+  }, [isDragging])
+
+  // Handle drag end
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }, [])
+
+  // Add and remove global event listeners
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove)
+      window.addEventListener('mouseup', handleDragEnd)
+      window.addEventListener('mouseleave', handleDragEnd)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove)
+      window.removeEventListener('mouseup', handleDragEnd)
+      window.removeEventListener('mouseleave', handleDragEnd)
+    }
+  }, [isDragging, handleDragMove, handleDragEnd])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -304,21 +363,57 @@ const MainLayout: React.FC = () => {
             </Dropdown>
           </div>
         </Header>
-        <Layout style={{ flexDirection: 'row', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-          <Content style={{ flex: rightDrawerOpen ? '0 0 60%' : '1 1 auto', background: 'transparent', overflow: 'auto', transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+        <Layout
+          ref={containerRef}
+          style={{
+            flexDirection: 'row',
+            height: 'calc(100vh - 64px)',
+            overflow: 'hidden',
+          }}
+        >
+          <Content
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: 'transparent',
+              overflow: 'auto',
+            }}
+          >
             <Outlet />
           </Content>
-          <div style={{
-            width: rightDrawerOpen ? '40%' : 0,
-            height: 'calc(100vh - 64px)',
-            position: 'relative',
-            background: '#fff',
-            borderLeft: rightDrawerOpen ? '1px solid #F0EDE8' : 'none',
-            overflow: 'hidden',
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-left 0.3s ease',
-          }}>
-            {rightDrawerOpen && <AIAssistant />}
-          </div>
+          {rightDrawerOpen && (
+            <>
+              {/* Resizable AI Panel */}
+              <div
+                style={{
+                  width: aiPanelWidth,
+                  height: 'calc(100vh - 64px)',
+                  position: 'relative',
+                  background: '#fff',
+                  borderLeft: '1px solid #F0EDE8',
+                  overflow: 'hidden',
+                  transition: isDragging ? 'none' : 'width 0.2s ease',
+                }}
+              >
+                {/* Drag Handle */}
+                <div
+                  onMouseDown={handleDragStart}
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 6,
+                    cursor: 'col-resize',
+                    zIndex: 10,
+                    background: isDragging ? '#0EA5E920' : 'transparent',
+                    transition: 'background 0.2s',
+                  }}
+                />
+                <AIAssistant />
+              </div>
+            </>
+          )}
         </Layout>
       </Layout>
       {/* Mobile menu drawer for tablet */}
