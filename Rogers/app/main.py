@@ -52,28 +52,13 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # 3. 初始化 agent_memory.db（FitAgentSQLMemory 专用，独立于主库）
-    from src.agents.harness.memory.fitagent_memory import FitAgentSQLMemory
-    from src.fitme.utils.database import async_agent_memory_engine
-    memory = FitAgentSQLMemory(
-        engine_or_session=async_agent_memory_engine,
-        user_id="_init",
-        session_id="_init",
-    )
-    try:
-        await memory._create_table()
-    finally:
-        await memory.close()
+    
 
     try:
         yield
     finally:
         logger.info("Shutting down FitAgent...")
         # 主动关闭 AgentApp 的内部组件，防止进程挂住
-        try:
-            agent_app.close_interrupt_service()
-        except Exception as exc:
-            logger.warning("Interrupt service close failed: %s", exc)
         logger.info("FitAgent shutdown complete.")
 
 
@@ -136,11 +121,7 @@ app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
 app.include_router(exercise_router)
-app.include_router(agent_config_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
-app.include_router(agent_router)
-app.include_router(skills.router)
-app.include_router(context.router)
 
 # AgentScope Runtime 会自动注册 "/" 根路由，导致前端首页被 JSON 响应覆盖。
 # 保留其 "/process" 等接口，仅移除冲突的首页路由。
@@ -149,10 +130,7 @@ app.router.routes = [
     if not (getattr(route, "path", None) == "/" and getattr(route, "name", None) == "root")
 ]
 
-
-
 _original_openapi = app.openapi
-
 
 def _patched_openapi() -> dict:
     schema = _original_openapi()
@@ -166,33 +144,4 @@ def _patched_openapi() -> dict:
     component_schemas.setdefault("AgentRequest", agent_schema)
     return schema
 
-
-
 app.openapi = _patched_openapi
-
-@app.get("/health")
-def health_check():
-    """健康检查"""
-    return {"status": "healthy"}
-
-
-# ========== 静态文件服务 (前端控制台) ==========
-from fastapi.responses import FileResponse
-
-CONSOLE_DIR = Path(__file__).resolve().parent.parent / "console"
-DIST_DIR = CONSOLE_DIR / "dist"
-
-if DIST_DIR.exists():
-    # 挂载静态文件在根路径（必须放在所有 API 路由之后）
-    app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
-
-    # SPA fallback: 所有非 API 路由都返回 index.html
-    @app.get("/{path:path}")
-    async def serve_spa(path: str):
-        index_path = DIST_DIR / "index.html"
-        if index_path.exists():
-            return FileResponse(index_path)
-        return {"detail": "Not Found"}, 404
-elif CONSOLE_DIR.exists():
-    # 开发模式 fallback (如果有需要)
-    pass

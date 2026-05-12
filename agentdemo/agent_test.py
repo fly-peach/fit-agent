@@ -1,133 +1,266 @@
-# -*- coding: utf-8 -*-
+"""
+Rogers Agent - Pipeline 多智能体编排
+
+基于 AgentScope Runtime 的多智能体管道工作流演示：
+- Master Agent: 判断问题复杂度 → 输出思考过程 → 简单回答 or 触发 Fanout
+- Fanout: SubAgent DietAnalyst + SubAgent TrainingAnalyst 依次分析
+- Master Agent: 汇总 SubAgent 输出 → 流式输出最终回复
+
+所有输出均为 SSE 流式，并标注 [Master] / [SubAgent:xxx] 标识。
+"""
+import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from agentscope.agent import ReActAgent
-from agentscope.formatter import DashScopeChatFormatter
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
+from agentscope.formatter import DashScopeChatFormatter
+from agentscope.tool import Toolkit
 from agentscope.pipeline import stream_printing_messages
-from agentscope.tool import Toolkit, execute_python_code
 from agentscope.memory import InMemoryMemory
 from agentscope.session import RedisSession
 
-from agentscope_runtime.engine.app import AgentApp
+from agentscope_runtime.engine import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 from dotenv import load_dotenv
-load_dotenv()  # 从 .env 文件加载环境变量
 
-# ---------- 模型配置（三个智能体复用同一个配置）----------
-_MODEL = DashScopeChatModel(
-    "qwen-turbo",
-    api_key=os.getenv("DASHSCOPE_API_KEY"),
-    enable_thinking=True,
-    stream=True,
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+
+# ============================================================================
+# Agent 工厂 & System Prompts
+# ============================================================================
+
+def _build_model(model_name: str = "qwen-turbo") -> DashScopeChatModel:
+    return DashScopeChatModel(
+        model_name=model_name,
+        api_key=os.getenv("DASHSCOPE_API_KEY"),
+        stream=True,
+    )
+
+
+def create_agent(name: str, sys_prompt: str, model_name: str = "qwen-turbo") -> ReActAgent:
+    """创建 ReActAgent 实例。"""
+    return ReActAgent(
+        name=name,
+        model=_build_model(model_name),
+        sys_prompt=sys_prompt,
+        toolkit=Toolkit(),
+        memory=InMemoryMemory(),
+        formatter=DashScopeChatFormatter(),
+    )
+
+
+MASTER_SYS_PROMPT = (
+    "你是 Rogers，专业的健身和健康管理助手（Master Agent）。"
+    "当用户提问时，先判断问题复杂度：\n"
+    "1. 简单问题（闲聊、问候、常识问答）→ 直接回答。\n"
+    "2. 涉及「饮食营养 + 运动训练」两方面 → 在回复末尾明确写出"
+    "【需要专项分析】，并简要列出 DietAnalyst 和 TrainingAnalyst 各自的分析方向。\n"
+    "用中文回答，专业且友好。"
+)
+
+DIET_SYS_PROMPT = (
+    "你是 DietAnalyst，专业饮食营养分析助手。"
+    "根据用户目标、身体状况和饮食偏好，给出科学、个性化的饮食建议。"
+    "用中文回答。注意：输出必须精简，控制在 30 行以内，列出要点即可，严禁长篇大论。"
+)
+
+TRAINING_SYS_PROMPT = (
+    "你是 TrainingAnalyst，专业运动训练分析助手。"
+    "根据用户目标、体能水平和训练偏好，给出科学、个性化的训练计划建议。"
+    "用中文回答。注意：输出必须精简，控制在 30 行以内，列出要点即可，严禁长篇大论。"
 )
 
 
-def _make_toolkit() -> Toolkit:
-    """创建工具包（每个 agent 独立实例）。"""
-    tk = Toolkit()
-    tk.register_tool_function(execute_python_code)
-    return tk
+# ============================================================================
+# 辅助工具
+# ============================================================================
+
+def _content_text(msg: 'Msg') -> str:
+    """从 Msg 的 content 中提取纯文本，兼容 dict 和 ContentBlock 对象。"""
+    c = getattr(msg, "content", msg)
+    if c is None:
+        return ""
+    if isinstance(c, str):
+        return c
+    if isinstance(c, list):
+        parts = []
+        for block in c:
+            if hasattr(block, "text"):          # ContentBlock 对象
+                parts.append(block.text or "")
+            elif isinstance(block, dict):
+                if block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+                elif isinstance(block.get("text"), str):
+                    parts.append(block["text"])
+            elif isinstance(block, str):
+                parts.append(block)
+        return " ".join(parts)
+    return str(c)
 
 
-def _make_formatter():
-    """创建消息格式化器。"""
-    return DashScopeChatFormatter()
+# ============================================================================
+# 核心 Pipeline 编排（自定义流式生成器）
+# ============================================================================
 
+async def _run_pipeline(msgs: list) -> AsyncGenerator:
+    """
+    Master → Fanout → Master 完整流水线.
+
+    流程:
+      Phase 1: Master 分析复杂度（流式输出）
+      Phase 2: 判断是否需要 Fanout
+      Phase 3: DietAnalyst → TrainingAnalyst 顺序分析（各自流式输出）
+      Phase 4: Master 汇总两个 SubAgent 结果，流式输出最终回复
+    """
+    # ---- 创建所有 Agent ----
+    master = create_agent("Rogers-Master", MASTER_SYS_PROMPT, model_name="qwen-max")
+    diet = create_agent("DietAnalyst", DIET_SYS_PROMPT)
+    training = create_agent("TrainingAnalyst", TRAINING_SYS_PROMPT)
+
+    for a in (master, diet, training):
+        a.set_console_output_enabled(False)
+
+    # 将 msgs 转为列表，避免迭代器被消耗后 master() 收到空输入
+    raw_msgs = list(msgs)
+
+    # ========================================================================
+    # Phase 1: Master Agent 分析复杂度（流式）
+    # ========================================================================
+    master_text = ""
+
+    async for msg, last in stream_printing_messages(
+        agents=[master],
+        coroutine_task=master(raw_msgs),  # 使用 raw_msgs，避免 msgs 已被消耗
+    ):
+        # 标注来源，保留原 role 不变
+        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                            source="[Master] Rogers")
+        yield msg, last
+        master_text += _content_text(msg)
+
+    # ========================================================================
+    # Phase 2: 判断是否需要 Fanout
+    # ========================================================================
+    need_fanout = "【需要专项分析】" in master_text
+
+    if not need_fanout:
+        # 简单问题，Master 已回答完毕
+        return
+
+    user_question = _content_text(raw_msgs[-1]) if raw_msgs else ""
+
+    # ========================================================================
+    # Phase 3: Fanout — SubAgent 顺序分析（各自流式输出）
+    # ========================================================================
+
+    # --- SubAgent 1: DietAnalyst ---
+    diet_input = [
+        Msg(name="User",
+            content=f"用户问题：{user_question}\n\n请从饮食营养角度做专业分析，给出具体建议。",
+            role="user")
+    ]
+    diet_output = ""
+    async for msg, last in stream_printing_messages(
+        agents=[diet],
+        coroutine_task=diet(diet_input),
+    ):
+        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                            source="[SubAgent] DietAnalyst")
+        yield msg, last
+        text = _content_text(msg)
+        diet_output += text
+
+    logger.info("DietAnalyst output length: %d chars", len(diet_output))
+
+    # --- SubAgent 2: TrainingAnalyst ---
+    training_input = [
+        Msg(name="User",
+            content=f"用户问题：{user_question}\n\n请从运动训练角度做专业分析，给出具体建议。",
+            role="user")
+    ]
+    training_output = ""
+    async for msg, last in stream_printing_messages(
+        agents=[training],
+        coroutine_task=training(training_input),
+    ):
+        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                            source="[SubAgent] TrainingAnalyst")
+        yield msg, last
+        text = _content_text(msg)
+        training_output += text
+
+    logger.info("TrainingAnalyst output length: %d chars", len(training_output))
+
+    # ========================================================================
+    # Phase 4: Master Agent 汇总分析（流式）
+    # ========================================================================
+    if not diet_output.strip() and not training_output.strip():
+        # SubAgent 未产生有效输出，跳过汇总
+        logger.warning("Both SubAgents produced empty output, skipping aggregation")
+        return
+
+    if not diet_output.strip():
+        logger.warning("DietAnalyst produced empty output")
+    if not training_output.strip():
+        logger.warning("TrainingAnalyst produced empty output")
+
+    agg_input = Msg(
+        name="User",
+        content=(
+            f"用户原始问题：{user_question}\n\n"
+            f"=== DietAnalyst 饮食分析 ===\n{diet_output.strip() or '（无输出）'}\n\n"
+            f"=== TrainingAnalyst 训练分析 ===\n{training_output.strip() or '（无输出）'}\n\n"
+            "请综合以上两项分析，用中文输出最终健身建议。要求：精简有力，控制在 40 行以内，只输出结论要点，勿重复子分析细节。"
+        ),
+        role="user",
+    )
+
+    async for msg, last in stream_printing_messages(
+        agents=[master],
+        coroutine_task=master([agg_input]),
+    ):
+        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                            source="[Master] Rogers")
+        yield msg, last
+
+
+# ============================================================================
+# 1. 生命周期管理
+# ============================================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """初始化服务。"""
     import fakeredis
 
-    fake_redis = fakeredis.aioredis.FakeRedis(
-        decode_responses=True
-    )
-    # 注意：这个 FakeRedis 实例仅用于开发/测试。
-    # 在生产环境中，请替换为你自己的 Redis 客户端/连接
-    #（例如 aioredis.Redis）。
-    app.state.session = RedisSession(
-        connection_pool=fake_redis.connection_pool
-    )
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.session = RedisSession(connection_pool=fake_redis.connection_pool)
     try:
         yield
     finally:
         print("AgentApp is shutting down...")
 
 
-async def three_agent_pipeline(
-    agent_a,
-    agent_b,
-    agent_c,
-    msg,
-):
-    """
-    三智能体管道：
-    A(分析意图) → B(技术分析) → C(用户体验分析) → A(整合输出)
-    """
-    # 提取用户原始问题
-    user_question = ""
-    if isinstance(msg, list) and msg:
-        last_msg = msg[-1]
-        if isinstance(last_msg, Msg):
-            user_question = last_msg.get_text_content() if hasattr(last_msg, "get_text_content") else str(last_msg)
-    elif isinstance(msg, Msg):
-        user_question = msg.get_text_content() if hasattr(msg, "get_text_content") else str(msg)
+# ============================================================================
+# 2. 创建 AgentApp
+# ============================================================================
 
-    # ========== 步骤 1/4：Agent A 分析用户意图 ==========
-    response_a = await agent_a(msg)
-    response_a_text = response_a.get_text_content() if hasattr(response_a, "get_text_content") else str(response_a)
-
-    # ========== 步骤 2/4：Agent B 从技术/逻辑角度分析 ==========
-    analysis_msg_for_b = Msg(
-        name="user",
-        content=f"用户原始问题：{user_question}\n\n意图分析员的分析结果：\n{response_a_text}\n\n请从技术/逻辑角度进行深入分析。",
-        role="user",
-    )
-    response_b = await agent_b([analysis_msg_for_b])
-    response_b_text = response_b.get_text_content() if hasattr(response_b, "get_text_content") else str(response_b)
-
-    # ========== 步骤 3/4：Agent C 从用户体验/实践角度分析 ==========
-    analysis_msg_for_c = Msg(
-        name="user",
-        content=f"用户原始问题：{user_question}\n\n意图分析员的分析结果：\n{response_a_text}\n\n请从用户体验/实践角度进行深入分析。",
-        role="user",
-    )
-    response_c = await agent_c([analysis_msg_for_c])
-    response_c_text = response_c.get_text_content() if hasattr(response_c, "get_text_content") else str(response_c)
-
-    # ========== 步骤 4/4：Agent A 整合并给出最终答案 ==========
-    summary_msg = Msg(
-        name="user",
-        content=f"""用户原始问题：{user_question}
-
-以下是两位分析员的分析结果：
-
-【分析员 B（技术/逻辑角度）】：
-{response_b_text}
-
-【分析员 C（用户体验/实践角度）】：
-{response_c_text}
-
-请综合以上分析，给出一个完整、专业的最终回答。
-""",
-        role="user",
-    )
-    final_response = await agent_a([summary_msg])
-
-    return final_response, response_b_text, response_c_text
-
-
-# 创建 AgentApp
 agent_app = AgentApp(
-    app_name="ThreeAgentWorkflow",
-    app_description="三智能体工作流演示：意图分析 → 技术分析 → 用户体验分析 → 整合输出",
+    app_name="Rogers-Pipeline-Demo",
+    app_description="Multi-Agent Pipeline: Master → Fanout(DietAnalyst, TrainingAnalyst) → Master",
     lifespan=lifespan,
 )
 
+
+# ============================================================================
+# 3. 查询端点（Pipeline SSE 流式输出）
+# ============================================================================
 
 @agent_app.query(framework="agentscope")
 async def query_func(
@@ -136,105 +269,38 @@ async def query_func(
     request: AgentRequest = None,
     **kwargs,
 ):
-    """处理用户查询 — 三智能体工作流。"""
+    """Pipeline 多智能体编排 HTTP SSE 端点。"""
     session_id = request.session_id
     user_id = request.user_id
 
-    # ========== Agent A：意图分析员 & 最终整合 ==========
-    agent_a = ReActAgent(
-        name="意图分析员",
-        model=_MODEL,
-        sys_prompt=(
-            "你是一个专业的意图分析专家。当第一次收到用户问题时，你需要：\n"
-            "1. 先思考（思考过程要详细）\n"
-            "2. 分析用户的问题意图\n"
-            "3. 明确用户想知道什么、关注点在哪里\n"
-            "4. 输出你的分析结果\n\n"
-            "当最后收到两位分析员的分析结果时，你需要：\n"
-            "1. 先思考（思考过程要详细）\n"
-            "2. 综合两位分析员的观点\n"
-            "3. 给出一个完整、专业的最终回答\n\n"
-            "用中文回答。"
-        ),
-        toolkit=_make_toolkit(),
-        memory=InMemoryMemory(),
-        formatter=_make_formatter(),
+    try:
+        async for msg, last in _run_pipeline(msgs):
+            yield msg, last
+
+    except asyncio.CancelledError:
+        print(f"Task {session_id} was manually interrupted.")
+        raise
+
+
+# ============================================================================
+# 4. 中断触发路由
+# ============================================================================
+
+@agent_app.post("/stop")
+async def stop_task(request: AgentRequest):
+    await agent_app.stop_chat(
+        user_id=request.user_id,
+        session_id=request.session_id,
     )
+    return {
+        "status": "success",
+        "message": "Interrupt signal broadcasted.",
+    }
 
-    # ========== Agent B：技术/逻辑分析员 ==========
-    agent_b = ReActAgent(
-        name="分析员B",
-        model=_MODEL,
-        sys_prompt=(
-            "你是分析员 B，擅长从技术/逻辑角度分析问题。\n"
-            "请基于用户问题和意图分析，从技术可行性、逻辑严谨性等角度进行深入分析。\n"
-            "先思考（思考过程要详细），然后输出你的分析结果。\n"
-            "用中文回答。"
-        ),
-        toolkit=_make_toolkit(),
-        memory=InMemoryMemory(),
-        formatter=_make_formatter(),
-    )
 
-    # ========== Agent C：用户体验/实践分析员 ==========
-    agent_c = ReActAgent(
-        name="分析员C",
-        model=_MODEL,
-        sys_prompt=(
-            "你是分析员 C，擅长从用户体验/实践角度分析问题。\n"
-            "请基于用户问题和意图分析，从用户需求、实际应用场景等角度进行深入分析。\n"
-            "先思考（思考过程要详细），然后输出你的分析结果。\n"
-            "用中文回答。"
-        ),
-        toolkit=_make_toolkit(),
-        memory=InMemoryMemory(),
-        formatter=_make_formatter(),
-    )
-
-    # 关闭终端打印，改为通过 stream_printing_messages 返回
-    agent_a.set_console_output_enabled(False)
-    agent_b.set_console_output_enabled(False)
-    agent_c.set_console_output_enabled(False)
-
-    # 从 session 恢复分析员 A 的记忆状态
-    await agent_app.state.session.load_session_state(
-        session_id=session_id,
-        user_id=user_id,
-        agent=agent_a,
-    )
-
-    # 运行完整的三智能体工作流
-    final_response, response_b_text, response_c_text = await three_agent_pipeline(
-        agent_a=agent_a,
-        agent_b=agent_b,
-        agent_c=agent_c,
-        msg=msgs,
-    )
-
-    # 输出分析员 B 的结果（使用特殊标记）
-    yield Msg(
-        name="分析员B",
-        content=f"---ANALYST_B_START---\n{response_b_text}\n---ANALYST_B_END---",
-        role="assistant",
-    ), False
-
-    # 输出分析员 C 的结果（使用特殊标记）
-    yield Msg(
-        name="分析员C",
-        content=f"---ANALYST_C_START---\n{response_c_text}\n---ANALYST_C_END---",
-        role="assistant",
-    ), False
-
-    # 输出最终结果
-    yield final_response, True
-
-    # 保存分析员 A 的 session 状态
-    await agent_app.state.session.save_session_state(
-        session_id=session_id,
-        user_id=user_id,
-        agent=agent_a,
-    )
-
+# ============================================================================
+# 5. 启动应用
+# ============================================================================
 
 if __name__ == "__main__":
-    agent_app.run(host="127.0.0.1", port=8000)
+    agent_app.run(host="127.0.0.1", port=8090)
