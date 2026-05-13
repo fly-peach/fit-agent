@@ -6,7 +6,7 @@ import jwt
 from datetime import datetime, timedelta, timezone
 from ..models import User, UserSettings
 from ..schemas.auth import LoginRequest, RegisterRequest
-from ..core.config import settings
+from src.core.config import settings
 
 
 class AuthService:

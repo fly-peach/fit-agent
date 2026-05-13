@@ -18,13 +18,13 @@ from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 logger = logging.getLogger("fitagent")
 
 
-from src.fitme.core.config import settings
+from src.core.config import settings
 from src.fitme.models import UserDBBase
 from src.fitme.utils.database import user_engine, async_agent_memory_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
-from .routers.agent import agent_app, router as agent_router, _auth_token
-from .routers import skills, context
+from .routers.agent import agent_app
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     # 2. 初始化 fituser.db（建表）
     UserDBBase.metadata.create_all(bind=user_engine)
 
-    # 迁移：为新列添加 ALTER TABLE (仅在 user_db 上)
+    # 迁移：为新列添加 ALTER TABLE（仅在 user_db 上）
     import sqlalchemy as sa
     with user_engine.connect() as conn:
         for col, col_type in [("recurring_group_id", "INTEGER")]:
@@ -52,7 +52,11 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    
+    # 3. 初始化 AgentApp Redis Session（与 AgentScope 集成）
+    import fakeredis
+    from agentscope.session import RedisSession
+    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.session = RedisSession(connection_pool=fake_redis.connection_pool)
 
     try:
         yield
@@ -60,7 +64,6 @@ async def lifespan(app: FastAPI):
         logger.info("Shutting down FitAgent...")
         # 主动关闭 AgentApp 的内部组件，防止进程挂住
         logger.info("FitAgent shutdown complete.")
-
 
 
 app = FastAPI(
@@ -87,6 +90,7 @@ async def set_auth_token(request: Request, call_next):
     2. ?token=<token> 查询参数（SSE 场景常用）
     3. Cookie token=<token>
     """
+    from .routers.agent import _auth_token
     token = None
     auth = request.headers.get("authorization", "")
     if auth.startswith("Bearer "):
@@ -121,6 +125,7 @@ app.include_router(health_router)
 app.include_router(training_router)
 app.include_router(diet_router)
 app.include_router(exercise_router)
+app.include_router(agent_config_router)
 app.include_router(agent_app.router, prefix="", tags=["agent"])
 
 # AgentScope Runtime 会自动注册 "/" 根路由，导致前端首页被 JSON 响应覆盖。

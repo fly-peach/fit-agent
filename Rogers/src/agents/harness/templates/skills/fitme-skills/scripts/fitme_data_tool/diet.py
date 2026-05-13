@@ -210,7 +210,7 @@ def analyze_diet_gap(user_id: int, meal_type: str = "", limit: int = 5) -> dict[
         "carbs": 100 - progress["carbs"]["percent"],
         "fat": 100 - progress["fat"]["percent"],
     }
-    priority = max(macro_ratios, key=macro_ratios.get)
+    priority = max(macro_ratios, key=lambda x: macro_ratios[x])
     if not has_macro_catalog:
         priority = "calories"
 

@@ -6,6 +6,7 @@ from .training import router as training_router
 from .diet import router as diet_router
 from .agent import agent_app as agent_router
 from .exercise import router as exercise_router
+from .agent_config import router as agent_config_router
 
 
 __all__ = [

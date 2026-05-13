@@ -95,13 +95,13 @@ export const trainingApi = {
     api.post('/training/plans', data),
 
   updatePlan: (planId: number, data: Partial<TrainingPlan>): Promise<void> =>
-    api.put(`/training/plans/${planId}`, data),
+    api.put(`/api/training/plans/${planId}`, data),
 
   completePlan: (planId: number, data: { actualDuration: number; actualIntensity?: string; caloriesBurned?: number; note?: string; completedDate?: string }): Promise<void> =>
-    api.post(`/training/complete/${planId}`, data),
+    api.post(`/api/training/complete/${planId}`, data),
 
   deletePlan: (planId: number): Promise<void> =>
-    api.delete(`/training/plans/${planId}`),
+    api.delete(`/api/training/plans/${planId}`),
 
   getDateRangeTrend: (startDate: string, endDate: string): Promise<{
     dailyStats: {
@@ -114,14 +114,14 @@ export const trainingApi = {
     api.get('/training/trend/range', { params: { start_date: startDate, end_date: endDate } }),
 
   getPlanDetail: (planId: number): Promise<PlanDetail> =>
-    api.get(`/training/plans/${planId}/detail`),
+    api.get(`/api/training/plans/${planId}/detail`),
 
   updatePlanExercise: (exerciseId: number, data: { sets?: number; reps?: number; weight?: number; duration?: number }): Promise<void> =>
-    api.put(`/training/plans/exercise/${exerciseId}`, data),
+    api.put(`/api/training/plans/exercise/${exerciseId}`, data),
 
   addPlanExercise: (planId: number, data: PlanExerciseInput): Promise<void> =>
-    api.post(`/training/plans/${planId}/exercises`, data),
+    api.post(`/api/training/plans/${planId}/exercises`, data),
 
   deletePlanExercise: (exerciseId: number): Promise<void> =>
-    api.delete(`/training/plans/exercise/${exerciseId}`),
+    api.delete(`/api/training/plans/exercise/${exerciseId}`),
 }

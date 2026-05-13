@@ -81,10 +81,10 @@ export const exerciseApi = {
     mechanics?: string
     limit?: number
   }): Promise<ExerciseItem[]> =>
-    api.get('/exercises', { params }),
+    api.get('/api/exercises', { params }),
 
   getExerciseDetail: (exerciseId: number): Promise<ExerciseDetail> =>
-    api.get(`/exercises/${exerciseId}`),
+    api.get(`/api/exercises/${exerciseId}`),
 
   getMuscleCategories: (): Promise<string[]> =>
     api.get('/exercises/categories/muscles'),
@@ -106,7 +106,7 @@ export const exerciseApi = {
     api.post('/exercises/pin', { exerciseId }),
 
   unpinExercise: (exerciseId: number): Promise<void> =>
-    api.delete(`/exercises/pin/${exerciseId}`),
+    api.delete(`/api/exercises/pin/${exerciseId}`),
 
   getPinnedExercises: (): Promise<PinnedExercise[]> =>
     api.get('/exercises/pinned'),

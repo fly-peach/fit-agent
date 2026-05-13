@@ -64,13 +64,6 @@ from .exercise import (
     PinExerciseRequest,
     ReorderPinnedRequest,
 )
-from .agent import (
-    UserAgentConfigBase,
-    UserAgentConfigCreate,
-    UserAgentConfigUpdate,
-    UserAgentConfigResponse,
-    AgentConfigStatus,
-)
 
 __all__ = [
     "BaseResponse",
@@ -127,9 +120,4 @@ __all__ = [
     "PinnedExercisesResponse",
     "PinExerciseRequest",
     "ReorderPinnedRequest",
-    "UserAgentConfigBase",
-    "UserAgentConfigCreate",
-    "UserAgentConfigUpdate",
-    "UserAgentConfigResponse",
-    "AgentConfigStatus",
 ]

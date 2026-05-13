@@ -20,6 +20,13 @@ from src.fitme.schemas.diet import (
     FoodItemsResponse,
     CreateCustomFood,
     CreateCustomFoodResponse,
+    DietStats,
+    DietMeal,
+    NutritionProgress,
+    WeeklyDietTrend,
+    DateRangeDietTrend,
+    FoodItem,
+    RecommendedFood
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
@@ -48,7 +55,8 @@ def get_today_stats(
 ):
     """获取今日饮食统计"""
     stats = DietService.get_today_stats(user_db, current_user.user_id)
-    return DietStatsResponse(data=stats)
+    # 确保返回的是DietStats模型实例
+    return DietStatsResponse(data=DietStats(**stats) if isinstance(stats, dict) else stats)
 
 
 @router.get("/meals/today", response_model=DietMealsResponse)
@@ -59,7 +67,8 @@ def get_today_meals(
 ):
     """获取饮食记录（默认今日，支持指定日期）"""
     meals = DietService.get_today_meals(user_db, current_user.user_id, target_date)
-    return DietMealsResponse(data=meals)
+    # 确保返回的是DietMeal列表
+    return DietMealsResponse(data=[DietMeal(**meal) if isinstance(meal, dict) else meal for meal in meals])
 
 
 @router.post("/meals", response_model=CreateMealResponse)
@@ -110,7 +119,7 @@ def get_nutrition_progress(
 ):
     """获取营养摄入进度"""
     progress = DietService.get_nutrition_progress(user_db, current_user.user_id)
-    return NutritionProgressResponse(data=progress)
+    return NutritionProgressResponse(data=NutritionProgress(**progress) if isinstance(progress, dict) else progress)
 
 
 @router.get("/recommendations", response_model=RecommendedFoodResponse)
@@ -119,19 +128,29 @@ def get_recommendations(
 ):
     """获取推荐食物"""
     recommendations = DietService.get_recommendations(base_db)
-    return RecommendedFoodResponse(
-        data=[
-            {
-                "recommendId": r.recommend_id,
-                "foodName": r.food_name,
-                "calories": r.calories,
-                "protein": float(r.protein) if r.protein else None,
-                "reason": r.reason,
-                "suitableTime": r.suitable_time,
-            }
-            for r in recommendations
-        ]
-    )
+    
+    result = []
+    for r in recommendations:
+        # 使用 getattr 获取对象的实际属性值，解决SQLAlchemy列对象转换问题
+        r_dict = {}
+        for col in ['recommend_id', 'food_name', 'calories', 'protein', 'reason', 'suitable_time']:
+            val = getattr(r, col)
+            # 确保获取的是实际值而不是Column对象等
+            if val is not None:
+                r_dict[col] = val
+            else:
+                r_dict[col] = None
+        
+        result.append(RecommendedFood(
+            recommendId=r_dict['recommend_id'],
+            foodName=r_dict['food_name'],
+            calories=r_dict['calories'],
+            protein=float(r_dict['protein']) if r_dict['protein'] is not None else None,
+            reason=r_dict['reason'],
+            suitableTime=r_dict['suitable_time'],
+        ))
+    
+    return RecommendedFoodResponse(data=result)
 
 
 @router.get("/trend/weekly", response_model=WeeklyDietTrendResponse)
@@ -141,7 +160,8 @@ def get_weekly_trend(
 ):
     """获取本周饮食趋势"""
     trend = DietService.get_weekly_trend(user_db, current_user.user_id)
-    return WeeklyDietTrendResponse(data=trend)
+    # 确保返回的是WeeklyDietTrend模型实例
+    return WeeklyDietTrendResponse(data=WeeklyDietTrend(**trend) if isinstance(trend, dict) else trend)
 
 
 @router.get("/trend/range", response_model=DateRangeDietTrendResponse)
@@ -155,7 +175,8 @@ def get_date_range_trend(
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="开始日期不能大于结束日期")
     trend = DietService.get_date_range_trend(user_db, current_user.user_id, start_date, end_date)
-    return DateRangeDietTrendResponse(data=trend)
+    # 确保返回的是DateRangeDietTrend模型实例
+    return DateRangeDietTrendResponse(data=DateRangeDietTrend(**trend) if isinstance(trend, dict) else trend)
 
 
 # ---------------------------------------------------------------------------
@@ -175,21 +196,21 @@ def search_foods(
     foods = DietService.search_foods(base_db, user_db, current_user.user_id, keyword, category, meal_type)
     return FoodItemsResponse(
         data=[
-            {
-                "foodId": f["food_id"],
-                "name": f["name"],
-                "category": f["category"],
-                "source": f["source"],
-                "portionUnit": f["portion_unit"],
-                "portionGrams": f["portion_grams"],
-                "portionCalories": f["portion_calories"],
-                "caloriesPer100g": f["calories_per_100g"],
-                "calorieLevel": f["calorie_level"],
-                "protein": float(f["protein"]) if f["protein"] else 0,
-                "carbs": float(f["carbs"]) if f["carbs"] else 0,
-                "fat": float(f["fat"]) if f["fat"] else 0,
-                "suitableMeals": f["suitable_meals"] or "breakfast,lunch,dinner",
-            }
+            FoodItem(
+                foodId=f["food_id"],
+                name=f["name"],
+                category=f["category"],
+                source=f["source"],
+                portionUnit=f["portion_unit"],
+                portionGrams=f["portion_grams"],
+                portionCalories=f["portion_calories"],
+                caloriesPer100g=f["calories_per_100g"],
+                calorieLevel=f["calorie_level"],
+                protein=float(f["protein"]) if f["protein"] else 0,
+                carbs=float(f["carbs"]) if f["carbs"] else 0,
+                fat=float(f["fat"]) if f["fat"] else 0,
+                suitableMeals=f["suitable_meals"] or "breakfast,lunch,dinner",
+            )
             for f in foods
         ]
     )
@@ -217,16 +238,3 @@ def add_custom_food(
     return CreateCustomFoodResponse(
         data={"foodId": food.food_id}
     )
-
-
-@router.delete("/foods/{foodId}", response_model=BaseResponse)
-def delete_custom_food(
-    foodId: int,
-    current_user = Depends(get_current_user),
-    user_db: Session = Depends(get_user_db)
-):
-    """删除自定义食物"""
-    success = DietService.delete_custom_food(user_db, current_user.user_id, foodId)
-    if not success:
-        raise HTTPException(status_code=404, detail="食物不存在或无权删除")
-    return BaseResponse(message="删除成功")

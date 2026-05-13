@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import date, datetime
 
 from src.fitme.utils.database import get_user_db
 from src.fitme.services.health_service import HealthService
@@ -12,11 +13,61 @@ from src.fitme.schemas.health import (
     CreateHealthMetricResponse,
     HealthMeasurementsResponse,
     HealthReportResponse,
+    HealthMetrics,
+    HealthMeasurement,
+    HealthReport,
+    TrendPoint,
+    HealthReportSummary,
+    StatusSummary
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/health", tags=["Health"])
+
+
+def _safe_int(value) -> int:
+    """安全地将可能为None的值转换为整数"""
+    if value is None:
+        return 0
+    return int(value)
+
+
+def _safe_float(value) -> float:
+    """安全地将可能为None的值转换为浮点数或None"""
+    if value is None:
+        return 0.0
+    return float(value)
+
+
+def _safe_float_optional(value) -> Optional[float]:
+    """安全地将可能为None的值转换为可选浮点数（保持None）"""
+    if value is None:
+        return None
+    return float(value)
+
+
+def _safe_str(value) -> str:
+    """安全地处理字符串值"""
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _safe_date(value) -> date:
+    """安全地处理日期值"""
+    if value is None:
+        # 返回一个默认日期
+        return date.today()
+    return value
+
+
+def _safe_datetime(value) -> datetime:
+    """安全地处理日期时间值"""
+    if value is None:
+        # 返回一个默认日期时间
+        return datetime.now()
+    return value
 
 
 def get_current_user(
@@ -43,27 +94,26 @@ def get_metrics(
     user_settings = UserService.get_settings(db, current_user.user_id)
 
     if not metric:
-        return HealthMetricsResponse(
-            data={
-                "weight": 0,
-                "height": 175,
-                "bodyFat": 0,
-                "bmi": 0,
-                "weightGoal": float(user_settings.weight_goal) if user_settings and user_settings.weight_goal else None,
-                "bmiStatus": "normal",
-            }
+        weight_goal = _safe_float_optional(user_settings.weight_goal) if user_settings else None
+        health_metrics = HealthMetrics(
+            weight=0.0,
+            height=175.0,
+            bodyFat=0.0,
+            bmi=0.0,
+            weightGoal=weight_goal,
+            bmiStatus="normal",
         )
+        return HealthMetricsResponse(data=health_metrics)
 
-    return HealthMetricsResponse(
-        data={
-            "weight": float(metric.weight) if metric.weight else 0,
-            "height": float(metric.height) if metric.height else 175,
-            "bodyFat": float(metric.body_fat) if metric.body_fat else 0,
-            "bmi": float(metric.bmi) if metric.bmi else 0,
-            "weightGoal": float(user_settings.weight_goal) if user_settings and user_settings.weight_goal else None,
-            "bmiStatus": metric.bmi_status or "normal",
-        }
+    health_metrics = HealthMetrics(
+        weight=_safe_float(metric.weight),
+        height=_safe_float(metric.height),
+        bodyFat=_safe_float(metric.body_fat),
+        bmi=_safe_float(metric.bmi),
+        weightGoal=_safe_float_optional(user_settings.weight_goal) if user_settings else None,
+        bmiStatus=_safe_str(metric.bmi_status) or "normal",
     )
+    return HealthMetricsResponse(data=health_metrics)
 
 
 @router.post("/metrics", response_model=CreateHealthMetricResponse)
@@ -88,19 +138,20 @@ def get_measurements(
 ):
     """获取历史测量记录"""
     metrics = HealthService.get_measurements(db, current_user.user_id, limit)
-    return HealthMeasurementsResponse(
-        data=[
-            {
-                "recordId": m.record_id,
-                "weight": float(m.weight) if m.weight else 0,
-                "bodyFat": float(m.body_fat) if m.body_fat else 0,
-                "bmi": float(m.bmi) if m.bmi else 0,
-                "measureDate": m.measure_date,
-                "createdAt": m.created_at,
-            }
-            for m in metrics
-        ]
-    )
+    
+    measurements = [
+        HealthMeasurement(
+            recordId=_safe_int(m.record_id),
+            weight=_safe_float(m.weight),
+            bodyFat=_safe_float(m.body_fat),
+            bmi=_safe_float(m.bmi),
+            measureDate=_safe_date(m.measure_date),
+            createdAt=_safe_datetime(m.created_at),
+        )
+        for m in metrics
+    ]
+    
+    return HealthMeasurementsResponse(data=measurements)
 
 
 @router.get("/report", response_model=HealthReportResponse)
@@ -110,7 +161,38 @@ def get_report(
     db: Session = Depends(get_user_db)
 ):
     """获取健康数据报表"""
-    report = HealthService.get_report(db, current_user.user_id, period)
+    raw_report = HealthService.get_report(db, current_user.user_id, period)
+    
+    # 构建 HealthReport 对象
+    weight_trend = [
+        TrendPoint(date=item['date'], value=item['value']) 
+        for item in raw_report['weightTrend']
+    ]
+    
+    bmi_trend = [
+        TrendPoint(date=item['date'], value=item['value']) 
+        for item in raw_report['bmiTrend']
+    ]
+    
+    status_summary = StatusSummary(
+        normal=raw_report['summary']['statusSummary']['normal'],
+        low=raw_report['summary']['statusSummary']['low'],
+        high=raw_report['summary']['statusSummary']['high']
+    )
+    
+    summary = HealthReportSummary(
+        avgWeight=raw_report['summary']['avgWeight'],
+        avgBmi=raw_report['summary']['avgBmi'],
+        weightChange=raw_report['summary']['weightChange'],
+        statusSummary=status_summary
+    )
+    
+    report = HealthReport(
+        weightTrend=weight_trend,
+        bmiTrend=bmi_trend,
+        summary=summary
+    )
+    
     return HealthReportResponse(data=report)
 
 
@@ -135,10 +217,10 @@ def export_health(
     for m in metrics:
         writer.writerow([
             m.measure_date,
-            float(m.weight) if m.weight else "",
-            float(m.body_fat) if m.body_fat else "",
-            float(m.bmi) if m.bmi else "",
-            m.bmi_status or "",
+            _safe_float(m.weight) if m.weight is not None else "",
+            _safe_float(m.body_fat) if m.body_fat is not None else "",
+            _safe_float(m.bmi) if m.bmi is not None else "",
+            _safe_str(m.bmi_status) or "",
         ])
 
     output.seek(0)

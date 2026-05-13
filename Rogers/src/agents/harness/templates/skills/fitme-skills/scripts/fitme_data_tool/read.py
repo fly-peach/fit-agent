@@ -70,10 +70,10 @@ def get_health_summary(user_id: int) -> dict[str, Any]:
             "success": True,
             "data": {
                 "measure_date": str(latest.measure_date),
-                "weight": float(latest.weight) if latest.weight else None,
-                "height": float(latest.height) if latest.height else None,
-                "body_fat": float(latest.body_fat) if latest.body_fat else None,
-                "bmi": float(latest.bmi) if latest.bmi else None,
+                "weight": float(latest.weight) if latest.weight is not None else None,
+                "height": float(latest.height) if latest.height is not None else None,
+                "body_fat": float(latest.body_fat) if latest.body_fat is not None else None,
+                "bmi": float(latest.bmi) if latest.bmi is not None else None,
                 "bmi_status": latest.bmi_status,
             }
         }
@@ -92,10 +92,10 @@ def get_health_history(user_id: int, limit: int = 7) -> dict[str, Any]:
             "data": [
                 {
                     "measure_date": str(r.measure_date),
-                    "weight": float(r.weight) if r.weight else None,
-                    "height": float(r.height) if r.height else None,
-                    "body_fat": float(r.body_fat) if r.body_fat else None,
-                    "bmi": float(r.bmi) if r.bmi else None,
+                    "weight": float(r.weight) if r.weight is not None else None,
+                    "height": float(r.height) if r.height is not None else None,
+                    "body_fat": float(r.body_fat) if r.body_fat is not None else None,
+                    "bmi": float(r.bmi) if r.bmi is not None else None,
                 }
                 for r in records
             ]

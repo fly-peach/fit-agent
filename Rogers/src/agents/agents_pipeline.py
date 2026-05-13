@@ -1,7 +1,7 @@
 """
 Rogers Agent - Pipeline 多智能体编排
 
-基于 AgentScope Runtime 的多智能体管道工作流演示：
+基于 AgentScope 的多智能体管道工作流：
 - Master Agent: 判断问题复杂度 → 输出思考过程 → 简单回答 or 触发 Fanout
 - Fanout: SubAgent DietAnalyst + SubAgent TrainingAnalyst 依次分析
 - Master Agent: 汇总 SubAgent 输出 → 流式输出最终回复
@@ -10,11 +10,8 @@ Rogers Agent - Pipeline 多智能体编排
 """
 import asyncio
 import logging
-import os
-from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
 from agentscope.agent import ReActAgent
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
@@ -22,38 +19,27 @@ from agentscope.formatter import DashScopeChatFormatter
 from agentscope.tool import Toolkit
 from agentscope.pipeline import stream_printing_messages
 from agentscope.memory import InMemoryMemory
-from agentscope.session import RedisSession
 
-from agentscope_runtime.engine import AgentApp
-from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
-from dotenv import load_dotenv
+from src.agents.utils.api_key_cache import api_key_cache
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
 
 # ============================================================================
 # Agent 工厂 & System Prompts
 # ============================================================================
 
-def _build_model(model_name: str = "qwen-turbo") -> DashScopeChatModel:
+def _build_model(model_name: str = "qwen-turbo", user_id: int | None = None) -> DashScopeChatModel:
+    api_key = api_key_cache.get(user_id) if user_id else ""
+    if not api_key:
+        raise ValueError(
+            f"请先在 Agent 配置页面设置 API Key (user_id: {user_id})\n"
+            "注意：重启服务器后需要重新设置 API Key"
+        )
     return DashScopeChatModel(
         model_name=model_name,
-        api_key=os.getenv("DASHSCOPE_API_KEY"),
+        api_key=api_key,
         stream=True,
         enable_thinking=True
-    )
-
-
-def create_agent(name: str, sys_prompt: str, model_name: str = "qwen-turbo") -> ReActAgent:
-    """创建 ReActAgent 实例。"""
-    return ReActAgent(
-        name=name,
-        model=_build_model(model_name),
-        sys_prompt=sys_prompt,
-        toolkit=Toolkit(),
-        memory=InMemoryMemory(),
-        formatter=DashScopeChatFormatter(),
     )
 
 
@@ -110,7 +96,7 @@ def _content_text(msg: 'Msg') -> str:
 # 核心 Pipeline 编排（自定义流式生成器）
 # ============================================================================
 
-async def _run_pipeline(msgs: list) -> AsyncGenerator:
+async def run_rogers_pipeline(msgs: list, user_id: int | None = None) -> AsyncGenerator:
     """
     Master → Fanout → Master 完整流水线.
 
@@ -120,10 +106,20 @@ async def _run_pipeline(msgs: list) -> AsyncGenerator:
       Phase 3: DietAnalyst → TrainingAnalyst 顺序分析（各自流式输出）
       Phase 4: Master 汇总两个 SubAgent 结果，流式输出最终回复
     """
-    # ---- 创建所有 Agent ----
-    master = create_agent("Rogers-Master", MASTER_SYS_PROMPT, model_name="qwen-max")
-    diet = create_agent("DietAnalyst", DIET_SYS_PROMPT)
-    training = create_agent("TrainingAnalyst", TRAINING_SYS_PROMPT)
+    # ---- 创建所有 Agent（传递 user_id 以获取 API Key） ----
+    def _create_pipeline_agent(name: str, sys_prompt: str, model_name: str = "qwen-turbo") -> ReActAgent:
+        return ReActAgent(
+            name=name,
+            model=_build_model(model_name, user_id=user_id),
+            sys_prompt=sys_prompt,
+            toolkit=Toolkit(),
+            memory=InMemoryMemory(),
+            formatter=DashScopeChatFormatter(),
+        )
+
+    master = _create_pipeline_agent("Rogers-Master", MASTER_SYS_PROMPT, model_name="qwen-max")
+    diet = _create_pipeline_agent("DietAnalyst", DIET_SYS_PROMPT)
+    training = _create_pipeline_agent("TrainingAnalyst", TRAINING_SYS_PROMPT)
 
     for a in (master, diet, training):
         a.set_console_output_enabled(False)
@@ -136,15 +132,18 @@ async def _run_pipeline(msgs: list) -> AsyncGenerator:
     # ========================================================================
     master_text = ""
 
-    async for msg, last in stream_printing_messages(
+    async for output in stream_printing_messages(
         agents=[master],
         coroutine_task=master(raw_msgs),  # 使用 raw_msgs，避免 msgs 已被消耗
     ):
-        # 标注来源，保留原 role 不变
-        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                            source="[Master] Rogers")
-        yield msg, last
-        master_text += _content_text(msg)
+        # 处理可能有 2 或 3 个元素的 tuple
+        if len(output) >= 2:
+            msg, last = output[0], output[1]
+            # 标注来源，保留原 role 不变
+            msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                                source="[Master] Rogers")
+            yield msg, last
+            master_text += _content_text(msg)
 
     # ========================================================================
     # Phase 2: 判断是否需要 Fanout
@@ -168,15 +167,17 @@ async def _run_pipeline(msgs: list) -> AsyncGenerator:
             role="user")
     ]
     diet_output = ""
-    async for msg, last in stream_printing_messages(
+    async for output in stream_printing_messages(
         agents=[diet],
         coroutine_task=diet(diet_input),
     ):
-        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                            source="[SubAgent] DietAnalyst")
-        yield msg, last
-        text = _content_text(msg)
-        diet_output += text
+        if len(output) >= 2:
+            msg, last = output[0], output[1]
+            msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                                source="[SubAgent] DietAnalyst")
+            yield msg, last
+            text = _content_text(msg)
+            diet_output += text
 
     logger.info("DietAnalyst output length: %d chars", len(diet_output))
 
@@ -187,15 +188,17 @@ async def _run_pipeline(msgs: list) -> AsyncGenerator:
             role="user")
     ]
     training_output = ""
-    async for msg, last in stream_printing_messages(
+    async for output in stream_printing_messages(
         agents=[training],
         coroutine_task=training(training_input),
     ):
-        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                            source="[SubAgent] TrainingAnalyst")
-        yield msg, last
-        text = _content_text(msg)
-        training_output += text
+        if len(output) >= 2:
+            msg, last = output[0], output[1]
+            msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                                source="[SubAgent] TrainingAnalyst")
+            yield msg, last
+            text = _content_text(msg)
+            training_output += text
 
     logger.info("TrainingAnalyst output length: %d chars", len(training_output))
 
@@ -223,85 +226,15 @@ async def _run_pipeline(msgs: list) -> AsyncGenerator:
         role="user",
     )
 
-    async for msg, last in stream_printing_messages(
+    async for output in stream_printing_messages(
         agents=[master],
         coroutine_task=master([agg_input]),
     ):
-        msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                            source="[Master] Rogers")
-        yield msg, last
-
-
-# ============================================================================
-# 1. 生命周期管理
-# ============================================================================
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    import fakeredis
-
-    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    app.state.session = RedisSession(connection_pool=fake_redis.connection_pool)
-    try:
-        yield
-    finally:
-        print("AgentApp is shutting down...")
-
-
-# ============================================================================
-# 2. 创建 AgentApp
-# ============================================================================
-
-agent_app = AgentApp(
-    app_name="Rogers-Pipeline-Demo",
-    app_description="Multi-Agent Pipeline: Master → Fanout(DietAnalyst, TrainingAnalyst) → Master",
-    lifespan=lifespan,
-)
-
-
-# ============================================================================
-# 3. 查询端点（Pipeline SSE 流式输出）
-# ============================================================================
-
-@agent_app.query(framework="agentscope")
-async def query_func(
-    self,
-    msgs,
-    request: AgentRequest = None,
-    **kwargs,
-):
-    """Pipeline 多智能体编排 HTTP SSE 端点。"""
-    session_id = request.session_id
-    user_id = request.user_id
-
-    try:
-        async for msg, last in _run_pipeline(msgs):
+        if len(output) >= 2:
+            msg, last = output[0], output[1]
+            msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                                source="[Master] Rogers")
             yield msg, last
-
-    except asyncio.CancelledError:
-        print(f"Task {session_id} was manually interrupted.")
-        raise
-
-
-# ============================================================================
-# 4. 中断触发路由
-# ============================================================================
-
-@agent_app.post("/stop")
-async def stop_task(request: AgentRequest):
-    await agent_app.stop_chat(
-        user_id=request.user_id,
-        session_id=request.session_id,
-    )
-    return {
-        "status": "success",
-        "message": "Interrupt signal broadcasted.",
-    }
-
-
-# ============================================================================
-# 5. 启动应用
-# ============================================================================
-
-if __name__ == "__main__":
-    agent_app.run(host="127.0.0.1", port=8090)
+    # ── 调用成功后刷新 API Key TTL ──
+    if user_id:
+        api_key_cache.touch(user_id)

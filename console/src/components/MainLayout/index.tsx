@@ -49,9 +49,8 @@ const navItems: NavItem[] = [
   { key: '/health', icon: <IconWrapper color="#10B981"><Heart size={16} /></IconWrapper>, label: '健康数据' },
   { key: '/training', icon: <IconWrapper color="#F59E0B"><Dumbbell size={16} /></IconWrapper>, label: '训练计划' },
   { key: '/diet', icon: <IconWrapper color="#06B6D4"><Utensils size={16} /></IconWrapper>, label: '饮食管理' },
+  { key: '/agent-config', icon: <IconWrapper color="#8B5CF6"><Bot size={16} /></IconWrapper>, label: 'Agent 配置' },
   { key: '/user', icon: <IconWrapper color="#8B5CF6"><User size={16} /></IconWrapper>, label: '个人中心' },
-  { key: '/agent-config', icon: <IconWrapper color="#A78BFA"><Bot size={16} /></IconWrapper>, label: 'Agent 配置' },
-  { key: '/skills', icon: <IconWrapper color="#F97316"><Wrench size={16} /></IconWrapper>, label: '技能管理' },
 ]
 
 const menuItems: MenuProps['items'] = navItems.map(item => ({ ...item }))

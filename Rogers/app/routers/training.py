@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date
+from pydantic import parse_obj_as
 
 from src.fitme.utils.database import get_db, get_base_db, get_user_db
 from src.fitme.services.training_service import TrainingService
@@ -11,6 +12,7 @@ from src.fitme.schemas.training import (
     WeeklyStatsResponse,
     WeeklyScheduleResponse,
     WeeklyProgressResponse,
+    RecommendedTraining,
     RecommendedTrainingResponse,
     CreateTrainingPlanRequest,
     CreateTrainingPlanResponse,
@@ -18,6 +20,7 @@ from src.fitme.schemas.training import (
     CompleteTrainingRequest,
     DateRangeTrainingTrendResponse,
     MonthlyScheduleResponse,
+    TrainingSchedule
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
@@ -55,7 +58,9 @@ def get_weekly_schedule(
     user_db: Session = Depends(get_user_db)
 ):
     """获取本周训练安排"""
-    schedule = TrainingService.get_weekly_schedule(user_db, current_user.user_id)
+    schedule_dicts = TrainingService.get_weekly_schedule(user_db, current_user.user_id)
+    # 将字典列表转换为TrainingSchedule对象列表
+    schedule = [parse_obj_as(TrainingSchedule, item) for item in schedule_dicts]
     return WeeklyScheduleResponse(data=schedule)
 
 
@@ -89,15 +94,15 @@ def get_recommendations(
     recommendations = TrainingService.get_recommendations(base_db)
     return RecommendedTrainingResponse(
         data=[
-            {
-                "recommendId": r.recommend_id,
-                "planName": r.plan_name,
-                "planType": r.plan_type,
-                "duration": r.duration,
-                "intensity": r.intensity,
-                "caloriesBurn": r.calories_burn,
-                "suitability": "high",
-            }
+            RecommendedTraining(
+                recommendId=r.recommend_id,
+                planName=r.plan_name,
+                planType=r.plan_type,
+                duration=r.duration,
+                intensity=r.intensity,
+                caloriesBurn=r.calories_burn,
+                suitability="high",
+            )
             for r in recommendations
         ]
     )

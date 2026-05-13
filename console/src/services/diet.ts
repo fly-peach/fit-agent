@@ -78,10 +78,10 @@ export const dietApi = {
     api.post('/diet/meals', data),
 
   updateMeal: (mealId: number, data: Partial<DietMeal>): Promise<void> =>
-    api.put(`/diet/meals/${mealId}`, data),
+    api.put(`/api/diet/meals/${mealId}`, data),
 
   deleteMeal: (mealId: number): Promise<void> =>
-    api.delete(`/diet/meals/${mealId}`),
+    api.delete(`/api/diet/meals/${mealId}`),
 
   getNutritionProgress: (): Promise<NutritionProgress> =>
     api.get('/diet/nutrition/progress'),
@@ -109,7 +109,7 @@ export const dietApi = {
     api.post('/diet/foods', data),
 
   deleteCustomFood: (foodId: number): Promise<void> =>
-    api.delete(`/diet/foods/${foodId}`),
+    api.delete(`/api/diet/foods/${foodId}`),
 
   getDateRangeTrend: (startDate: string, endDate: string): Promise<{
     dailyStats: {

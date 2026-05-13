@@ -5,11 +5,8 @@ from .user_db import (
     Base as UserDBBase,
     User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary,
     StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem,
-    UserAgentConfig, UserPromptTemplate, UserMemory, UserDailyLog
+    UserPromptTemplate, UserMemory, UserDailyLog
 )
-
-# Chat models are defined in agents module, re-exported here for convenience
-from src.agents.harness.chats.models import ChatSession  # noqa: F401
 
 # For backward compatibility - alias to UserDBBase
 Base = UserDBBase
@@ -34,11 +31,9 @@ __all__ = [
     "UserPinnedExercise",
     "PlanExerciseItem",
     "CustomFoodItem",
-    "UserAgentConfig",
     "UserPromptTemplate",
     "UserMemory",
     "UserDailyLog",
-    "ChatSession",
     # Backward compatibility
     "Base",
 ]

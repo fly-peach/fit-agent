@@ -69,7 +69,7 @@ const Training: React.FC = () => {
 
   const handleRenewPlan = async (planId: number) => {
     try {
-      await api.post(`/training/plans/${planId}/renew`)
+      await api.post(`/api/training/plans/${planId}/renew`)
       message.success('续期成功')
       fetchData()
     } catch { message.error('续期失败') }

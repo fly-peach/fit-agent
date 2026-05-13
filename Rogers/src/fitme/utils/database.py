@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from ..core.config import settings
+from src.core.config import settings
 
 
 def _ensure_db_dir(db_url: str):

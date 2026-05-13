@@ -38,7 +38,6 @@ class User(Base):
     streak_stats = relationship("StreakStats", back_populates="user", uselist=False)
     images = relationship("UserImage", back_populates="user")
     pinned_exercises = relationship("UserPinnedExercise", back_populates="user", cascade="all, delete-orphan")
-    agent_config = relationship("UserAgentConfig", back_populates="user", uselist=False)
     prompt_templates = relationship("UserPromptTemplate", back_populates="user", uselist=False)
 
 
@@ -320,25 +319,6 @@ class UserDailyLog(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     user = relationship("User")
-
-
-class UserAgentConfig(Base):
-    """用户 Agent 本地配置表 - User DB
-
-    存储用户配置的本地 Agent 工作目录路径
-    """
-    __tablename__ = "user_agent_config"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
-    local_working_dir = Column(String(500), default="")  # 用户本地目录路径
-    last_used_at = Column(DateTime)
-    created_at = Column(DateTime, server_default=func.now())
-
-    user = relationship("User", back_populates="agent_config")
-
-    def __repr__(self):
-        return f"<UserAgentConfig(user_id={self.user_id}, dir={self.local_working_dir})>"
 
 
 class UserPromptTemplate(Base):

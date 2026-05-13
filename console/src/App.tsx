@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { MainLayout } from './components'
-import { Login, Dashboard, Health, Training, Diet, User, AgentConfig, LandingPage, SkillManager } from './pages'
+import { Login, Dashboard, Health, Training, Diet, User, LandingPage, AgentConfig } from './pages'
 
 const theme = {
   token: {
@@ -110,8 +110,7 @@ const App: React.FC = () => {
             <Route path="training" element={<Training />} />
             <Route path="diet" element={<Diet />} />
             <Route path="user" element={<User />} />
-            <Route path="agent-config" element={<AgentConfig />} />
-            <Route path="skills" element={<SkillManager />} />
+          <Route path="agent-config" element={<AgentConfig />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

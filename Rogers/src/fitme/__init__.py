@@ -1,5 +1,5 @@
 """FitMe Package"""
-from .core import settings
+from src.core import settings
 from .models import (
     BaseDBBase,
     UserDBBase,

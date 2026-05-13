@@ -1,88 +1,93 @@
-import asyncio
-import os
-from contextlib import asynccontextmanager
+"""
+Rogers Agent - Pipeline 多智能体编排
 
-from fastapi import FastAPI
-from agentscope.agent import ReActAgent
-from agentscope.model import DashScopeChatModel
-from agentscope.formatter import DashScopeChatFormatter
-from agentscope.tool import Toolkit, execute_python_code
-from agentscope.pipeline import stream_printing_messages
-from agentscope.memory import InMemoryMemory
-from agentscope.session import RedisSession
+基于 AgentScope Runtime 的多智能体管道工作流。
+实际 Pipeline 逻辑在 src.agents.pipeline 中。
+"""
+import asyncio
+import logging
+from contextvars import ContextVar
 
 from agentscope_runtime.engine import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
-from dotenv import load_dotenv
 
-load_dotenv()
+from src.agents.agents_pipeline import run_rogers_pipeline
+from src.fitme.services.auth_service import AuthService
 
+logger = logging.getLogger(__name__)
+
+# 用于 main.py 的 set_auth_token 中间件
+_auth_token: ContextVar[str | None] = ContextVar("auth_token", default=None)
+
+
+# ============================================================================
+# 1. 创建 AgentApp（使用 main.py 的 lifespan）
+# ============================================================================
 
 agent_app = AgentApp(
     app_name="rogers-agent",
-    app_description="rogers as fitagent to assist user",
+    app_description="Multi-Agent Pipeline: Master → Fanout(DietAnalyst, TrainingAnalyst) → Master",
 )
 
-# 3. 定义请求处理逻辑
+
+# ============================================================================
+# 2. 查询端点（Pipeline SSE 流式输出）
+# ============================================================================
+
 @agent_app.query(framework="agentscope")
 async def query_func(
     self,
     msgs,
-    request: AgentRequest = None,
+    request: AgentRequest = None,  # type: ignore
     **kwargs,
 ):
-    session_id = request.session_id
-    user_id = request.user_id
+    """Pipeline 多智能体编排 HTTP SSE 端点。"""
+    session_id = request.session_id or "" if request else ""
 
-    toolkit = Toolkit()
-    toolkit.register_tool_function(execute_python_code)
+    # 从 JWT token 中解析用户 ID（优先使用中间件存的 token）
+    parsed_user_id: int | None = None
+    token = _auth_token.get()
+    if token:
+        parsed_user_id = AuthService.get_user_id_from_token(token)
+        if parsed_user_id:
+            logger.info(f"Parsed user_id from JWT: {parsed_user_id}")
 
+    if not parsed_user_id:
+        # 尝试从 request.user_id 解析（fallback）
+        user_id_str = request.user_id or None if request else None
+        if user_id_str:
+            try:
+                parsed_user_id = int(user_id_str)
+            except ValueError:
+                logger.warning(f"Invalid user_id format: {user_id_str}, converting to None")
 
-    agent.set_console_output_enabled(enabled=True)
-
-    # 加载 agent 状态
-    await agent_app.state.session.load_session_state(
-        session_id=session_id,
-        user_id=user_id,
-        agent=agent,
-    )
+    if not parsed_user_id:
+        raise ValueError("No valid user_id found in request or JWT token")
 
     try:
-        async for msg, last in stream_printing_messages(
-            agents=[agent],
-            coroutine_task=agent(msgs),
-        ):
-            yield msg, last
+        async for output in run_rogers_pipeline(msgs, user_id=parsed_user_id):
+            if len(output) >= 2:
+                msg, last = output[0], output[1]
+                yield msg, last
 
     except asyncio.CancelledError:
-        # 中断处理逻辑
-        print(f"Task {session_id} was manually interrupted.")
-
-        # 为彻底停止底层 agent 的运行，此处须手动中断 agent
-        await agent.interrupt()
-
-        # 重新抛出异常，让系统将任务状态标记为 STOPPED
+        logger.info(f"Task {session_id} was manually interrupted.")
         raise
 
-    finally:
-        # 保存 agent 状态
-        await agent_app.state.session.save_session_state(
-            session_id=session_id,
-            user_id=user_id,
-            agent=agent,
-        )
 
-# 4. 注册中断触发路由
+# ============================================================================
+# 3. 中断触发路由
+# ============================================================================
+
 @agent_app.post("/stop")
 async def stop_task(request: AgentRequest):
+    user_id = request.user_id or ""
+    session_id = request.session_id or ""
     await agent_app.stop_chat(
-        user_id=request.user_id,
-        session_id=request.session_id,
+        user_id=user_id,
+        session_id=session_id,
     )
     return {
         "status": "success",
         "message": "Interrupt signal broadcasted.",
     }
-
-# 5. 启动应用
-agent_app.run(host="127.0.0.1", port=8090)
