@@ -20,7 +20,7 @@ logger = logging.getLogger("fitagent")
 
 from src.core.config import settings
 from src.fitme.models import UserDBBase
-from src.fitme.utils.database import user_engine, async_agent_memory_engine
+from src.fitme.utils.database import user_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
 from .routers.agent import agent_app

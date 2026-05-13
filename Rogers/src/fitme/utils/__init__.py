@@ -4,8 +4,6 @@ from .database import (
     engine, SessionLocal,
     BaseSessionLocal, UserSessionLocal,
     BaseDBContext, UserDBContext,
-    async_agent_memory_engine,
-    AsyncAgentMemorySessionLocal,
 )
 
 __all__ = [
@@ -13,6 +11,4 @@ __all__ = [
     "engine", "SessionLocal",
     "BaseSessionLocal", "UserSessionLocal",
     "BaseDBContext", "UserDBContext",
-    "async_agent_memory_engine",
-    "AsyncAgentMemorySessionLocal",
 ]

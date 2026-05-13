@@ -38,7 +38,6 @@ class User(Base):
     streak_stats = relationship("StreakStats", back_populates="user", uselist=False)
     images = relationship("UserImage", back_populates="user")
     pinned_exercises = relationship("UserPinnedExercise", back_populates="user", cascade="all, delete-orphan")
-    prompt_templates = relationship("UserPromptTemplate", back_populates="user", uselist=False)
 
 
 class UserSettings(Base):
@@ -285,57 +284,3 @@ class CustomFoodItem(Base):
     user = relationship("User")
 
 
-class UserMemory(Base):
-    """用户长期记忆表 - User DB
-
-    存储 MEMORY.md 内容
-    """
-    __tablename__ = "user_memory"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
-    content = Column(Text, default="")
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-
-    user = relationship("User")
-
-
-class UserDailyLog(Base):
-    """用户每日日志表 - User DB
-
-    存储每日交互日志
-    """
-    __tablename__ = "user_daily_logs"
-    __table_args__ = (
-        Index("idx_user_log_date", "user_id", "log_date", unique=True),
-    )
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    log_date = Column(Date, nullable=False)
-    content = Column(Text, default="")
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-
-    user = relationship("User")
-
-
-class UserPromptTemplate(Base):
-    """用户提示词模板表 - User DB
-
-    存储 agents.md 和 soul.md 内容
-    """
-    __tablename__ = "user_prompt_templates"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, unique=True)
-    agents_md = Column(Text, default="")  # agents.md 内容
-    soul_md = Column(Text, default="")  # soul.md 内容
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-
-    user = relationship("User")
-
-    def __repr__(self):
-        return f"<UserPromptTemplate(user_id={self.user_id})>"

@@ -6,8 +6,10 @@ from typing import Optional
 from src.fitme.utils.database import get_user_db
 from src.fitme.services.user_service import UserService
 from src.fitme.schemas.user import (
+    UserProfile,
     UserProfileResponse,
     UpdateProfileRequest,
+    UserSettings,
     UserSettingsResponse,
     UpdateSettingsRequest,
 )
@@ -41,14 +43,14 @@ def get_profile(
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
     return UserProfileResponse(
-        data={
-            "userId": user.user_id,
-            "name": user.name,
-            "email": user.email,
-            "avatar": user.avatar,
-            "role": user.role,
-            "createdAt": user.created_at,
-        }
+        data=UserProfile(
+            userId=user.user_id,  # type: ignore
+            name=user.name,
+            email=user.email,
+            avatar=user.avatar,
+            role=user.role,
+            createdAt=user.created_at,
+        )
     )
 
 
@@ -75,17 +77,17 @@ def get_settings(
     if not settings:
         raise HTTPException(status_code=404, detail="设置不存在")
     return UserSettingsResponse(
-        data={
-            "calorieGoal": settings.calorie_goal,
-            "proteinGoal": settings.protein_goal,
-            "carbsGoal": settings.carbs_goal,
-            "fatGoal": settings.fat_goal,
-            "waterGoal": settings.water_goal,
-            "weightGoal": float(settings.weight_goal) if settings.weight_goal else None,
-            "weeklyTrainingGoal": settings.weekly_training_goal,
-            "notificationEnabled": settings.notification_enabled,
-            "reminderTime": str(settings.reminder_time),
-        }
+        data=UserSettings(
+            calorieGoal=settings.calorie_goal,  # type: ignore
+            proteinGoal=settings.protein_goal,  # type: ignore
+            carbsGoal=settings.carbs_goal,  # type: ignore
+            fatGoal=settings.fat_goal,  # type: ignore
+            waterGoal=settings.water_goal,  # type: ignore
+            weightGoal=float(settings.weight_goal) if settings.weight_goal else None,  # type: ignore
+            weeklyTrainingGoal=settings.weekly_training_goal,  # type: ignore
+            notificationEnabled=settings.notification_enabled,  # type: ignore
+            reminderTime=str(settings.reminder_time),  # type: ignore
+        )
     )
 
 

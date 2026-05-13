@@ -30,11 +30,6 @@ logger = logging.getLogger(__name__)
 
 def _build_model(model_name: str = "qwen-turbo", user_id: int | None = None) -> DashScopeChatModel:
     api_key = api_key_cache.get(user_id) if user_id else ""
-    if not api_key:
-        raise ValueError(
-            f"请先在 Agent 配置页面设置 API Key (user_id: {user_id})\n"
-            "注意：重启服务器后需要重新设置 API Key"
-        )
     return DashScopeChatModel(
         model_name=model_name,
         api_key=api_key,

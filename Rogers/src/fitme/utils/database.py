@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from src.core.config import settings
 
 
@@ -13,20 +12,6 @@ def _ensure_db_dir(db_url: str):
         db_path = db_url.replace("sqlite:///", "", 1)
         if not db_path.startswith(":memory"):
             os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
-
-
-# ========== Agent Memory DB (AsyncSQLAlchemyMemory 专用 ==========
-# 使用独立数据库避免 AsyncSQLAlchemyMemory 内部 users 表与主库冲突
-_ensure_db_dir(settings.AGENT_MEMORY_DB_URL)
-_agent_memory_db_path = settings.AGENT_MEMORY_DB_URL.replace("sqlite:///", "", 1)
-async_agent_memory_engine = create_async_engine(
-    f"sqlite+aiosqlite:///{_agent_memory_db_path}",
-    connect_args={"check_same_thread": False},
-)
-AsyncAgentMemorySessionLocal = async_sessionmaker(
-    async_agent_memory_engine,
-    expire_on_commit=False,
-)
 
 
 # ========== Base DB (系统基础数据 ==========

@@ -43,12 +43,6 @@ class Settings(BaseSettings):
     # 兼容旧代码 - 指向 user_db
     DATABASE_URL: str = f"sqlite:///{_DATA_DIR / 'fituser.db'}"
 
-    # Agent工作区目录
-    AGENT_DB_DIR: Path = _DATA_DIR / "agent_db"
-
-    # Agent 记忆数据库（AsyncSQLAlchemyMemory 使用，独立于主库）
-    AGENT_MEMORY_DB_URL: str = f"sqlite:///{_DATA_DIR / 'agent_memory.db'}"
-
     JWT_SECRET_KEY: str = _DEFAULT_JWT_SECRET
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24

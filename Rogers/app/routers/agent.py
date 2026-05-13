@@ -12,7 +12,6 @@ from agentscope_runtime.engine import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 
 from src.agents.agents_pipeline import run_rogers_pipeline
-from src.fitme.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)
 
@@ -36,36 +35,15 @@ agent_app = AgentApp(
 
 @agent_app.query(framework="agentscope")
 async def query_func(
-    self,
     msgs,
-    request: AgentRequest = None,  # type: ignore
-    **kwargs,
+    request: AgentRequest,
 ):
     """Pipeline 多智能体编排 HTTP SSE 端点。"""
-    session_id = request.session_id or "" if request else ""
-
-    # 从 JWT token 中解析用户 ID（优先使用中间件存的 token）
-    parsed_user_id: int | None = None
-    token = _auth_token.get()
-    if token:
-        parsed_user_id = AuthService.get_user_id_from_token(token)
-        if parsed_user_id:
-            logger.info(f"Parsed user_id from JWT: {parsed_user_id}")
-
-    if not parsed_user_id:
-        # 尝试从 request.user_id 解析（fallback）
-        user_id_str = request.user_id or None if request else None
-        if user_id_str:
-            try:
-                parsed_user_id = int(user_id_str)
-            except ValueError:
-                logger.warning(f"Invalid user_id format: {user_id_str}, converting to None")
-
-    if not parsed_user_id:
-        raise ValueError("No valid user_id found in request or JWT token")
+    session_id = request.session_id or ""
+    user_id = request.user_id or None
 
     try:
-        async for output in run_rogers_pipeline(msgs, user_id=parsed_user_id):
+        async for output in run_rogers_pipeline(msgs, user_id=user_id):
             if len(output) >= 2:
                 msg, last = output[0], output[1]
                 yield msg, last

@@ -53,7 +53,7 @@ def get_user_profile(user_id: int) -> dict[str, Any]:
                 "user_id": user.user_id,
                 "name": user.name,
                 "email": user.email,
-                "created_at": str(user.created_at) if user.created_at else None,
+                "created_at": str(user.created_at) if user.created_at is not None else None,
             }
         }
 
@@ -92,10 +92,10 @@ def get_health_history(user_id: int, limit: int = 7) -> dict[str, Any]:
             "data": [
                 {
                     "measure_date": str(r.measure_date),
-                    "weight": float(r.weight) if r.weight is not None else None,
-                    "height": float(r.height) if r.height is not None else None,
-                    "body_fat": float(r.body_fat) if r.body_fat is not None else None,
-                    "bmi": float(r.bmi) if r.bmi is not None else None,
+                    "weight": float(r.weight) if r.weight else None,
+                    "height": float(r.height) if r.height else None,
+                    "body_fat": float(r.body_fat) if r.body_fat else None,
+                    "bmi": float(r.bmi) if r.bmi else None,
                 }
                 for r in records
             ]
