@@ -1,5 +1,5 @@
 """Exercise Router - Dual Database Support"""
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -14,7 +14,11 @@ from src.fitme.schemas.exercise import (
     PinnedExerciseSchema,
     PinExerciseRequest,
     ReorderPinnedRequest,
+    CreateCustomExercise,
+    UpdateCustomExercise,
+    CreateCustomExerciseResponse,
 )
+from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/exercises", tags=["Exercises"])
@@ -48,7 +52,7 @@ def list_exercises(
     base_db: Session = Depends(get_base_db),
     user_db: Session = Depends(get_user_db)
 ):
-    """获取健身动作列表"""
+    """获取健身动作列表（包含系统动作和用户自定义动作）"""
     results = ExerciseService.list_exercises(
         base_db,
         user_db,
@@ -62,7 +66,7 @@ def list_exercises(
         mechanics=mechanics,
         limit=limit,
     )
-    data = [ExerciseItem.from_orm(ex, is_pinned) for ex, is_pinned in results]
+    data = [ExerciseItem.from_orm(ex, is_pinned, source) for ex, is_pinned, source in results]
     return ExercisesResponse(data=data)
 
 
@@ -73,32 +77,44 @@ def get_exercise(
     base_db: Session = Depends(get_base_db),
     user_db: Session = Depends(get_user_db)
 ):
-    """获取动作详情"""
+    """获取动作详情（支持系统动作和自定义动作）"""
     result = ExerciseService.get_exercise(base_db, user_db, current_user.user_id, exercise_id)
     if not result:
         raise HTTPException(status_code=404, detail="动作不存在")
-    exercise, is_pinned = result
-    return ExerciseDetailResponse(data=ExerciseDetail.from_orm(exercise, is_pinned))
+    exercise, is_pinned, source = result
+    return ExerciseDetailResponse(data=ExerciseDetail.from_orm(exercise, is_pinned, source))
 
 
 @router.get("/categories/muscles")
-def get_muscle_categories(base_db: Session = Depends(get_base_db)):
-    """获取目标肌肉分类"""
-    muscles = ExerciseService.get_target_muscles(base_db)
+def get_muscle_categories(
+    current_user=Depends(get_current_user),
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
+):
+    """获取目标肌肉分类（包含用户自定义）"""
+    muscles = ExerciseService.get_target_muscles(base_db, user_db, current_user.user_id)
     return {"code": 200, "data": muscles}
 
 
 @router.get("/categories/types")
-def get_type_categories(base_db: Session = Depends(get_base_db)):
-    """获取动作类型分类"""
-    types = ExerciseService.get_exercise_types(base_db)
+def get_type_categories(
+    current_user=Depends(get_current_user),
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
+):
+    """获取动作类型分类（包含用户自定义）"""
+    types = ExerciseService.get_exercise_types(base_db, user_db, current_user.user_id)
     return {"code": 200, "data": types}
 
 
 @router.get("/categories/equipment")
-def get_equipment_categories(base_db: Session = Depends(get_base_db)):
-    """获取器械分类"""
-    equipment = ExerciseService.get_equipment_list(base_db)
+def get_equipment_categories(
+    current_user=Depends(get_current_user),
+    base_db: Session = Depends(get_base_db),
+    user_db: Session = Depends(get_user_db)
+):
+    """获取器械分类（包含用户自定义）"""
+    equipment = ExerciseService.get_equipment_list(base_db, user_db, current_user.user_id)
     return {"code": 200, "data": equipment}
 
 
@@ -125,7 +141,7 @@ def pin_exercise(
     base_db: Session = Depends(get_base_db),
     user_db: Session = Depends(get_user_db)
 ):
-    """收藏动作"""
+    """收藏动作（支持收藏自定义动作）"""
     pinned = ExerciseService.pin_exercise(base_db, user_db, current_user.user_id, data.exerciseId)
     if pinned is None:
         raise HTTPException(status_code=400, detail="已收藏或动作不存在")
@@ -167,3 +183,47 @@ def reorder_pinned(
     if not success:
         raise HTTPException(status_code=400, detail="排序失败")
     return {"code": 200, "message": "排序更新成功"}
+
+
+# --- 自定义动作 ---
+
+@router.post("/custom", response_model=CreateCustomExerciseResponse)
+def create_custom_exercise(
+    data: CreateCustomExercise,
+    current_user=Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """创建自定义动作"""
+    exercise = ExerciseService.create_custom_exercise(user_db, current_user.user_id, data.dict())
+    return CreateCustomExerciseResponse(
+        message="添加成功",
+        data={"exerciseId": exercise.exercise_id}
+    )
+
+
+@router.put("/custom/{exercise_id}", response_model=BaseResponse)
+def update_custom_exercise(
+    exercise_id: int = Path(...),
+    data: UpdateCustomExercise = Body(...),
+    current_user=Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """更新自定义动作"""
+    exercise = ExerciseService.update_custom_exercise(user_db, current_user.user_id, exercise_id, data.dict(exclude_unset=True))
+    if not exercise:
+        raise HTTPException(status_code=404, detail="自定义动作不存在")
+    return BaseResponse(message="更新成功")
+
+
+@router.delete("/custom/{exercise_id}", response_model=BaseResponse)
+def delete_custom_exercise(
+    exercise_id: int = Path(...),
+    current_user=Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """删除自定义动作"""
+    success = ExerciseService.delete_custom_exercise(user_db, current_user.user_id, exercise_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="自定义动作不存在")
+    return BaseResponse(message="删除成功")
+

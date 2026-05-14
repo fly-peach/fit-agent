@@ -1,20 +1,16 @@
 """Fitme 数据读取操作
 
-与 read_data.py 类似，但不依赖 contextvars，直接接受 user_id 参数
+所有函数都要求提供有效的 JWT Token。
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
 from datetime import date
-from decimal import Decimal
 from typing import Any
-
-from sqlalchemy.orm import Session
 
 # Add project root to path
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from src.fitme.models import (
     HealthMetric,
@@ -28,21 +24,15 @@ from src.fitme.models import (
     RecommendedFood,
     FoodItem,
 )
-from src.fitme.utils.database import SessionLocal
+from .auth import get_db_session, verify_token
 
 
-@contextmanager
-def get_db_session():
-    """获取数据库 session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def get_user_profile(user_id: int) -> dict[str, Any]:
+def get_user_profile(token: str) -> dict[str, Any]:
     """获取用户基本信息"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         user = db.query(User).filter(User.user_id == user_id, User.deleted_at.is_(None)).first()
         if not user:
@@ -58,8 +48,12 @@ def get_user_profile(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_health_summary(user_id: int) -> dict[str, Any]:
+def get_health_summary(token: str) -> dict[str, Any]:
     """获取用户最新健康指标"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         latest = db.query(HealthMetric).filter(
             HealthMetric.user_id == user_id
@@ -79,8 +73,12 @@ def get_health_summary(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_health_history(user_id: int, limit: int = 7) -> dict[str, Any]:
+def get_health_history(token: str, limit: int = 7) -> dict[str, Any]:
     """获取近期健康指标变化趋势"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         records = db.query(HealthMetric).filter(
             HealthMetric.user_id == user_id
@@ -102,8 +100,12 @@ def get_health_history(user_id: int, limit: int = 7) -> dict[str, Any]:
         }
 
 
-def get_training_today(user_id: int) -> dict[str, Any]:
+def get_training_today(token: str) -> dict[str, Any]:
     """获取今日训练计划"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         today = date.today()
         plans = db.query(TrainingPlan).filter(
@@ -128,8 +130,12 @@ def get_training_today(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_training_weekly(user_id: int) -> dict[str, Any]:
+def get_training_weekly(token: str) -> dict[str, Any]:
     """获取本周训练统计和安排"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         from datetime import timedelta
         today = date.today()
@@ -162,8 +168,12 @@ def get_training_weekly(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_training_recommendations(user_id: int, limit: int = 5) -> dict[str, Any]:
+def get_training_recommendations(token: str, limit: int = 5) -> dict[str, Any]:
     """获取推荐的训练计划"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         plans = db.query(RecommendedTraining).filter(
             RecommendedTraining.is_active == True
@@ -185,8 +195,12 @@ def get_training_recommendations(user_id: int, limit: int = 5) -> dict[str, Any]
         }
 
 
-def get_diet_today(user_id: int) -> dict[str, Any]:
+def get_diet_today(token: str) -> dict[str, Any]:
     """获取今日饮食记录和统计"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         meals = db.query(DietMeal).filter(
             DietMeal.user_id == user_id,
@@ -230,8 +244,12 @@ def get_diet_today(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_diet_weekly_trend(user_id: int) -> dict[str, Any]:
+def get_diet_weekly_trend(token: str) -> dict[str, Any]:
     """获取本周饮食趋势"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         from datetime import timedelta
         today = date.today()
@@ -262,8 +280,12 @@ def get_diet_weekly_trend(user_id: int) -> dict[str, Any]:
         }
 
 
-def get_food_recommendations(user_id: int, limit: int = 5) -> dict[str, Any]:
+def get_food_recommendations(token: str, limit: int = 5) -> dict[str, Any]:
     """获取推荐的食物"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         foods = db.query(RecommendedFood).filter(
             RecommendedFood.is_active == True
@@ -285,8 +307,12 @@ def get_food_recommendations(user_id: int, limit: int = 5) -> dict[str, Any]:
         }
 
 
-def get_user_settings(user_id: int) -> dict[str, Any]:
+def get_user_settings(token: str) -> dict[str, Any]:
     """获取用户设置"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         s = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if not s:
@@ -305,8 +331,12 @@ def get_user_settings(user_id: int) -> dict[str, Any]:
         }
 
 
-def search_foods(user_id: int, keyword: str = "", category: str = "", meal_type: str = "") -> dict[str, Any]:
+def search_foods(token: str, keyword: str = "", category: str = "", meal_type: str = "") -> dict[str, Any]:
     """搜索食物数据库"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     from sqlalchemy import or_
     with get_db_session() as db:
         query = db.query(FoodItem).filter(
@@ -341,8 +371,12 @@ def search_foods(user_id: int, keyword: str = "", category: str = "", meal_type:
         }
 
 
-def get_full_overview(user_id: int) -> dict[str, Any]:
+def get_full_overview(token: str) -> dict[str, Any]:
     """获取用户综合概览"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+
     with get_db_session() as db:
         user = db.query(User).filter(User.user_id == user_id, User.deleted_at.is_(None)).first()
         latest = db.query(HealthMetric).filter(HealthMetric.user_id == user_id).order_by(HealthMetric.measure_date.desc()).first()

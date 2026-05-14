@@ -1,7 +1,15 @@
-"""Fitme 动作数据工具。"""
+"""Fitme 动作数据工具。
+
+所有函数都要求提供有效的 JWT Token。
+"""
 from __future__ import annotations
 
 from typing import Any
+
+# Add project root to path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from src.fitme.schemas.exercise import (
     ExerciseDetail,
@@ -10,10 +18,11 @@ from src.fitme.schemas.exercise import (
 )
 from src.fitme.services.exercise_service import ExerciseService
 from src.fitme.utils.database import BaseDBContext, UserDBContext
+from .auth import verify_token
 
 
 def search_exercises(
-    user_id: int,
+    token: str,
     keyword: str = "",
     target_muscle: str = "",
     exercise_type: str = "",
@@ -24,6 +33,11 @@ def search_exercises(
     limit: int = 20,
 ) -> dict[str, Any]:
     """搜索动作库，返回动作列表及收藏状态。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with BaseDBContext() as base_db, UserDBContext() as user_db:
         results = ExerciseService.list_exercises(
             base_db,
@@ -44,8 +58,13 @@ def search_exercises(
         }
 
 
-def get_exercise_detail(user_id: int, exercise_id: int) -> dict[str, Any]:
+def get_exercise_detail(token: str, exercise_id: int) -> dict[str, Any]:
     """获取单个动作详情。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with BaseDBContext() as base_db, UserDBContext() as user_db:
         result = ExerciseService.get_exercise(base_db, user_db, user_id, exercise_id)
         if not result:
@@ -57,8 +76,13 @@ def get_exercise_detail(user_id: int, exercise_id: int) -> dict[str, Any]:
         }
 
 
-def get_exercise_categories() -> dict[str, Any]:
+def get_exercise_categories(token: str) -> dict[str, Any]:
     """获取动作筛选分类。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with BaseDBContext() as base_db:
         return {
             "success": True,
@@ -72,8 +96,13 @@ def get_exercise_categories() -> dict[str, Any]:
         }
 
 
-def pin_exercise(user_id: int, exercise_id: int) -> dict[str, Any]:
+def pin_exercise(token: str, exercise_id: int) -> dict[str, Any]:
     """收藏动作。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with BaseDBContext() as base_db, UserDBContext() as user_db:
         pinned = ExerciseService.pin_exercise(base_db, user_db, user_id, exercise_id)
         if pinned is None:
@@ -87,8 +116,13 @@ def pin_exercise(user_id: int, exercise_id: int) -> dict[str, Any]:
         }
 
 
-def unpin_exercise(user_id: int, exercise_id: int) -> dict[str, Any]:
+def unpin_exercise(token: str, exercise_id: int) -> dict[str, Any]:
     """取消收藏动作。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with UserDBContext() as user_db:
         success = ExerciseService.unpin_exercise(user_db, user_id, exercise_id)
         if not success:
@@ -96,8 +130,13 @@ def unpin_exercise(user_id: int, exercise_id: int) -> dict[str, Any]:
         return {"success": True, "data": {"exercise_id": exercise_id}}
 
 
-def get_pinned_exercises(user_id: int) -> dict[str, Any]:
+def get_pinned_exercises(token: str) -> dict[str, Any]:
     """获取收藏动作列表。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     with BaseDBContext() as base_db, UserDBContext() as user_db:
         pinned = ExerciseService.get_pinned_exercises(base_db, user_db, user_id)
         return {
@@ -106,8 +145,13 @@ def get_pinned_exercises(user_id: int) -> dict[str, Any]:
         }
 
 
-def reorder_pinned_exercises(user_id: int, exercise_ids: list[int]) -> dict[str, Any]:
+def reorder_pinned_exercises(token: str, exercise_ids: list[int]) -> dict[str, Any]:
     """调整收藏动作顺序。"""
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
+
     if not exercise_ids:
         return {"success": False, "error": "exercise_ids 不能为空"}
 

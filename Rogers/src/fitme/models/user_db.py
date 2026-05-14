@@ -286,6 +286,31 @@ class CustomFoodItem(Base):
     user = relationship("User")
 
 
+class CustomExerciseItem(Base):
+    """用户自定义健身动作 - User DB"""
+    __tablename__ = "custom_exercise_items"
+    __table_args__ = (
+        Index("idx_custom_exercise_user", "user_id"),
+        Index("idx_custom_exercise_name", "name_cn"),
+    )
+
+    exercise_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    name_cn = Column(String(100), nullable=False)
+    name_en = Column(String(150))
+    difficulty = Column(String(10))
+    force_type = Column(String(10))
+    mechanics = Column(String(20))
+    equipment = Column(String(30))
+    exercise_type = Column(String(20))
+    target_muscle = Column(String(30), nullable=False)
+    helper_muscles = Column(String(200), default="")
+    instructions = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User")
+
+
 # ============================================================================
 # Event listeners to sync id with user_id for AsyncSQLAlchemyMemory compatibility
 # ============================================================================

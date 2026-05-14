@@ -1,6 +1,6 @@
 """Fitme 数据写入操作
 
-与 write_data.py 类似，但不依赖 contextvars，直接接受 user_id 参数
+所有函数都要求提供有效的 JWT Token。
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 # Add project root to path
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
 
 from src.fitme.models import (
     HealthMetric,
@@ -29,16 +29,7 @@ from src.fitme.models import (
     CustomFoodItem,
 )
 from src.fitme.utils.database import SessionLocal
-
-
-@contextmanager
-def get_db_session():
-    """获取数据库 session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from .auth import verify_token, get_db_session
 
 
 def _auto_update_diet_summary(user_id: int, meal_date: date, db):
@@ -117,7 +108,11 @@ def _auto_update_training_streak(user_id: int, completed_at: datetime, db):
         streak.last_training_date = completed_date
 
 
-def update_profile(user_id: int, **kwargs) -> dict[str, Any]:
+def update_profile(token: str, **kwargs) -> dict[str, Any]:
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
     """更新用户基本信息。"""
     with get_db_session() as db:
         user = db.query(User).filter(User.user_id == user_id).first()
@@ -136,11 +131,15 @@ def update_profile(user_id: int, **kwargs) -> dict[str, Any]:
         return {"success": True, "data": {"changes": changes}}
 
 
-def add_health_metric(user_id: int,
+def add_health_metric(token: str,
                       weight: float | None = None,
                       height: float | None = None,
                       body_fat: float | None = None,
                       measure_date: str | None = None) -> dict[str, Any]:
+    user_id, error = verify_token(token)
+    if error:
+        return error
+    assert user_id is not None
     """添加一条新的健康指标记录。"""
     with get_db_session() as db:
         if weight is None and height is None and body_fat is None:

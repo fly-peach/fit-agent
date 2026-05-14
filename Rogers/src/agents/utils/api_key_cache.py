@@ -28,7 +28,7 @@ class ApiKeyCache:
     def get(self, user_id: int) -> Optional[str]:
         """获取用户 API Key，已过期返回 None"""
         value = self.redis.get(self._key(user_id))
-        return value.decode("utf-8") if value else None
+        return value.decode("utf-8") if value else None # type: ignore
 
     def delete(self, user_id: int) -> None:
         """删除用户 API Key"""

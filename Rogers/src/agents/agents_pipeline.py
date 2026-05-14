@@ -91,6 +91,7 @@ async def run_rogers_pipeline(
     user_id: int | None = None,
     session_id: str = "",
     db_engine: AsyncEngine | None = None,
+    auth_token: str | None = None,
 ) -> AsyncGenerator:
     """
     Master → Fanout → Master 完整流水线.
@@ -126,11 +127,28 @@ async def run_rogers_pipeline(
             from agentscope.memory import InMemoryMemory
             memory = InMemoryMemory()
 
+        # 获取用户 API Key，用于预设到工具中
+        user_api_key = api_key_cache.get(user_id) if user_id else ""
+        from src.agents.harness.tools.tools_for_agent import (
+            build_master_toolkit,
+            build_diet_toolkit,
+            build_training_toolkit,
+        )
+        # 根据 agent 名称选择对应的 toolkit
+        if "Master" in name:
+            toolkit = build_master_toolkit(api_key=user_api_key or "", auth_token=auth_token)
+        elif "Diet" in name:
+            toolkit = build_diet_toolkit(api_key=user_api_key or "", auth_token=auth_token)
+        elif "Training" in name:
+            toolkit = build_training_toolkit(api_key=user_api_key or "", auth_token=auth_token)
+        else:
+            toolkit = build_master_toolkit(api_key=user_api_key or "", auth_token=auth_token)
+
         return ReActAgent(
             name=name,
             model=_build_model(model_name, user_id=user_id, enable_thinking=enable_thinking),
             sys_prompt=sys_prompt,
-            toolkit=Toolkit(),
+            toolkit=toolkit,
             memory=memory,
             formatter=DashScopeChatFormatter(),
         )

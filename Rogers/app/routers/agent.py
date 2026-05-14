@@ -79,7 +79,7 @@ async def query_func(
 
     try:
         async for output in run_rogers_pipeline(
-            msgs, user_id=user_id, session_id=session_id, db_engine=db_engine,
+            msgs, user_id=user_id, session_id=session_id, db_engine=db_engine, auth_token=token,
         ):
             if len(output) >= 2:
                 msg, last = output[0], output[1]

@@ -4,7 +4,7 @@ from .base_db import Base as BaseDBBase, Exercise, FoodItem, RecommendedTraining
 from .user_db import (
     Base as UserDBBase,
     User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary,
-    StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem,
+    StreakStats, UserImage, UserPinnedExercise, PlanExerciseItem, CustomFoodItem, CustomExerciseItem,
 )
 
 # For backward compatibility - alias to UserDBBase
@@ -30,6 +30,7 @@ __all__ = [
     "UserPinnedExercise",
     "PlanExerciseItem",
     "CustomFoodItem",
+    "CustomExerciseItem",
     # Backward compatibility
     "Base",
 ]

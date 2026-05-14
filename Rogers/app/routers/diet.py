@@ -238,3 +238,16 @@ def add_custom_food(
     return CreateCustomFoodResponse(
         data={"foodId": food.food_id}
     )
+
+
+@router.delete("/foods/{food_id}", response_model=BaseResponse)
+def delete_custom_food(
+    food_id: int = Path(...),
+    current_user = Depends(get_current_user),
+    user_db: Session = Depends(get_user_db)
+):
+    """删除自定义食物"""
+    success = DietService.delete_custom_food(user_db, current_user.user_id, food_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="自定义食物不存在")
+    return BaseResponse(message="删除成功")

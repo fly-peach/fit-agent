@@ -15,10 +15,11 @@ class ExerciseItem(BaseModel):
     exerciseType: Optional[str] = None
     targetMuscle: str
     equipment: Optional[str] = None
+    source: str = "system"
     isPinned: bool = False
 
     @staticmethod
-    def from_orm(exercise, is_pinned: bool = False) -> "ExerciseItem":
+    def from_orm(exercise, is_pinned: bool = False, source: str = "system") -> "ExerciseItem":
         return ExerciseItem(
             exerciseId=exercise.exercise_id,
             nameCn=exercise.name_cn,
@@ -29,6 +30,7 @@ class ExerciseItem(BaseModel):
             exerciseType=exercise.exercise_type,
             targetMuscle=exercise.target_muscle,
             equipment=exercise.equipment,
+            source=source,
             isPinned=is_pinned,
         )
 
@@ -46,10 +48,11 @@ class ExerciseDetail(BaseModel):
     targetMuscle: str
     helperMuscles: str
     instructions: List[str] = []
+    source: str = "system"
     isPinned: bool = False
 
     @staticmethod
-    def from_orm(exercise, is_pinned: bool = False) -> "ExerciseDetail":
+    def from_orm(exercise, is_pinned: bool = False, source: str = "system") -> "ExerciseDetail":
         instructions = []
         if exercise.instructions:
             try:
@@ -70,6 +73,7 @@ class ExerciseDetail(BaseModel):
             targetMuscle=exercise.target_muscle,
             helperMuscles=exercise.helper_muscles or "",
             instructions=instructions,
+            source=source,
             isPinned=is_pinned,
         )
 
@@ -170,3 +174,38 @@ class PinExerciseRequest(BaseModel):
 
 class ReorderPinnedRequest(BaseModel):
     exerciseIds: List[int]  # 按新顺序排列
+
+
+class CreateCustomExercise(BaseModel):
+    """创建自定义动作请求"""
+    nameCn: str
+    nameEn: Optional[str] = None
+    difficulty: Optional[str] = None
+    forceType: Optional[str] = None
+    mechanics: Optional[str] = None
+    equipment: Optional[str] = None
+    exerciseType: Optional[str] = None
+    targetMuscle: str
+    helperMuscles: Optional[str] = ""
+    instructions: List[str]
+
+
+class UpdateCustomExercise(BaseModel):
+    """更新自定义动作请求"""
+    nameCn: Optional[str] = None
+    nameEn: Optional[str] = None
+    difficulty: Optional[str] = None
+    forceType: Optional[str] = None
+    mechanics: Optional[str] = None
+    equipment: Optional[str] = None
+    exerciseType: Optional[str] = None
+    targetMuscle: Optional[str] = None
+    helperMuscles: Optional[str] = None
+    instructions: Optional[List[str]] = None
+
+
+class CreateCustomExerciseResponse(BaseModel):
+    """创建自定义动作响应"""
+    code: int = 200
+    message: str = "添加成功"
+    data: dict
