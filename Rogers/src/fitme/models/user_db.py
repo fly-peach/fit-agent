@@ -7,7 +7,7 @@ This database contains:
 - User diet records
 - User custom exercises and foods
 """
-from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, Time, Boolean, Text, ForeignKey, Index, LargeBinary
+from sqlalchemy import Column, Integer, String, DECIMAL, DateTime, Date, Time, Boolean, Text, ForeignKey, Index, LargeBinary, event
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -21,6 +21,8 @@ class User(Base):
     __tablename__ = "users"
 
     user_id = Column(Integer, primary_key=True, autoincrement=True)
+    # id 作为 user_id 的别名列，用于兼容 AsyncSQLAlchemyMemory
+    id = Column(Integer, nullable=True)
     name = Column(String(50), nullable=False)
     email = Column(String(100), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
@@ -282,5 +284,26 @@ class CustomFoodItem(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User")
+
+
+# ============================================================================
+# Event listeners to sync id with user_id for AsyncSQLAlchemyMemory compatibility
+# ============================================================================
+
+@event.listens_for(User, "before_insert")
+def sync_id_before_insert(mapper, connection, target):
+    """在插入 User 前，将 id 设置为与 user_id 相同（虽然 user_id 是自增，需在 after_insert 处理）"""
+    pass
+
+
+@event.listens_for(User, "after_insert")
+def sync_id_after_insert(mapper, connection, target):
+    """在 User 插入后，同步 id = user_id"""
+    if target.user_id and not target.id:
+        connection.execute(
+            User.__table__.update()
+            .where(User.__table__.c.user_id == target.user_id)
+            .values(id=target.user_id)
+        )
 
 

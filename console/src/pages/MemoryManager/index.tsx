@@ -129,35 +129,35 @@ const MemoryManager: React.FC = () => {
   );
 
   return (
-      <Row gutter={24}>
-        <Col xs={24} lg={14}>
-          <Card
-            title={
-              <Space>
-                <span>长期记忆</span>
-                {hasChanges ? (
-                  <Tag color="warning">未保存</Tag>
-                ) : (
-                  <Tag color="success">已保存</Tag>
-                )}
-              </Space>
-            }
-            extra={
-              <Space>
-                <Button
-                  icon={<UndoOutlined />}
-                  onClick={handleReset}
-                  disabled={!hasChanges || loading}
-                >
-                  放弃修改
-                </Button>
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={fetchMemory}
-                  disabled={loading}
-                >
-                  刷新
-                </Button>
+    <Row gutter={24}>
+      <Col xs={24} lg={14}>
+        <Card
+          title={
+            <Space>
+              <span>长期记忆</span>
+              {hasChanges ? (
+                <Tag color="warning">未保存</Tag>
+              ) : (
+                <Tag color="success">已保存</Tag>
+              )}
+            </Space>
+          }
+          extra={
+            <Space>
+              <Button
+                icon={<UndoOutlined />}
+                onClick={handleReset}
+                disabled={!hasChanges || loading}
+              >
+                放弃修改
+              </Button>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={fetchMemory}
+                disabled={loading}
+              >
+                刷新
+              </Button>
 
                 <Button
                   type="primary"

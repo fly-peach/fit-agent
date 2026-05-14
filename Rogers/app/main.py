@@ -23,7 +23,7 @@ from src.fitme.models import UserDBBase
 from src.fitme.utils.database import user_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
-from .routers.agent import agent_app
+from .routers.agent import agent_app, set_memory_engine
 
 
 @asynccontextmanager
@@ -38,6 +38,11 @@ async def lifespan(app: FastAPI):
     # 2. 初始化 fituser.db（建表）
     UserDBBase.metadata.create_all(bind=user_engine)
 
+    # 2.1 初始化 agent pipeline 交互记录表（复用 UserDBBase）
+    from src.agents.harness.memory import PipelineExchange
+    PipelineExchange.metadata.create_all(bind=user_engine)
+    logger.info("agent_pipeline_exchanges 表已就绪")
+
     # 迁移：为新列添加 ALTER TABLE（仅在 user_db 上）
     import sqlalchemy as sa
     with user_engine.connect() as conn:
@@ -48,21 +53,48 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass  # 列已存在
 
+        # 迁移：为 users 表添加 id 列（兼容 AsyncSQLAlchemyMemory）
+        try:
+            conn.execute(sa.text("ALTER TABLE users ADD COLUMN id INTEGER"))
+            conn.commit()
+            logger.info("已为 users 表添加 id 列")
+        except Exception:
+            pass  # 列已存在
+
+        # 迁移：为现有 users 记录填充 id = user_id
+        try:
+            result = conn.execute(sa.text("UPDATE users SET id = user_id WHERE id IS NULL"))
+            conn.commit()
+            if result.rowcount > 0:
+                logger.info("已为 %d 条 users 记录同步 id = user_id", result.rowcount)
+        except Exception:
+            pass
+
     # 创建测试账户
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # 3. 初始化 AgentApp Redis Session（与 AgentScope 集成）
-    import fakeredis
-    from agentscope.session import RedisSession
-    fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    app.state.session = RedisSession(connection_pool=fake_redis.connection_pool)
+    # 3. 初始化 Agent Session（SQLite 持久化，替换 fakeredis）
+    from src.agents.harness.session import SqliteSession
+    app.state.session = SqliteSession(settings.USER_DB_URL.replace("sqlite:///", ""))
+
+    # 4. 初始化 Agent Memory 异步引擎（AsyncSQLAlchemyMemory 用）
+    from sqlalchemy.ext.asyncio import create_async_engine
+    _async_db_url = settings.USER_DB_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
+    _memory_engine = create_async_engine(
+        _async_db_url,
+        pool_size=5,
+        max_overflow=10,
+        pool_timeout=30,
+    )
+    set_memory_engine(_memory_engine)
+    logger.info("AsyncSQLAlchemyMemory engine 已就绪")
 
     try:
         yield
     finally:
         logger.info("Shutting down FitAgent...")
-        # 主动关闭 AgentApp 的内部组件，防止进程挂住
+        await _memory_engine.dispose()
         logger.info("FitAgent shutdown complete.")
 
 

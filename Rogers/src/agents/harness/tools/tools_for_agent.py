@@ -1,5 +1,5 @@
-
-from agentscope.tool import ToolResponse, TextBlock ,Toolkit,execute_shell_command
+from agentscope.tool import ToolResponse, Toolkit,execute_shell_command
+from agentscope.message import TextBlock
 
 async def my_search(query: str, api_key: str) -> ToolResponse:
     """一个简单的示例工具函数。
