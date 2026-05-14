@@ -261,3 +261,79 @@ html, body {
   font-size: 13px;
   margin: 0;
 }
+
+/* ========================================
+   Sidebar collapsed menu custom styles
+   ======================================== */
+
+/* 折叠时菜单项居中，隐藏文本 */
+.ant-layout-sider-collapsed .ant-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item:hover {
+  background: #F0EDE8 !important;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item-selected {
+  background: #0EA5E910 !important;
+}
+
+.ant-layout-sider-collapsed .ant-menu-item-selected:hover {
+  background: #0EA5E915 !important;
+}
+
+/* 隐藏折叠后的标题文本 */
+.ant-layout-sider-collapsed .ant-menu-title-content {
+  display: none !important;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* 折叠时只保留图标区域 */
+.ant-layout-sider-collapsed .ant-menu-item .ant-menu-item-icon {
+  margin-inline-end: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 未折叠时保持原样 */
+.ant-menu-item .ant-menu-item-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* 菜单项悬停高亮 - 展开状态 */
+.ant-menu-item:hover {
+  background: #F0EDE8 !important;
+  border-radius: 10px !important;
+}
+
+.ant-menu-item-selected {
+  border-radius: 10px !important;
+}
+
+/* 去掉 ant menu 默认的背景 */
+.ant-menu-light.ant-menu-root {
+  background: transparent !important;
+}
+
+/* 菜单项之间的间距 */
+.ant-menu-item {
+  margin: 4px 8px !important;
+  width: calc(100% - 16px) !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  border-radius: 10px !important;
+  padding-inline: 12px !important;
+}

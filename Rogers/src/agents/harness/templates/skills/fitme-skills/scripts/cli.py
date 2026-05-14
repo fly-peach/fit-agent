@@ -226,6 +226,91 @@ def cmd_create_diet_meal(args: argparse.Namespace) -> None:
     _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
 
 
+# ============= 自定义食物 =============
+def cmd_create_custom_food(args: argparse.Namespace) -> None:
+    """添加自定义食物"""
+    data = {
+        "name": args.name,
+        "category": args.category,
+        "portionCalories": args.portion_calories,
+        "caloriesPer100g": args.calories_per_100g,
+    }
+    if args.portion_unit:
+        data["portionUnit"] = args.portion_unit
+    if args.portion_grams:
+        data["portionGrams"] = args.portion_grams
+    if args.calorie_level:
+        data["calorieLevel"] = args.calorie_level
+    if args.protein is not None:
+        data["protein"] = args.protein
+    if args.carbs is not None:
+        data["carbs"] = args.carbs
+    if args.fat is not None:
+        data["fat"] = args.fat
+
+    result = _api_request("POST", "/api/diet/foods", args.token, json_data=data)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+def cmd_delete_custom_food(args: argparse.Namespace) -> None:
+    """删除自定义食物"""
+    result = _api_request("DELETE", f"/api/diet/foods/{args.food_id}", args.token)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+# ============= 自定义动作 =============
+def cmd_create_custom_exercise(args: argparse.Namespace) -> None:
+    """创建自定义动作"""
+    data = {
+        "nameCn": args.name_cn,
+        "targetMuscle": args.target_muscle,
+        "instructions": [args.instructions] if args.instructions else ["请参考标准动作要领"],
+    }
+    if args.name_en:
+        data["nameEn"] = args.name_en
+    if args.difficulty:
+        data["difficulty"] = args.difficulty
+    if args.force_type:
+        data["forceType"] = args.force_type
+    if args.mechanics:
+        data["mechanics"] = args.mechanics
+    if args.equipment:
+        data["equipment"] = args.equipment
+    if args.exercise_type:
+        data["exerciseType"] = args.exercise_type
+    if args.helper_muscles:
+        data["helperMuscles"] = args.helper_muscles
+
+    result = _api_request("POST", "/api/exercises/custom", args.token, json_data=data)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+def cmd_update_custom_exercise(args: argparse.Namespace) -> None:
+    """更新自定义动作"""
+    data = {}
+    for field, api_field in [
+        ("name_cn", "nameCn"), ("name_en", "nameEn"),
+        ("difficulty", "difficulty"), ("force_type", "forceType"),
+        ("mechanics", "mechanics"), ("equipment", "equipment"),
+        ("exercise_type", "exerciseType"),
+        ("target_muscle", "targetMuscle"), ("helper_muscles", "helperMuscles"),
+    ]:
+        val = getattr(args, field, None)
+        if val is not None:
+            data[api_field] = val
+    if getattr(args, "instructions", None):
+        data["instructions"] = [args.instructions]
+
+    result = _api_request("PUT", f"/api/exercises/custom/{args.exercise_id}", args.token, json_data=data)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+def cmd_delete_custom_exercise(args: argparse.Namespace) -> None:
+    """删除自定义动作"""
+    result = _api_request("DELETE", f"/api/exercises/custom/{args.exercise_id}", args.token)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
 # ============= 综合概览 =============
 def cmd_get_full_overview(args: argparse.Namespace) -> None:
     # 综合概览
@@ -335,6 +420,56 @@ def build_parser() -> argparse.ArgumentParser:
     sub_create_diet_meal.add_argument("--meal-date", dest="meal_date", help="用餐日期 (YYYY-MM-DD)，默认今日")
     sub_create_diet_meal.add_argument("--time", help="用餐时间 (HH:MM:SS)，默认当前时间")
     sub_create_diet_meal.set_defaults(func=cmd_create_diet_meal)
+
+    # ========== 自定义食物 ==========
+    sub_create_custom_food = subparsers.add_parser("create-custom-food", help="添加自定义食物")
+    sub_create_custom_food.add_argument("--name", required=True, help="食物名称")
+    sub_create_custom_food.add_argument("--category", required=True, help="分类")
+    sub_create_custom_food.add_argument("--portion-calories", type=int, required=True, dest="portion_calories", help="每份热量 (kcal)")
+    sub_create_custom_food.add_argument("--calories-per-100g", type=int, required=True, dest="calories_per_100g", help="每100g热量 (kcal)")
+    sub_create_custom_food.add_argument("--portion-unit", dest="portion_unit", help="一份单位（如：1 块）")
+    sub_create_custom_food.add_argument("--portion-grams", type=int, dest="portion_grams", help="一份克数")
+    sub_create_custom_food.add_argument("--calorie-level", dest="calorie_level", help="热量等级（低/中/高/超高）")
+    sub_create_custom_food.add_argument("--protein", type=float, default=0, help="蛋白质 (g)")
+    sub_create_custom_food.add_argument("--carbs", type=float, default=0, help="碳水化合物 (g)")
+    sub_create_custom_food.add_argument("--fat", type=float, default=0, help="脂肪 (g)")
+    sub_create_custom_food.set_defaults(func=cmd_create_custom_food)
+
+    sub_delete_custom_food = subparsers.add_parser("delete-custom-food", help="删除自定义食物")
+    sub_delete_custom_food.add_argument("--food-id", type=int, required=True, dest="food_id", help="食物 ID")
+    sub_delete_custom_food.set_defaults(func=cmd_delete_custom_food)
+
+    # ========== 自定义动作 ==========
+    sub_create_custom_exercise = subparsers.add_parser("create-custom-exercise", help="创建自定义动作")
+    sub_create_custom_exercise.add_argument("--name-cn", required=True, dest="name_cn", help="动作中文名称")
+    sub_create_custom_exercise.add_argument("--target-muscle", required=True, dest="target_muscle", help="目标肌肉")
+    sub_create_custom_exercise.add_argument("--name-en", dest="name_en", help="动作英文名称")
+    sub_create_custom_exercise.add_argument("--difficulty", help="难度（初级/中级/专家级）")
+    sub_create_custom_exercise.add_argument("--force-type", dest="force_type", help="发力类型")
+    sub_create_custom_exercise.add_argument("--mechanics", help="力学类型")
+    sub_create_custom_exercise.add_argument("--equipment", help="器械")
+    sub_create_custom_exercise.add_argument("--exercise-type", dest="exercise_type", help="动作类型")
+    sub_create_custom_exercise.add_argument("--helper-muscles", dest="helper_muscles", help="辅助肌群（逗号分隔）")
+    sub_create_custom_exercise.add_argument("--instructions", help="动作要领")
+    sub_create_custom_exercise.set_defaults(func=cmd_create_custom_exercise)
+
+    sub_update_custom_exercise = subparsers.add_parser("update-custom-exercise", help="更新自定义动作")
+    sub_update_custom_exercise.add_argument("--exercise-id", type=int, required=True, dest="exercise_id", help="动作 ID")
+    sub_update_custom_exercise.add_argument("--name-cn", dest="name_cn", help="动作中文名称")
+    sub_update_custom_exercise.add_argument("--name-en", dest="name_en", help="动作英文名称")
+    sub_update_custom_exercise.add_argument("--difficulty", help="难度")
+    sub_update_custom_exercise.add_argument("--force-type", dest="force_type", help="发力类型")
+    sub_update_custom_exercise.add_argument("--mechanics", help="力学类型")
+    sub_update_custom_exercise.add_argument("--equipment", help="器械")
+    sub_update_custom_exercise.add_argument("--exercise-type", dest="exercise_type", help="动作类型")
+    sub_update_custom_exercise.add_argument("--target-muscle", dest="target_muscle", help="目标肌肉")
+    sub_update_custom_exercise.add_argument("--helper-muscles", dest="helper_muscles", help="辅助肌群")
+    sub_update_custom_exercise.add_argument("--instructions", help="动作要领")
+    sub_update_custom_exercise.set_defaults(func=cmd_update_custom_exercise)
+
+    sub_delete_custom_exercise = subparsers.add_parser("delete-custom-exercise", help="删除自定义动作")
+    sub_delete_custom_exercise.add_argument("--exercise-id", type=int, required=True, dest="exercise_id", help="动作 ID")
+    sub_delete_custom_exercise.set_defaults(func=cmd_delete_custom_exercise)
 
     # ========== 综合概览 ==========
     sub_get_full_overview = subparsers.add_parser("get-full-overview", help="获取用户综合概览")

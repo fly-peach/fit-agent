@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from src.core.config import settings
 
 
@@ -32,6 +33,33 @@ else:
     user_engine = create_engine(settings.USER_DB_URL, pool_pre_ping=True)
 
 UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
+
+
+# ========== Async User DB (for AsyncSQLAlchemyMemory) ==========
+_USER_DB_PATH = settings.USER_DB_URL.replace("sqlite:///", "", 1)
+async_user_engine = create_async_engine(
+    f"sqlite+aiosqlite:///{_USER_DB_PATH}",
+    pool_size=10,
+    max_overflow=20,
+)
+AsyncUserSessionLocal = async_sessionmaker(
+    async_user_engine,
+    expire_on_commit=False,
+)
+
+
+# ========== Async Agent Memory DB (独立文件，避免表名冲突) ==========
+_AGENT_MEMORY_PATH = settings.AGENT_MEMORY_DB_URL.replace("sqlite:///", "", 1)
+_ensure_db_dir(settings.AGENT_MEMORY_DB_URL)
+async_agent_memory_engine = create_async_engine(
+    f"sqlite+aiosqlite:///{_AGENT_MEMORY_PATH}",
+    pool_size=10,
+    max_overflow=20,
+)
+AsyncAgentMemorySessionLocal = async_sessionmaker(
+    async_agent_memory_engine,
+    expire_on_commit=False,
+)
 
 
 # ========== Compatibility - Default to User DB ==========

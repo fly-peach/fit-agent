@@ -54,6 +54,18 @@ COMMAND_ROUTES: dict[str, ApiRoute] = {
     "create-diet-meal":        ApiRoute("POST", "/api/diet/meals",
         "meal_type,meal_name,calories,protein,carbs,fat,water,note,meal_date,time"),
 
+    # ── 自定义食物 ──
+    "create-custom-food":   ApiRoute("POST", "/api/diet/foods",
+        "name,category,portion_calories,calories_per_100g,portion_unit,portion_grams,calorie_level,protein,carbs,fat"),
+    "delete-custom-food":   ApiRoute("DELETE", "/api/diet/foods/{food_id}"),
+
+    # ── 自定义动作 ──
+    "create-custom-exercise":   ApiRoute("POST", "/api/exercises/custom",
+        "name_cn,target_muscle,name_en,difficulty,force_type,mechanics,equipment,exercise_type,helper_muscles,instructions"),
+    "update-custom-exercise":   ApiRoute("PUT", "/api/exercises/custom/{exercise_id}",
+        "name_cn,name_en,difficulty,force_type,mechanics,equipment,exercise_type,target_muscle,helper_muscles,instructions"),
+    "delete-custom-exercise":   ApiRoute("DELETE", "/api/exercises/custom/{exercise_id}"),
+
     # ── 综合 ──
     "get-full-overview": ApiRoute("GET", "__OVERVIEW__"),
 }
@@ -125,7 +137,7 @@ async def _api_call(
     params: Optional[Dict] = None,
     body: Optional[Dict] = None,
 ) -> Dict:
-    """通用 HTTP 调用"""
+    """通用 HTTP 调用，支持 GET/POST/PUT/DELETE"""
     url = f"{API_BASE_URL}{path}"
     headers = _make_headers(token)
 
@@ -134,6 +146,10 @@ async def _api_call(
             resp = await client.get(url, headers=headers, params=params)
         elif method == "POST":
             resp = await client.post(url, headers=headers, json=body)
+        elif method == "PUT":
+            resp = await client.put(url, headers=headers, json=body)
+        elif method == "DELETE":
+            resp = await client.delete(url, headers=headers)
         else:
             return {"success": False, "error": f"不支持的 HTTP 方法: {method}"}
 
@@ -146,6 +162,18 @@ async def _api_call(
             return {"success": False, "error": error_data.get("detail", str(resp)), "status_code": resp.status_code}
         except Exception:
             return {"success": False, "error": str(resp), "status_code": resp.status_code}
+
+
+def _substitute_path(path: str, args: dict) -> str:
+    """替换路径中的 {food_id} / {exercise_id} 等占位符为实际值"""
+    import re
+    def _replacer(m: re.Match) -> str:
+        key = m.group(1)
+        val = args.pop(key, None)
+        if val is None:
+            raise ValueError(f"路径参数 {key} 缺失")
+        return str(val)
+    return re.sub(r"\{(\w+)\}", _replacer, path)
 
 
 # ── 综合概览（并行请求） ─────────────────────────────────────────────────────
@@ -258,16 +286,21 @@ async def execute_fitme_command(
     # ── 解析参数 ──
     parsed_args = _parse_args(raw_args) if raw_args else {}
 
-    # GET 请求：参数作为 query params
-    # POST 请求：参数作为 JSON body
+    # 路径参数替换（如 {food_id} → 实际值）
+    resolved_path = _substitute_path(route.path, parsed_args)
+
     try:
         if route.method == "GET":
-            # GET: 参数转 query string（按 CLI 参数名 → API 参数名映射）
             params = _build_query_params(subcommand, parsed_args)
-            result = await _api_call("GET", route.path, token, params=params)
+            result = await _api_call("GET", resolved_path, token, params=params)
         elif route.method == "POST":
             body = _build_request_body(subcommand, parsed_args)
-            result = await _api_call("POST", route.path, token, body=body)
+            result = await _api_call("POST", resolved_path, token, body=body)
+        elif route.method == "PUT":
+            body = _build_request_body(subcommand, parsed_args)
+            result = await _api_call("PUT", resolved_path, token, body=body)
+        elif route.method == "DELETE":
+            result = await _api_call("DELETE", resolved_path, token)
         else:
             return ToolResponse(content=[TextBlock(type="text", text=f"不支持的 HTTP 方法: {route.method}")])
 
@@ -329,11 +362,49 @@ def _build_request_body(subcommand: str, args: dict) -> dict:
             "meal_date": "mealDate",
             "time": "time",
         },
+        "create-custom-food": {
+            "name": "name",
+            "category": "category",
+            "portion_calories": "portionCalories",
+            "calories_per_100g": "caloriesPer100g",
+            "portion_unit": "portionUnit",
+            "portion_grams": "portionGrams",
+            "calorie_level": "calorieLevel",
+            "protein": "protein",
+            "carbs": "carbs",
+            "fat": "fat",
+        },
+        "create-custom-exercise": {
+            "name_cn": "nameCn",
+            "name_en": "nameEn",
+            "difficulty": "difficulty",
+            "force_type": "forceType",
+            "mechanics": "mechanics",
+            "equipment": "equipment",
+            "exercise_type": "exerciseType",
+            "target_muscle": "targetMuscle",
+            "helper_muscles": "helperMuscles",
+            "instructions": "instructions",
+        },
+        "update-custom-exercise": {
+            "name_cn": "nameCn",
+            "name_en": "nameEn",
+            "difficulty": "difficulty",
+            "force_type": "forceType",
+            "mechanics": "mechanics",
+            "equipment": "equipment",
+            "exercise_type": "exerciseType",
+            "target_muscle": "targetMuscle",
+            "helper_muscles": "helperMuscles",
+            "instructions": "instructions",
+        },
     }
 
     auto_defaults = {
         "create-health-metric": {"measureDate": lambda: date.today().isoformat()},
         "create-diet-meal":     {"time": lambda: datetime.now().strftime("%H:%M:%S")},
+        "create-custom-food":   {"calorieLevel": lambda: "中"},
+        "create-custom-exercise": {"instructions": lambda: "请参考标准动作要领"},
     }
 
     mapping = body_mappings.get(subcommand, {})

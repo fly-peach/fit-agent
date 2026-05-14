@@ -113,4 +113,36 @@ export const exerciseApi = {
 
   reorderPinned: (exerciseIds: number[]): Promise<void> =>
     api.post('/exercises/pin/reorder', { exerciseIds }),
+
+  // 自定义动作
+  createCustomExercise: (data: {
+    nameCn: string
+    nameEn?: string
+    difficulty?: string
+    forceType?: string
+    mechanics?: string
+    equipment?: string
+    exerciseType?: string
+    targetMuscle: string
+    helperMuscles?: string
+    instructions: string[]
+  }): Promise<{ exerciseId: number }> =>
+    api.post('/exercises/custom', data),
+
+  updateCustomExercise: (exerciseId: number, data: {
+    nameCn?: string
+    nameEn?: string
+    difficulty?: string
+    forceType?: string
+    mechanics?: string
+    equipment?: string
+    exerciseType?: string
+    targetMuscle?: string
+    helperMuscles?: string
+    instructions?: string[]
+  }): Promise<void> =>
+    api.put(`/api/exercises/custom/${exerciseId}`, data),
+
+  deleteCustomExercise: (exerciseId: number): Promise<void> =>
+    api.delete(`/api/exercises/custom/${exerciseId}`),
 }

@@ -20,7 +20,7 @@ logger = logging.getLogger("fitagent")
 
 from src.core.config import settings
 from src.fitme.models import UserDBBase
-from src.fitme.utils.database import user_engine
+from src.fitme.utils.database import user_engine, async_agent_memory_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
 from .routers.agent import agent_app, set_memory_engine
@@ -74,27 +74,19 @@ async def lifespan(app: FastAPI):
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # 3. 初始化 Agent Session（SQLite 持久化，替换 fakeredis）
-    from src.agents.harness.session import SqliteSession
-    app.state.session = SqliteSession(settings.USER_DB_URL.replace("sqlite:///", ""))
-
-    # 4. 初始化 Agent Memory 异步引擎（AsyncSQLAlchemyMemory 用）
-    from sqlalchemy.ext.asyncio import create_async_engine
-    _async_db_url = settings.USER_DB_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
-    _memory_engine = create_async_engine(
-        _async_db_url,
-        pool_size=5,
-        max_overflow=10,
-        pool_timeout=30,
-    )
-    set_memory_engine(_memory_engine)
-    logger.info("AsyncSQLAlchemyMemory engine 已就绪")
+    # 3. 初始化 Agent Memory 异步引擎（独立 agent_memory.db，避免表名冲突）
+    #    AsyncSQLAlchemyMemory 在此引擎上自动创建 message / session 等内部表
+    async with async_agent_memory_engine.begin() as conn:
+        from agentscope.memory._working_memory._sqlalchemy_memory import _Base
+        await conn.run_sync(_Base.metadata.create_all)
+    set_memory_engine(async_agent_memory_engine)
+    logger.info("Agent Memory DB (agent_memory.db) 已就绪")
 
     try:
         yield
     finally:
         logger.info("Shutting down FitAgent...")
-        await _memory_engine.dispose()
+        await async_agent_memory_engine.dispose()
         logger.info("FitAgent shutdown complete.")
 
 
