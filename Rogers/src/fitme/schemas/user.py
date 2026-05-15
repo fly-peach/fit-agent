@@ -37,6 +37,7 @@ class UserSettings(BaseModel):
     weeklyTrainingGoal: int
     notificationEnabled: bool
     reminderTime: str
+    autoApproveDbWrite: bool = False
 
 
 class UserSettingsResponse(BaseModel):
@@ -56,3 +57,4 @@ class UpdateSettingsRequest(BaseModel):
     weeklyTrainingGoal: Optional[int] = None
     notificationEnabled: Optional[bool] = None
     reminderTime: Optional[str] = None
+    autoApproveDbWrite: Optional[bool] = None

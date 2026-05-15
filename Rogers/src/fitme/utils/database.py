@@ -1,7 +1,7 @@
 """Database Utility - Support for base_db and user_db"""
 import os
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from src.core.config import settings
@@ -35,6 +35,12 @@ else:
 UserSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=user_engine)
 
 
+# ── 每次连接设置 busy_timeout ──
+@event.listens_for(user_engine, "connect")
+def _set_user_busy_timeout(dbapi_conn, _rec):
+    dbapi_conn.execute("PRAGMA busy_timeout=5000")
+
+
 # ========== Async User DB (for AsyncSQLAlchemyMemory) ==========
 _USER_DB_PATH = settings.USER_DB_URL.replace("sqlite:///", "", 1)
 async_user_engine = create_async_engine(
@@ -48,18 +54,9 @@ AsyncUserSessionLocal = async_sessionmaker(
 )
 
 
-# ========== Async Agent Memory DB (独立文件，避免表名冲突) ==========
-_AGENT_MEMORY_PATH = settings.AGENT_MEMORY_DB_URL.replace("sqlite:///", "", 1)
-_ensure_db_dir(settings.AGENT_MEMORY_DB_URL)
-async_agent_memory_engine = create_async_engine(
-    f"sqlite+aiosqlite:///{_AGENT_MEMORY_PATH}",
-    pool_size=10,
-    max_overflow=20,
-)
-AsyncAgentMemorySessionLocal = async_sessionmaker(
-    async_agent_memory_engine,
-    expire_on_commit=False,
-)
+@event.listens_for(async_user_engine.sync_engine, "connect")
+def _set_async_busy_timeout(dbapi_conn, _rec):
+    dbapi_conn.execute("PRAGMA busy_timeout=5000")
 
 
 # ========== Compatibility - Default to User DB ==========

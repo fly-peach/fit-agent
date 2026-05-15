@@ -9,7 +9,9 @@ Rogers Agent - Pipeline 多智能体编排
 所有输出均为 SSE 流式，并标注 [Master] / [SubAgent:xxx] 标识。
 """
 import asyncio
+import json
 import logging
+from pathlib import Path
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -17,10 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agentscope.agent import ReActAgent
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
-from agentscope.formatter import DashScopeChatFormatter
-from agentscope.tool import Toolkit
+from agentscope.formatter import DashScopeMultiAgentFormatter
+from agentscope.token import CharTokenCounter
 from agentscope.pipeline import stream_printing_messages
-from agentscope.memory import AsyncSQLAlchemyMemory
+from pydantic import BaseModel, Field, model_validator
+
+from src.agents.harness.memory.fit_memory import FitAsyncSQLAlchemyMemory
+from src.agents.harness.tools.approval import set_session_context, clear_session_context
+
 
 from src.agents.utils.api_key_cache import api_key_cache
 
@@ -30,29 +36,57 @@ logger = logging.getLogger(__name__)
 # Agent 工厂 & System Prompts
 # ============================================================================
 
+def _load_sys_prompt(name: str) -> str:
+    path = Path(__file__).resolve().parent / "harness" / "templates" / "sys_prompt" / f"{name}.md"
+    return path.read_text(encoding="utf-8").strip()
+
+MASTER_SYS_PROMPT = _load_sys_prompt("master")
+DIET_SYS_PROMPT = _load_sys_prompt("diet_analyst")
+TRAINING_SYS_PROMPT = _load_sys_prompt("training_analyst")
 
 
+class UserFact(BaseModel):
+    category: str = Field(description="分类: food/exercise/health/goal/achievement/personality/note")
+    key: str = Field(description="属性名，如 favorite_foods")
+    value: str = Field(description="具体内容")
+    confidence: float = Field(default=1.0, description="置信度 0.0~1.0")
+    source: str = Field(default="extracted", description="explicit/inferred/extracted")
 
-MASTER_SYS_PROMPT = (
-    "你是 Rogers，专业的健身和健康管理助手（Master Agent）。"
-    "当用户提问时，先判断问题复杂度：\n"
-    "1. 简单问题（闲聊、问候、常识问答）→ 直接回答。\n"
-    "2. 涉及「饮食营养 + 运动训练」两方面，这个时候你有两个子Agent可以进行深度分析，你需要把用户的问题拆解给到他们而不是独自分析 → 在回复末尾明确写出"
-    "【需要专项分析】，并简要列出 DietAnalyst 和 TrainingAnalyst 各自的分析方向。\n"
-    "用中文回答，专业且友好。"
-)
 
-DIET_SYS_PROMPT = (
-    "你是 DietAnalyst，专业饮食营养分析助手。"
-    "根据用户目标、身体状况和饮食偏好，给出科学、个性化的饮食建议。"
-    "用中文回答。注意：输出必须精简，控制在 30 行以内，列出要点即可，严禁长篇大论。"
-)
+class FitSummary(BaseModel):
+    user_profile: str = Field(
+        max_length=200,
+        description="用户基本身体状况和目标（体重、体脂、健身目标）",
+    )
+    recent_activities: str = Field(
+        max_length=400,
+        description="近期的训练完成情况和饮食记录要点",
+    )
+    pending_recommendations: str = Field(
+        max_length=200,
+        description="待执行的建议或未完成的计划",
+    )
+    user_preferences: str = Field(
+        max_length=200,
+        description="用户的偏好、禁忌和特殊要求",
+    )
+    user_facts_changed: list[UserFact] = Field(
+        default_factory=list,
+        description="本次对话中新发现或更新的用户画像事实",
+    )
+    user_facts_json: str = Field(
+        default="[]",
+        description="user_facts_changed 的 JSON 序列化，由 validator 自动填充",
+    )
 
-TRAINING_SYS_PROMPT = (
-    "你是 TrainingAnalyst，专业运动训练分析助手。"
-    "根据用户目标、体能水平和训练偏好，给出科学、个性化的训练计划建议。"
-    "用中文回答。注意：输出必须精简，控制在 30 行以内，列出要点即可，严禁长篇大论。"
-)
+    @model_validator(mode="after")
+    def sync_facts_json(self):
+        if self.user_facts_changed:
+            self.user_facts_json = json.dumps(
+                [f.model_dump() for f in self.user_facts_changed],
+                ensure_ascii=False,
+            )
+        return self
 
 
 # ============================================================================
@@ -92,6 +126,7 @@ async def run_rogers_pipeline(
     session_id: str = "",
     db_engine: AsyncEngine | None = None,
     auth_token: str | None = None,
+    auto_approve_enabled: bool = False,
 ) -> AsyncGenerator:
     """
     Master → Fanout → Master 完整流水线.
@@ -116,9 +151,8 @@ async def run_rogers_pipeline(
             )
     # ---- 创建所有 Agent（传递 user_id 以获取 API Key） ----
     def _create_pipeline_agent(name: str, sys_prompt: str, model_name: str = "qwen-turbo", enable_thinking: bool = False) -> ReActAgent:
-        # 如果有 db_engine → 持久化记忆；否则 → 内存记忆（开发/测试兼容）
         if db_engine:
-            memory = AsyncSQLAlchemyMemory(
+            memory = FitAsyncSQLAlchemyMemory(
                 engine_or_session=db_engine,
                 user_id=uid,
                 session_id=sid,
@@ -127,14 +161,12 @@ async def run_rogers_pipeline(
             from agentscope.memory import InMemoryMemory
             memory = InMemoryMemory()
 
-        # 获取用户 API Key，用于预设到工具中
         user_api_key = api_key_cache.get(user_id) if user_id else ""
         from src.agents.harness.tools.tools_for_agent import (
             build_master_toolkit,
             build_diet_toolkit,
             build_training_toolkit,
         )
-        # 根据 agent 名称选择对应的 toolkit
         if "Master" in name:
             toolkit = build_master_toolkit(api_key=user_api_key or "", auth_token=auth_token)
         elif "Diet" in name:
@@ -144,16 +176,44 @@ async def run_rogers_pipeline(
         else:
             toolkit = build_master_toolkit(api_key=user_api_key or "", auth_token=auth_token)
 
-        return ReActAgent(
+        kwargs = dict(
             name=name,
             model=_build_model(model_name, user_id=user_id, enable_thinking=enable_thinking),
             sys_prompt=sys_prompt,
             toolkit=toolkit,
             memory=memory,
-            formatter=DashScopeChatFormatter(),
+            formatter=DashScopeMultiAgentFormatter(),
         )
 
-    master = _create_pipeline_agent("Rogers-Master", sys_prompt = MASTER_SYS_PROMPT,enable_thinking=True)
+        if "Master" in name:
+            kwargs["compression_config"] = ReActAgent.CompressionConfig(
+                enable=True,
+                agent_token_counter=CharTokenCounter(),
+                trigger_threshold=50000,
+                keep_recent=4,
+                summary_schema=FitSummary,
+                compression_prompt=(
+                    "<system-hint>请用中文总结以上健身助手的对话历史，提取关键信息。"
+                    "重点关注：用户的身体数据变化、训练进度、饮食状况和偏好。"
+                    "忽略技术性调试信息。"
+                    "同时，从对话中提取新发现的用户画像事实（user_facts_changed），包括："
+                    "饮食偏好(food)、运动偏好(exercise)、健身目标(goal)、"
+                    "已达成成就(achievement)、性格特质(personality)、伤病(health)。"
+                    "每条事实需包含 category/key/value，置信度默认 1.0。</system-hint>"
+                ),
+                summary_template=(
+                    "<system-info>对话摘要：\n"
+                    "用户信息：{user_profile}\n"
+                    "近期活动：{recent_activities}\n"
+                    "待办建议：{pending_recommendations}\n"
+                    "用户偏好：{user_preferences}\n"
+                    "__USER_FACTS__{user_facts_json}__END_USER_FACTS__"
+                    "</system-info>"
+                ),
+            )
+
+        return ReActAgent(**kwargs)
+    master = _create_pipeline_agent("Rogers-Master", sys_prompt=MASTER_SYS_PROMPT, enable_thinking=True)
     diet = _create_pipeline_agent("DietAnalyst", sys_prompt = DIET_SYS_PROMPT,model_name="deepseek-v4-flash")
     training = _create_pipeline_agent("TrainingAnalyst", sys_prompt = TRAINING_SYS_PROMPT,model_name="deepseek-v4-flash")
 
@@ -168,23 +228,69 @@ async def run_rogers_pipeline(
     logger.info("run_rogers_pipeline: user_id=%s session_id=%s, user_question[:50]=%s",
                 user_id, session_id, user_question[:50] if user_question else "")
 
+    # ---- 上下文注入（仅新会话） ----
+    if user_id and raw_msgs:
+        mem = master.memory
+        is_new_session = True
+        if isinstance(mem, FitAsyncSQLAlchemyMemory):
+            existing = await mem.get_memory()
+            is_new_session = not existing
+        if is_new_session:
+            from src.agents.harness.context.user_context_builder import build_user_context
+            ctx = build_user_context(user_id)
+            if ctx:
+                context_msg = Msg(
+                    name="System",
+                    content=f"【用户近况】{ctx}",
+                    role="system",
+                )
+                raw_msgs.insert(0, context_msg)
+                logger.info("Injected user context for new session: user_id=%s session_id=%s",
+                            user_id, session_id)
+
+    # ---- 审批系统上下文注入 ----
+    approval_queue: asyncio.Queue = asyncio.Queue()
+    set_session_context(
+        session_id=sid,
+        user_id=user_id,
+        auto_approve=auto_approve_enabled,
+        queue=approval_queue,
+    )
+
+    async def _merged_stream(main_gen):
+        """合并主 Agent 流和审批侧通道流。"""
+        while True:
+            while not approval_queue.empty():
+                item = approval_queue.get_nowait()
+                yield item, False
+            try:
+                item = await asyncio.wait_for(main_gen.__anext__(), timeout=0.05)
+                yield item
+            except StopAsyncIteration:
+                break
+            except asyncio.TimeoutError:
+                pass
+
     # ========================================================================
     # Phase 1: Master Agent 分析复杂度（流式）
     # ========================================================================
     master_text = ""
 
-    async for output in stream_printing_messages(
-        agents=[master],
-        coroutine_task=master(raw_msgs),  # 使用 raw_msgs，避免 msgs 已被消耗
+    counter = CharTokenCounter()
+    n1 = await counter.count([m.to_dict() for m in raw_msgs])
+    logger.info("Phase 1 input tokens: %d (session=%s)", n1, session_id)
+
+    async for output in _merged_stream(
+        stream_printing_messages(
+            agents=[master],
+            coroutine_task=master(raw_msgs),
+        )
     ):
-        # 处理可能有 2 或 3 个元素的 tuple
         if len(output) >= 2:
             msg, last = output[0], output[1]
-            # 标注来源，保留原 role 不变
             msg.metadata = dict(getattr(msg, "metadata", {}) or {},
                                 source="[Master] Rogers")
             yield msg, last
-            # 只在最后一条消息时保存完整内容，避免重复累加 delta 片段
             if last:
                 master_text = _content_text(msg)
 
@@ -209,9 +315,11 @@ async def run_rogers_pipeline(
                 content=f"用户问题：{user_question}\n\n请从饮食营养角度做专业分析，给出具体建议。",
                 role="user")
         ]
-        async for output in stream_printing_messages(
-            agents=[diet],
-            coroutine_task=diet(diet_input),
+        async for output in _merged_stream(
+            stream_printing_messages(
+                agents=[diet],
+                coroutine_task=diet(diet_input),
+            )
         ):
             if len(output) >= 2:
                 msg, last = output[0], output[1]
@@ -230,9 +338,11 @@ async def run_rogers_pipeline(
                 content=f"用户问题：{user_question}\n\n请从运动训练角度做专业分析，给出具体建议。",
                 role="user")
         ]
-        async for output in stream_printing_messages(
-            agents=[training],
-            coroutine_task=training(training_input),
+        async for output in _merged_stream(
+            stream_printing_messages(
+                agents=[training],
+                coroutine_task=training(training_input),
+            )
         ):
             if len(output) >= 2:
                 msg, last = output[0], output[1]
@@ -268,15 +378,24 @@ async def run_rogers_pipeline(
                 role="user",
             )
 
-            async for output in stream_printing_messages(
-                agents=[master],
-                coroutine_task=master([agg_input]),
+            counter4 = CharTokenCounter()
+            n4 = await counter4.count([agg_input.to_dict()])
+            logger.info("Phase 4 input tokens: %d (session=%s)", n4, session_id)
+
+            async for output in _merged_stream(
+                stream_printing_messages(
+                    agents=[master],
+                    coroutine_task=master([agg_input]),
+                )
             ):
                 if len(output) >= 2:
                     msg, last = output[0], output[1]
                     msg.metadata = dict(getattr(msg, "metadata", {}) or {},
                                         source="[Master] Rogers")
                     yield msg, last
+
+    # ---- 清理审批上下文 ----
+    clear_session_context()
 
     # ========================================================================
     # Phase 5: 持久化存储到 fituser.db（所有 yield 完成后）

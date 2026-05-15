@@ -53,6 +53,8 @@ class UserService:
                 settings.weekly_training_goal = data.weeklyTrainingGoal
             if data.notificationEnabled is not None:
                 settings.notification_enabled = data.notificationEnabled
+            if data.autoApproveDbWrite is not None:
+                settings.auto_approve_db_write = data.autoApproveDbWrite
             if data.reminderTime is not None:
                 t = data.reminderTime
                 if isinstance(t, str) and ':' in t:

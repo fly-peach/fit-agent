@@ -5,6 +5,7 @@ import sessionApi from './sessionApi';
 import ChatActionGroup from './components/ChatActionGroup';
 import ChatHeaderTitle from './components/ChatHeaderTitle';
 import SubAgentAnalysis from './SubAgentAnalysis';
+import ToolApprovalCard from './ToolApprovalCard';
 import './components/ChatSessionDrawer/index.css';
 import './components/ChatSearchPanel/index.css';
 import './components/ChatSessionItem/index.css';
@@ -56,6 +57,18 @@ const convertSubAgentOutput = (output: Record<string, any>[]) => {
  */
 const subAgentResponseParser = (chunkData: string) => {
   const parsed = JSON.parse(chunkData);
+
+  // 拦截审批消息 → 转为 plugin_call
+  if (parsed.metadata?.tool_approval) {
+    const { approval_id, tool_name, tool_args_display } = parsed.metadata.tool_approval;
+    return {
+      ...parsed,
+      type: 'plugin_call',
+      content: [
+        { type: 'data', data: { name: 'tool_approval', approvalId: approval_id, toolName: tool_name, toolArgs: tool_args_display } },
+      ],
+    };
+  }
 
   // 拦截 response 级别 — 处理完整的 output 数组
   if (parsed.object === 'response' && Array.isArray(parsed.output)) {
@@ -153,6 +166,7 @@ const AIAssistant: React.FC = () => {
       },
       customToolRenderConfig: {
         'sub_agent_analysis': SubAgentAnalysis,
+        'tool_approval': ToolApprovalCard,
       },
     } as unknown as IAgentScopeRuntimeWebUIOptions;
   }, []);

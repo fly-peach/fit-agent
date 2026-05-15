@@ -7,6 +7,9 @@ from agentscope.message import TextBlock
 
 from .basic_tools.image_view import analyze_image
 from .basic_tools.fitme_shell_command import execute_fitme_command
+from .basic_tools.memory_tools import record_user_fact, get_user_memory, delete_user_fact_tool
+from .profile_tool import get_user_profile
+from .approval import create_approval_wrapper
 from .skill_manager import register_all_skills
 
 
@@ -60,7 +63,7 @@ def build_master_toolkit(api_key: str = "", auth_token: str | None = None) -> To
     toolkit = Toolkit()
     # ── 工具注册 ──
     toolkit.register_tool_function(
-        execute_fitme_command,
+        create_approval_wrapper(execute_fitme_command, "execute_fitme_command"),
         preset_kwargs={"auth_token": auth_token} if auth_token else {},
     )
     toolkit.register_tool_function(my_search)
@@ -68,6 +71,17 @@ def build_master_toolkit(api_key: str = "", auth_token: str | None = None) -> To
     toolkit.register_tool_function(
         analyze_image,
         preset_kwargs={"api_key": api_key} if api_key else {},
+    )
+
+    # ── 用户记忆画像工具 ──
+    toolkit.register_tool_function(create_approval_wrapper(record_user_fact, "record_user_fact"))
+    toolkit.register_tool_function(get_user_memory)
+    toolkit.register_tool_function(create_approval_wrapper(delete_user_fact_tool, "delete_user_fact_tool"))
+
+    # ── 用户画像只读工具（无需审批） ──
+    toolkit.register_tool_function(
+        get_user_profile,
+        preset_kwargs={"auth_token": auth_token} if auth_token else {},
     )
 
     # ── 技能注册（注册所有技能） ──
@@ -90,7 +104,7 @@ def build_diet_toolkit(api_key: str = "", auth_token: str | None = None) -> Tool
     toolkit = Toolkit()
     # ── 工具注册 ──
     toolkit.register_tool_function(
-        execute_fitme_command,
+        create_approval_wrapper(execute_fitme_command, "execute_fitme_command"),
         preset_kwargs={"auth_token": auth_token} if auth_token else {},
     )
     # 图片分析工具（预设 api_key 以便智能体无需关心凭据）
@@ -99,10 +113,21 @@ def build_diet_toolkit(api_key: str = "", auth_token: str | None = None) -> Tool
         preset_kwargs={"api_key": api_key} if api_key else {},
     )
 
+    # ── 用户记忆画像工具 ──
+    toolkit.register_tool_function(create_approval_wrapper(record_user_fact, "record_user_fact"))
+    toolkit.register_tool_function(get_user_memory)
+    toolkit.register_tool_function(create_approval_wrapper(delete_user_fact_tool, "delete_user_fact_tool"))
+
+    # ── 用户画像只读工具（无需审批） ──
+    toolkit.register_tool_function(
+        get_user_profile,
+        preset_kwargs={"auth_token": auth_token} if auth_token else {},
+    )
+
     # ── 技能注册（只注册饮食相关技能） ──
     register_all_skills(
         toolkit,
-        include_skills=["fitme-diet", "fitme-user", "fitme-health"]
+        include_skills=["fitme-diet", "fitme-user", "fitme-health", "fitme-memory"]
     )
 
     return toolkit
@@ -122,7 +147,7 @@ def build_training_toolkit(api_key: str = "", auth_token: str | None = None) -> 
     toolkit = Toolkit()
     # ── 工具注册 ──
     toolkit.register_tool_function(
-        execute_fitme_command,
+        create_approval_wrapper(execute_fitme_command, "execute_fitme_command"),
         preset_kwargs={"auth_token": auth_token} if auth_token else {},
     )
     # 图片分析工具（预设 api_key 以便智能体无需关心凭据）
@@ -131,10 +156,21 @@ def build_training_toolkit(api_key: str = "", auth_token: str | None = None) -> 
         preset_kwargs={"api_key": api_key} if api_key else {},
     )
 
+    # ── 用户记忆画像工具 ──
+    toolkit.register_tool_function(create_approval_wrapper(record_user_fact, "record_user_fact"))
+    toolkit.register_tool_function(get_user_memory)
+    toolkit.register_tool_function(create_approval_wrapper(delete_user_fact_tool, "delete_user_fact_tool"))
+
+    # ── 用户画像只读工具（无需审批） ──
+    toolkit.register_tool_function(
+        get_user_profile,
+        preset_kwargs={"auth_token": auth_token} if auth_token else {},
+    )
+
     # ── 技能注册（只注册训练相关技能） ──
     register_all_skills(
         toolkit,
-        include_skills=["fitme-training", "fitme-exercise", "fitme-user", "fitme-health"]
+        include_skills=["fitme-training", "fitme-exercise", "fitme-user", "fitme-health", "fitme-memory"]
     )
 
     return toolkit

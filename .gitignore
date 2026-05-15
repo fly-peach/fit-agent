@@ -23,6 +23,7 @@ build/
 *.local
 
 # IDE
+.kilo/
 .idea/
 .vscode/
 *.swp

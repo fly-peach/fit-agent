@@ -87,6 +87,7 @@ def get_settings(
             weeklyTrainingGoal=settings.weekly_training_goal,  # type: ignore
             notificationEnabled=settings.notification_enabled,  # type: ignore
             reminderTime=str(settings.reminder_time),  # type: ignore
+            autoApproveDbWrite=settings.auto_approve_db_write or False,  # type: ignore
         )
     )
 

@@ -12,21 +12,12 @@ from agentscope_runtime.engine import AgentApp
 from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest, AgentResponse
 
 from src.agents.agents_pipeline import run_rogers_pipeline
+from src.agents.harness.tools.approval import get_approval_manager
 
 logger = logging.getLogger(__name__)
 
 # 用于 main.py 的 set_auth_token 中间件
 _auth_token: ContextVar[str | None] = ContextVar("auth_token", default=None)
-
-# 异步引擎（由 main.py lifespan 初始化，agent.py query_func 使用）
-_memory_engine = None
-
-
-def set_memory_engine(engine) -> None:
-    """由 main.py lifespan 调用，设置共享的异步引擎"""
-    global _memory_engine
-    _memory_engine = engine
-
 
 # ============================================================================
 # 1. 创建 AgentApp（使用 main.py 的 lifespan）
@@ -75,11 +66,28 @@ async def query_func(
         session_id, user_id, token[:8] if token else None,
     )
 
-    db_engine = _memory_engine
+    from src.fitme.utils.database import async_user_engine
+
+    auto_approve = False
+    if user_id:
+        from src.fitme.utils.database import UserSessionLocal
+        from src.fitme.services.user_service import UserService
+        db_sync = UserSessionLocal()
+        try:
+            settings = UserService.get_settings(db_sync, user_id)
+            if settings and getattr(settings, 'auto_approve_db_write', False):
+                auto_approve = True
+        except Exception:
+            logger.exception("Failed to read auto_approve setting for user=%s", user_id)
+        finally:
+            db_sync.close()
+
+    db_engine = async_user_engine
 
     try:
         async for output in run_rogers_pipeline(
-            msgs, user_id=user_id, session_id=session_id, db_engine=db_engine, auth_token=token,
+            msgs, user_id=user_id, session_id=session_id, db_engine=db_engine,
+            auth_token=token, auto_approve_enabled=auto_approve,
         ):
             if len(output) >= 2:
                 msg, last = output[0], output[1]
@@ -159,13 +167,11 @@ async def delete_session(
 
     清除:
     - agent_pipeline_exchanges 表中的交互记录
-    - AsyncSQLAlchemyMemory 内部的 message / message_mark 表
+    - FitAsyncSQLAlchemyMemory 内部的 agent_message / agent_message_mark 表
     """
     from src.agents.harness.memory import PipelineExchange
-    from src.fitme.utils.database import UserSessionLocal
-    from src.core.config import settings
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from agentscope.memory import AsyncSQLAlchemyMemory
+    from src.fitme.utils.database import UserSessionLocal, async_user_engine
+    from src.agents.harness.memory.fit_memory import FitAsyncSQLAlchemyMemory
 
     # 1. 删除 Pipeline 交互记录
     db = UserSessionLocal()
@@ -189,17 +195,14 @@ async def delete_session(
     finally:
         db.close()
 
-    # 2. 清除 AgentScope 内部记忆（message + message_mark 表）
+    # 2. 清除 AgentScope 内部记忆（agent_message + agent_message_mark 表）
     try:
-        _async_db_url = settings.USER_DB_URL.replace("sqlite:///", "sqlite+aiosqlite:///")
-        engine = create_async_engine(_async_db_url)
-        async with AsyncSQLAlchemyMemory(
-            engine_or_session=engine,
+        async with FitAsyncSQLAlchemyMemory(
+            engine_or_session=async_user_engine,
             user_id=str(user_id),
             session_id=session_id,
         ) as memory:
             await memory.clear()
-        await engine.dispose()
         logger.info(
             "Cleared AgentScope memory for user=%s session=%s",
             user_id, session_id,
@@ -212,3 +215,35 @@ async def delete_session(
         "message": f"Session {session_id} 数据已清除",
         "pipeline_exchanges_deleted": deleted,
     }
+
+
+# ============================================================================
+# 6. 工具调用审批端点
+# ============================================================================
+
+
+@agent_app.post("/api/agent/approval/{approval_id}/approve")
+async def approve_tool_call(approval_id: str):
+    """用户通过审批"""
+    token = _auth_token.get()
+    if not token:
+        return {"status": "unauthorized"}
+    manager = get_approval_manager()
+    ok = manager.approve(approval_id)
+    return {"status": "approved" if ok else "not_found"}
+
+
+@agent_app.post("/api/agent/approval/{approval_id}/reject")
+async def reject_tool_call(approval_id: str, input: str = ""):
+    """用户拒绝审批
+
+    Args:
+        approval_id: 审批请求 ID
+        input: 可选，用户的拒绝说明文本
+    """
+    token = _auth_token.get()
+    if not token:
+        return {"status": "unauthorized"}
+    manager = get_approval_manager()
+    ok = manager.reject(approval_id, input_text=input)
+    return {"status": "rejected" if ok else "not_found"}

@@ -19,6 +19,7 @@ export interface UserSettings {
   weeklyTrainingGoal: number
   notificationEnabled: boolean
   reminderTime: string
+  autoApproveDbWrite: boolean
 }
 
 export const userApi = {

@@ -40,9 +40,6 @@ class Settings(BaseSettings):
     # User DB (用户数据库：用户数据、自定义数据等)
     USER_DB_URL: str = f"sqlite:///{_DATA_DIR / 'fituser.db'}"
 
-    # Agent Memory DB (智能体消息历史，独立文件避免表名冲突)
-    AGENT_MEMORY_DB_URL: str = f"sqlite:///{_DATA_DIR / 'agent_memory.db'}"
-
     # 兼容旧代码 - 指向 user_db
     DATABASE_URL: str = f"sqlite:///{_DATA_DIR / 'fituser.db'}"
 

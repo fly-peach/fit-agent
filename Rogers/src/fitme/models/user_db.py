@@ -57,6 +57,7 @@ class UserSettings(Base):
     weekly_training_goal = Column(Integer, default=5)
     notification_enabled = Column(Boolean, default=True)
     reminder_time = Column(Time, default=time(7, 0))
+    auto_approve_db_write = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

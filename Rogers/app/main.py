@@ -20,15 +20,23 @@ logger = logging.getLogger("fitagent")
 
 from src.core.config import settings
 from src.fitme.models import UserDBBase
-from src.fitme.utils.database import user_engine, async_agent_memory_engine
+from src.fitme.utils.database import user_engine, async_user_engine
 
 from .routers import auth_router, user_router, health_router, training_router, diet_router, exercise_router, agent_config_router
-from .routers.agent import agent_app, set_memory_engine
+from .routers.agent import agent_app
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """初始化服务。"""
+    # ── 0. SQLite 并发优化：WAL 模式 + busy_timeout ──
+    import sqlalchemy as _sa
+    with user_engine.connect() as conn:
+        conn.execute(_sa.text("PRAGMA journal_mode=WAL"))
+        conn.execute(_sa.text("PRAGMA busy_timeout=5000"))
+        conn.commit()
+    logger.info("SQLite WAL 模式已启用 (busy_timeout=5000ms)")
+
     # 1. 初始化 fitbase.db（建表 + 种子数据，幂等）
     from src.fitme.seed import seed_base_db
     result = seed_base_db()
@@ -70,23 +78,31 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+        # 迁移：为 user_settings 表添加 auto_approve_db_write 列
+        try:
+            conn.execute(sa.text("ALTER TABLE user_settings ADD COLUMN auto_approve_db_write BOOLEAN DEFAULT 0"))
+            conn.commit()
+            logger.info("已为 user_settings 添加 auto_approve_db_write 列")
+        except Exception:
+            pass
+
     # 创建测试账户
     from .seed import seed_test_accounts
     seed_test_accounts()
 
-    # 3. 初始化 Agent Memory 异步引擎（独立 agent_memory.db，避免表名冲突）
-    #    AsyncSQLAlchemyMemory 在此引擎上自动创建 message / session 等内部表
-    async with async_agent_memory_engine.begin() as conn:
-        from agentscope.memory._working_memory._sqlalchemy_memory import _Base
-        await conn.run_sync(_Base.metadata.create_all)
-    set_memory_engine(async_agent_memory_engine)
-    logger.info("Agent Memory DB (agent_memory.db) 已就绪")
+    # 3. 在 fituser.db 上创建 agent_* 表（仅 4 张，跳过原版避免冲突）
+    async with async_user_engine.begin() as conn:
+        from src.agents.harness.memory.fit_memory import FitMemBase
+        agent_tables = [
+            FitMemBase.metadata.tables[name]
+            for name in ("agent_users", "agent_session", "agent_message", "agent_message_mark")
+        ]
+        await conn.run_sync(lambda c: FitMemBase.metadata.create_all(c, tables=agent_tables))
+    logger.info("Agent 记忆表 (agent_*) 已在 fituser.db 中就绪")
 
     try:
         yield
     finally:
-        logger.info("Shutting down FitAgent...")
-        await async_agent_memory_engine.dispose()
         logger.info("FitAgent shutdown complete.")
 
 
