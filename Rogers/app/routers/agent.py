@@ -47,6 +47,7 @@ async def query_func(
     query_func(runner_instance, request=..., response=..., msgs=..., ...)。
     缺少 self 会导致 request 参数收到 runner 实例，与关键字参数冲突。
     """
+    logger.info("===== query_func STARTED =====")
     msgs = kwargs.pop("msgs", [])
     session_id = request.session_id or ""
 
@@ -68,33 +69,41 @@ async def query_func(
 
     from src.fitme.utils.database import async_user_engine
 
-    auto_approve = False
-    if user_id:
-        from src.fitme.utils.database import UserSessionLocal
-        from src.fitme.services.user_service import UserService
-        db_sync = UserSessionLocal()
-        try:
-            settings = UserService.get_settings(db_sync, user_id)
-            if settings and getattr(settings, 'auto_approve_db_write', False):
-                auto_approve = True
-        except Exception:
-            logger.exception("Failed to read auto_approve setting for user=%s", user_id)
-        finally:
-            db_sync.close()
+    auto_approve = False  # 强制关闭自动审批用于调试
+    # if user_id:
+    #     from src.fitme.utils.database import UserSessionLocal
+    #     from src.fitme.services.user_service import UserService
+    #     db_sync = UserSessionLocal()
+    #     try:
+    #         settings = UserService.get_settings(db_sync, user_id)
+    #         if settings and getattr(settings, 'auto_approve_db_write', False):
+    #             auto_approve = True
+    #     except Exception:
+    #         logger.exception("Failed to read auto_approve setting for user=%s", user_id)
+    #     finally:
+    #         db_sync.close()
 
+    logger.info(f"=== Agent query: user_id={user_id}, auto_approve={auto_approve} ===")
     db_engine = async_user_engine
 
     try:
+        yield_count = 0
         async for output in run_rogers_pipeline(
             msgs, user_id=user_id, session_id=session_id, db_engine=db_engine,
             auth_token=token, auto_approve_enabled=auto_approve,
         ):
+            yield_count += 1
+            logger.info(f"query_func yielding output #{yield_count}: {output}")
             if len(output) >= 2:
                 msg, last = output[0], output[1]
                 yield msg, last
+        logger.info(f"===== query_func DONE, yielded {yield_count} outputs =====")
 
     except asyncio.CancelledError:
         logger.info(f"Task {session_id} was manually interrupted.")
+        raise
+    except Exception as e:
+        logger.exception(f"query_func ERROR: {e}")
         raise
 
 

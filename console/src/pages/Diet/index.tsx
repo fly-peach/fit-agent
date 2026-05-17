@@ -6,6 +6,7 @@ import dayjs from 'dayjs'
 import { dietApi, type DietStats, DietMeal, type FoodItem } from '../../services/diet'
 import type { ColumnsType } from 'antd/es/table'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
+import { useIsMobile } from '../../hooks'
 
 const CALORIE_LEVEL_COLORS: Record<string, string> = {
   低: '#10B981',
@@ -27,16 +28,6 @@ const MEAL_FILTERS = [
   { key: 'lunch', label: '午餐', icon: <Sun size={14} />, color: '#10B981' },
   { key: 'dinner', label: '晚餐', icon: <Moon size={14} />, color: '#6366F1' },
 ] as const
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-  return isMobile
-}
 
 const Diet: React.FC = () => {
   const [stats, setStats] = useState<DietStats | null>(null)

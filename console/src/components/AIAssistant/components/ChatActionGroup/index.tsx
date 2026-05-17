@@ -9,6 +9,7 @@ import { useChatAnywhereSessions } from "@agentscope-ai/chat"
 import { userApi } from "../../../../services/user"
 import ChatSessionDrawer from "../ChatSessionDrawer"
 import ChatSearchPanel from "../ChatSearchPanel"
+import "./index.css"
 
 const ChatActionGroup: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -26,7 +27,7 @@ const ChatActionGroup: React.FC = () => {
 
   return (
     <>
-      <Space size={4}>
+      <Space size={8} className="chat-action-group">
         <Tooltip title="New Chat" mouseEnterDelay={0.5}>
           <Button
             type="text"
@@ -48,16 +49,19 @@ const ChatActionGroup: React.FC = () => {
             onClick={() => setHistoryOpen(true)}
           />
         </Tooltip>
-        <Switch
-          checked={autoApprove}
-          checkedChildren="自动审批"
-          unCheckedChildren="手动审批"
-          size="small"
-          onChange={async (checked) => {
-            setAutoApprove(checked)
-            await userApi.updateSettings({ autoApproveDbWrite: checked })
-          }}
-        />
+        <div className="auto-approve-toggle">
+          <Switch
+            checked={autoApprove}
+            size="default"
+            onChange={async (checked) => {
+              setAutoApprove(checked)
+              await userApi.updateSettings({ autoApproveDbWrite: checked })
+            }}
+          />
+          <span className={`toggle-label ${autoApprove ? 'active' : ''}`}>
+            {autoApprove ? '自动审批' : '手动审批'}
+          </span>
+        </div>
       </Space>
       <ChatSessionDrawer open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <ChatSearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />

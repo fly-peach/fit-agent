@@ -13,7 +13,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
+
+# 暂时禁用 agentscope_runtime，避免导入错误
+# from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest
 
 logger = logging.getLogger("fitagent")
 
@@ -116,7 +118,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS else ["*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -175,18 +177,19 @@ app.router.routes = [
     if not (getattr(route, "path", None) == "/" and getattr(route, "name", None) == "root")
 ]
 
-_original_openapi = app.openapi
-
-def _patched_openapi() -> dict:
-    schema = _original_openapi()
-    agent_schema = AgentRequest.model_json_schema(
-        ref_template="#/components/schemas/{model}"
-    )
-    components = schema.setdefault("components", {})
-    component_schemas = components.setdefault("schemas", {})
-    for def_name, def_schema in agent_schema.pop("$defs", {}).items():
-        component_schemas.setdefault(def_name, def_schema)
-    component_schemas.setdefault("AgentRequest", agent_schema)
-    return schema
-
-app.openapi = _patched_openapi
+# 暂时禁用 agentscope_runtime 相关代码
+# _original_openapi = app.openapi
+#
+# def _patched_openapi() -> dict:
+#     schema = _original_openapi()
+#     agent_schema = AgentRequest.model_json_schema(
+#         ref_template="#/components/schemas/{model}"
+#     )
+#     components = schema.setdefault("components", {})
+#     component_schemas = components.setdefault("schemas", {})
+#     for def_name, def_schema in agent_schema.pop("$defs", {}).items():
+#         component_schemas.setdefault(def_name, def_schema)
+#     component_schemas.setdefault("AgentRequest", agent_schema)
+#     return schema
+#
+# app.openapi = _patched_openapi

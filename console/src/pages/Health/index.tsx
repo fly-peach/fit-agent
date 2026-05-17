@@ -5,16 +5,7 @@ import { Heart } from 'lucide-react'
 import dayjs from 'dayjs'
 import { healthApi, type HealthMetrics, HealthMeasurement, HealthReport } from '../../services/health'
 import type { ColumnsType } from 'antd/es/table'
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-  return isMobile
-}
+import { useIsMobile } from '../../hooks'
 
 const Health: React.FC = () => {
   const [metrics, setMetrics] = useState<HealthMetrics | null>(null)

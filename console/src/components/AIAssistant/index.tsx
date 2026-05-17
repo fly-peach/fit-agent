@@ -6,6 +6,7 @@ import ChatActionGroup from './components/ChatActionGroup';
 import ChatHeaderTitle from './components/ChatHeaderTitle';
 import SubAgentAnalysis from './SubAgentAnalysis';
 import ToolApprovalCard from './ToolApprovalCard';
+import './ToolApprovalCard.css';
 import './components/ChatSessionDrawer/index.css';
 import './components/ChatSearchPanel/index.css';
 import './components/ChatSessionItem/index.css';
@@ -56,10 +57,13 @@ const convertSubAgentOutput = (output: Record<string, any>[]) => {
  * 使用 Thinking 渲染，标题显示 Agent 名称。
  */
 const subAgentResponseParser = (chunkData: string) => {
+  console.log('[subAgentResponseParser] raw chunk:', chunkData);
   const parsed = JSON.parse(chunkData);
+  console.log('[subAgentResponseParser] parsed:', parsed);
 
   // 拦截审批消息 → 转为 plugin_call
   if (parsed.metadata?.tool_approval) {
+    console.log('[subAgentResponseParser] Found tool_approval in metadata!');
     const { approval_id, tool_name, tool_args_display } = parsed.metadata.tool_approval;
     return {
       ...parsed,
@@ -68,6 +72,24 @@ const subAgentResponseParser = (chunkData: string) => {
         { type: 'data', data: { name: 'tool_approval', approvalId: approval_id, toolName: tool_name, toolArgs: tool_args_display } },
       ],
     };
+  }
+
+  // 兼容：检查 content 里的 tool_use/tool_call
+  if (Array.isArray(parsed.content)) {
+    for (const block of parsed.content) {
+      if (block.type === 'tool_use' || block.type === 'tool_call') {
+        if (block.name === 'tool_approval') {
+          console.log('[subAgentResponseParser] Found tool_approval in content!');
+          return {
+            ...parsed,
+            type: 'plugin_call',
+            content: [
+              { type: 'data', data: { name: 'tool_approval', ...block.arguments } },
+            ],
+          };
+        }
+      }
+    }
   }
 
   // 拦截 response 级别 — 处理完整的 output 数组

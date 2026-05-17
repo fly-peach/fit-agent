@@ -125,3 +125,61 @@ export const trainingApi = {
   deletePlanExercise: (exerciseId: number): Promise<void> =>
     api.delete(`/api/training/plans/exercise/${exerciseId}`),
 }
+
+// ============================================================================
+// Training Results Snapshots - 训练成果快照
+// ============================================================================
+
+export interface TrainingResultSnapshot {
+  id: number
+  userId: number
+  sessionId?: string
+  title: string
+  periodType?: 'week' | 'month' | 'custom'
+  periodStart?: string
+  periodEnd?: string
+  thumbnail?: string
+  statsJson?: string
+  cardHtml?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SaveTrainingResultRequest {
+  cardHtml: string
+  title: string
+  sessionId?: string
+  statsJson?: string
+  periodType?: 'week' | 'month' | 'custom'
+  periodStart?: string
+  periodEnd?: string
+  thumbnail?: string
+}
+
+export interface UpdateTrainingResultRequest {
+  title?: string
+  statsJson?: string
+  thumbnail?: string
+}
+
+export const trainingResultsApi = {
+  saveResult: (data: SaveTrainingResultRequest): Promise<{ snapshotId: number }> =>
+    api.post('/training/results/save', data),
+
+  listResults: (params?: {
+    periodType?: string
+    limit?: number
+    offset?: number
+  }): Promise<TrainingResultSnapshot[]> =>
+    api.get('/training/results/list', { params }),
+
+  getResult: (snapshotId: number): Promise<TrainingResultSnapshot> =>
+    api.get(`/training/results/${snapshotId}`),
+
+  updateResult: (snapshotId: number, data: UpdateTrainingResultRequest): Promise<void> =>
+    api.put(`/training/results/${snapshotId}`, data),
+
+  deleteResult: (snapshotId: number): Promise<void> =>
+    api.delete(`/training/results/${snapshotId}`),
+}

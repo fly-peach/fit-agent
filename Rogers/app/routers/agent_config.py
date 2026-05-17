@@ -61,6 +61,7 @@ def get_api_key_status(
     )
 
 
+@router.post("/api-key", response_model=MessageResponse)
 @router.put("/api-key", response_model=MessageResponse)
 def set_api_key(
     body: SetApiKeyRequest,

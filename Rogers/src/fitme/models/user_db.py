@@ -333,3 +333,31 @@ def sync_id_after_insert(mapper, connection, target):
         )
 
 
+class TrainingResultSnapshot(Base):
+    """训练成果快照表 - User DB
+
+    存储 Agent 生成的训练成果 HTML 卡片
+    """
+    __tablename__ = "training_result_snapshots"
+    __table_args__ = (
+        Index("idx_training_result_user", "user_id"),
+        Index("idx_training_result_period", "user_id", "period_start", "period_end"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
+    session_id = Column(String(64), nullable=True, index=True)  # 关联的 Agent 会话
+    card_html = Column(Text, nullable=False)  # Agent 生成的完整 HTML 卡片
+    stats_json = Column(Text, nullable=True)  # 统计数据 JSON（列表预览用）
+    title = Column(String(200), nullable=False)  # 快照标题（如"2024年5月第三周训练成果"）
+    period_type = Column(String(20), nullable=True)  # 周期类型："week" | "month" | "custom"
+    period_start = Column(Date, nullable=True)  # 统计周期开始
+    period_end = Column(Date, nullable=True)  # 统计周期结束
+    thumbnail = Column(Text, nullable=True)  # 缩略图/封面图（可选，Base64或URL）
+    is_active = Column(Boolean, default=True, nullable=False)  # 软删除
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User")
+
+

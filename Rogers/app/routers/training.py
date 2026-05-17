@@ -264,3 +264,139 @@ def renew_recurring_plan(
     if not plan_ids:
         raise HTTPException(status_code=404, detail="计划不存在或不是循环计划")
     return BaseResponse(message=f"续期成功，已生成 {len(plan_ids)} 周计划")
+
+
+# ============================================================================
+# Training Results Snapshots - 训练成果快照
+# ============================================================================
+
+from pydantic import BaseModel, Field
+from typing import Optional
+from src.agents.harness.memory.training_results_storage import (
+    save_training_result_snapshot,
+    get_training_result_snapshot,
+    list_training_result_snapshots,
+    update_training_result_snapshot,
+    delete_training_result_snapshot,
+)
+
+
+class SaveTrainingResultRequest(BaseModel):
+    card_html: str = Field(..., description="Agent 生成的完整 HTML 卡片")
+    title: str = Field(..., description="快照标题")
+    session_id: Optional[str] = Field(None, description="关联的 Agent 会话 ID")
+    stats_json: Optional[str] = Field(None, description="统计数据 JSON")
+    period_type: Optional[str] = Field(None, description="周期类型：week/month/custom")
+    period_start: Optional[date] = Field(None, description="统计周期开始")
+    period_end: Optional[date] = Field(None, description="统计周期结束")
+    thumbnail: Optional[str] = Field(None, description="缩略图")
+
+
+class UpdateTrainingResultRequest(BaseModel):
+    title: Optional[str] = Field(None, description="新标题")
+    stats_json: Optional[str] = Field(None, description="新统计 JSON")
+    thumbnail: Optional[str] = Field(None, description="新缩略图")
+
+
+@router.post("/results/save")
+def save_result(
+    data: SaveTrainingResultRequest,
+    current_user = Depends(get_current_user),
+):
+    """保存训练成果快照"""
+    snapshot_id = save_training_result_snapshot(
+        user_id=current_user.user_id,
+        card_html=data.card_html,
+        title=data.title,
+        session_id=data.session_id,
+        stats_json=data.stats_json,
+        period_type=data.period_type,
+        period_start=data.period_start,
+        period_end=data.period_end,
+        thumbnail=data.thumbnail,
+    )
+    return {
+        "code": 200,
+        "message": "保存成功",
+        "data": {"snapshotId": snapshot_id}
+    }
+
+
+@router.get("/results/list")
+def list_results(
+    period_type: Optional[str] = Query(None, description="周期类型筛选"),
+    limit: int = Query(20, ge=1, le=100, description="返回条数"),
+    offset: int = Query(0, ge=0, description="分页偏移"),
+    current_user = Depends(get_current_user),
+):
+    """获取训练成果快照列表（不含完整 HTML，减少数据传输）"""
+    snapshots = list_training_result_snapshots(
+        user_id=current_user.user_id,
+        period_type=period_type,
+        limit=limit,
+        offset=offset,
+        include_html=False,
+    )
+    return {
+        "code": 200,
+        "data": snapshots
+    }
+
+
+@router.get("/results/{snapshotId}")
+def get_result(
+    snapshotId: int = Path(...),
+    current_user = Depends(get_current_user),
+):
+    """获取单个训练成果快照详情（含完整 HTML）"""
+    snapshot = get_training_result_snapshot(snapshotId)
+    if not snapshot or snapshot["user_id"] != current_user.user_id:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    return {
+        "code": 200,
+        "data": snapshot
+    }
+
+
+@router.put("/results/{snapshotId}")
+def update_result(
+    snapshotId: int = Path(...),
+    data: UpdateTrainingResultRequest = Body(...),
+    current_user = Depends(get_current_user),
+):
+    """更新训练成果快照信息"""
+    # 先验证归属
+    snapshot = get_training_result_snapshot(snapshotId)
+    if not snapshot or snapshot["user_id"] != current_user.user_id:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    success = update_training_result_snapshot(
+        snapshot_id=snapshotId,
+        title=data.title,
+        stats_json=data.stats_json,
+        thumbnail=data.thumbnail,
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    return {
+        "code": 200,
+        "message": "更新成功"
+    }
+
+
+@router.delete("/results/{snapshotId}")
+def delete_result(
+    snapshotId: int = Path(...),
+    current_user = Depends(get_current_user),
+):
+    """软删除训练成果快照"""
+    # 先验证归属
+    snapshot = get_training_result_snapshot(snapshotId)
+    if not snapshot or snapshot["user_id"] != current_user.user_id:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    success = delete_training_result_snapshot(snapshotId)
+    if not success:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    return {
+        "code": 200,
+        "message": "删除成功"
+    }

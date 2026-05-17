@@ -4,16 +4,7 @@ import { LogoutOutlined } from '@ant-design/icons'
 import { User } from 'lucide-react'
 import dayjs from 'dayjs'
 import { userApi, type UserProfile } from '../../services/user'
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-  return isMobile
-}
+import { useIsMobile } from '../../hooks'
 
 const UserPage: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null)

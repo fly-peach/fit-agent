@@ -4,7 +4,7 @@
 流程:
 1. 登录 + 设置 API Key
 2. 发送 prompt 让 Agent 调用 record_user_fact 写入个性数据
-3. 审批拦截 → 在 SSE 流中检测到 approval_id → 自动批准
+3. 审批拦截 → 在 SSE 流中检测到 approval_id → 手动批准
 4. 查看 Agent 最终输出的确认文本
 5. 查询 user_memory_profile 表，展示刚写入的内部数据
 6. 删除测试记录 + 会话
@@ -53,7 +53,7 @@ def set_api_key(token: str, api_key: str):
 
 
 def run_agent_pipeline(token: str, session_id: str, message: str) -> str | None:
-    """发送消息给 Agent，在流中检测审批并自动批准，返回完整响应文本"""
+    """发送消息给 Agent，在流中检测审批并等待用户手动批准，返回完整响应文本"""
     headers = {"Authorization": f"Bearer {token}"}
     data = {
         "input": [{
@@ -95,24 +95,64 @@ def run_agent_pipeline(token: str, session_id: str, message: str) -> str | None:
                     msg = json.loads(raw)
                     print(f"📨 {msg}")
 
-                    # 检测审批通知
-                    tool_meta = msg.get("metadata", {}).get("tool_approval")
-                    if tool_meta:
-                        approval_id = tool_meta["approval_id"]
-                        print(f"\n🔔 检测到审批请求! tool={tool_meta['tool_name']}")
-                        print(f"   approval_id={approval_id}")
-                        # 自动批准
-                        ar = requests.post(
-                            f"{BASE_URL}/api/agent/approval/{approval_id}/approve",
-                            headers=headers,
-                        )
-                        print(f"✅ 审批结果: {ar.json()}")
+                    # 检测审批通知 - 检查 metadata 字段
+                    metadata = msg.get("metadata", {})
+                    if isinstance(metadata, dict):
+                        tool_meta = metadata.get("tool_approval")
+                        if tool_meta and not approval_id:
+                            approval_id = tool_meta["approval_id"]
+                            tool_name = tool_meta["tool_name"]
+                            tool_args = tool_meta.get("tool_args_display", "")
 
-                    # 收集文本输出
-                    if msg.get("type") == "message":
-                        for c in msg.get("content", []):
-                            if isinstance(c, dict) and c.get("type") == "text":
-                                text_parts.append(c.get("text", ""))
+                            print(f"\n{'='*60}")
+                            print(f"🔔 【需要审批】工具: {tool_name}")
+                            if tool_args:
+                                print(f"   参数: {tool_args}")
+                            print(f"\n请选择:")
+                            print(f"   y - 批准执行此工具")
+                            print(f"   n - 拒绝执行此工具")
+
+                            # 等待用户输入
+                            while True:
+                                choice = input("\n请输入你的选择 (y/n): ").strip().lower()
+                                if choice in ['y', 'n']:
+                                    break
+                                print("无效输入，请输入 y 或 n")
+
+                            if choice == 'y':
+                                # 批准
+                                ar = requests.post(
+                                    f"{BASE_URL}/api/agent/approval/{approval_id}/approve",
+                                    headers=headers,
+                                )
+                                print(f"\n✅ 已批准! 审批结果: {ar.json()}")
+                            else:
+                                # 拒绝
+                                ar = requests.post(
+                                    f"{BASE_URL}/api/agent/approval/{approval_id}/reject",
+                                    headers=headers,
+                                )
+                                print(f"\n❌ 已拒绝! 审批结果: {ar.json()}")
+
+                            print(f"{'='*60}\n")
+
+                    # 收集文本输出 - 新格式适配
+                    obj_type = msg.get("object", "")
+                    if obj_type == "content":
+                        # 新格式：object=content 时有 text 字段
+                        text = msg.get("text", "")
+                        if text:
+                            text_parts.append(text)
+                    elif obj_type == "message":
+                        # 旧格式兼容
+                        content = msg.get("content")
+                        if content:
+                            if isinstance(content, list):
+                                for c in content:
+                                    if isinstance(c, dict) and c.get("type") == "text":
+                                        text_parts.append(c.get("text", ""))
+                            elif isinstance(content, str):
+                                text_parts.append(content)
                 except json.JSONDecodeError:
                     print(f"📝 {line}")
 
@@ -180,7 +220,7 @@ if __name__ == "__main__":
     session_id = str(uuid.uuid4())
     print(f"🆕 会话: {session_id}")
 
-    # 确保自动审批关闭（否则不会触发审批拦截）
+    # 关闭自动审批，启用手动审批流程
     set_auto_approve(token, False)
 
     # 清理之前残留的测试数据

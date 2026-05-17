@@ -18,6 +18,7 @@ from src.agents.harness.memory.user_profile import (
     delete_user_fact,
     get_user_facts,
 )
+from src.agents.harness.tools.approval import _current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,6 @@ async def record_user_fact(
     category: str,
     key: str,
     value: str,
-    user_id: int = 0,
     confidence: float = 1.0,
     source: str = "explicit",
 ) -> ToolResponse:
@@ -38,7 +38,6 @@ async def record_user_fact(
         category: 分类 (food/exercise/health/goal/achievement/personality/note)
         key: 属性名，如 favorite_foods
         value: 属性值
-        user_id: 用户 ID（由工具系统自动注入）
         confidence: 置信度 0.0~1.0，默认 1.0
         source: 数据来源 (explicit/inferred/extracted)，默认 explicit
     """
@@ -47,6 +46,8 @@ async def record_user_fact(
             TextBlock(type="text", text=f"错误: 无效分类 '{category}'，可用: {', '.join(sorted(VALID_CATEGORIES))}")
         ])
 
+    # 直接从 ContextVar 读取 user_id
+    user_id = _current_user_id.get(None)
     if not user_id:
         return ToolResponse(content=[
             TextBlock(type="text", text="错误: 无法获取用户ID，请先登录")
@@ -75,14 +76,14 @@ async def record_user_fact(
 
 async def delete_user_fact_tool(
     key: str,
-    user_id: int = 0,
 ) -> ToolResponse:
     """删除（软删除）一条用户画像事实。
 
     Args:
         key: 属性名
-        user_id: 用户 ID（由工具系统自动注入）
     """
+    # 直接从 ContextVar 读取 user_id
+    user_id = _current_user_id.get(None)
     if not user_id:
         return ToolResponse(content=[
             TextBlock(type="text", text="错误: 无法获取用户ID，请先登录")
@@ -107,14 +108,14 @@ async def delete_user_fact_tool(
 
 async def get_user_memory(
     category: str = "",
-    user_id: int = 0,
 ) -> ToolResponse:
     """获取用户的所有画像数据。
 
     Args:
         category: 可选，按分类过滤 (food/exercise/health/goal/achievement/personality/note)
-        user_id: 用户 ID（由工具系统自动注入）
     """
+    # 直接从 ContextVar 读取 user_id
+    user_id = _current_user_id.get(None)
     if not user_id:
         return ToolResponse(content=[
             TextBlock(type="text", text="错误: 无法获取用户ID，请先登录")

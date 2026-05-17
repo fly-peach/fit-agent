@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from agentscope.agent import ReActAgent
 from agentscope.message import Msg
 from agentscope.model import DashScopeChatModel
-from agentscope.formatter import DashScopeMultiAgentFormatter
+from agentscope.formatter import DashScopeChatFormatter
 from agentscope.token import CharTokenCounter
 from agentscope.pipeline import stream_printing_messages
 from pydantic import BaseModel, Field, model_validator
@@ -140,7 +140,7 @@ async def run_rogers_pipeline(
     """
     uid = str(user_id) if user_id else "default"
     sid = session_id or "default"
-    
+
     def _build_model(model_name: str = "qwen-turbo", user_id: int | None = None, enable_thinking = True) -> DashScopeChatModel:
             api_key = api_key_cache.get(user_id) if user_id else ""
             return DashScopeChatModel(
@@ -149,7 +149,7 @@ async def run_rogers_pipeline(
                 stream=True,
                 enable_thinking=enable_thinking
             )
-    # ---- 创建所有 Agent（传递 user_id 以获取 API Key） ----
+    # ---- 创建所有 Agent（传递 user_id 以获取 API Key）----
     def _create_pipeline_agent(name: str, sys_prompt: str, model_name: str = "qwen-turbo", enable_thinking: bool = False) -> ReActAgent:
         if db_engine:
             memory = FitAsyncSQLAlchemyMemory(
@@ -182,7 +182,7 @@ async def run_rogers_pipeline(
             sys_prompt=sys_prompt,
             toolkit=toolkit,
             memory=memory,
-            formatter=DashScopeMultiAgentFormatter(),
+            formatter=DashScopeChatFormatter(),
         )
 
         if "Master" in name:
@@ -228,7 +228,7 @@ async def run_rogers_pipeline(
     logger.info("run_rogers_pipeline: user_id=%s session_id=%s, user_question[:50]=%s",
                 user_id, session_id, user_question[:50] if user_question else "")
 
-    # ---- 上下文注入（仅新会话） ----
+    # ---- 上下文注入（仅新会话）----
     if user_id and raw_msgs:
         mem = master.memory
         is_new_session = True
@@ -257,20 +257,6 @@ async def run_rogers_pipeline(
         queue=approval_queue,
     )
 
-    async def _merged_stream(main_gen):
-        """合并主 Agent 流和审批侧通道流。"""
-        while True:
-            while not approval_queue.empty():
-                item = approval_queue.get_nowait()
-                yield item, False
-            try:
-                item = await asyncio.wait_for(main_gen.__anext__(), timeout=0.05)
-                yield item
-            except StopAsyncIteration:
-                break
-            except asyncio.TimeoutError:
-                pass
-
     # ========================================================================
     # Phase 1: Master Agent 分析复杂度（流式）
     # ========================================================================
@@ -280,19 +266,106 @@ async def run_rogers_pipeline(
     n1 = await counter.count([m.to_dict() for m in raw_msgs])
     logger.info("Phase 1 input tokens: %d (session=%s)", n1, session_id)
 
-    async for output in _merged_stream(
-        stream_printing_messages(
-            agents=[master],
-            coroutine_task=master(raw_msgs),
-        )
-    ):
-        if len(output) >= 2:
-            msg, last = output[0], output[1]
-            msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                                source="[Master] Rogers")
-            yield msg, last
-            if last:
-                master_text = _content_text(msg)
+    # 简单包装生成器，在每一步检查审批队列
+    async def stream_with_approvals(agent, agent_name, msgs_for_agent):
+        """包装 stream_printing_messages，在每一步检查审批队列"""
+        # 两个队列：一个给主输出，一个给审批
+        main_queue = asyncio.Queue()
+        approval_queue_local = asyncio.Queue()
+
+        # 标记
+        main_done = False
+        yielded_approval_ids = set()
+
+        # 任务1：运行主生成器，把结果放到 main_queue
+        async def run_main():
+            nonlocal main_done
+            try:
+                main_gen = stream_printing_messages(
+                    agents=[agent],
+                    coroutine_task=agent(msgs_for_agent),
+                )
+                async for output in main_gen:
+                    await main_queue.put(output)
+            finally:
+                main_done = True
+                await main_queue.put(None)  # 哨兵
+
+        # 任务2：把全局 approval_queue 的东西搬到 approval_queue_local
+        async def poll_approvals():
+            while not main_done:
+                try:
+                    while not approval_queue.empty():
+                        item = approval_queue.get_nowait()
+                        await approval_queue_local.put(item)
+                except Exception:
+                    pass
+                if not main_done:
+                    await asyncio.sleep(0.01)
+
+        # 启动任务
+        main_task = asyncio.create_task(run_main())
+        poll_task = asyncio.create_task(poll_approvals())
+
+        try:
+            while True:
+                # 优先检查审批队列
+                try:
+                    approval_msg = approval_queue_local.get_nowait()
+                    approval_meta = getattr(approval_msg, "metadata", {}).get("tool_approval", {})
+                    approval_id = approval_meta.get("approval_id")
+                    if approval_id and approval_id not in yielded_approval_ids:
+                        logger.info(f"Yielding approval message: {approval_msg}")
+                        yielded_approval_ids.add(approval_id)
+                        yield (approval_msg, False)
+                    continue
+                except asyncio.QueueEmpty:
+                    pass
+
+                # 等待主输出（带超时，让我们可以继续检查审批）
+                try:
+                    output = await asyncio.wait_for(main_queue.get(), timeout=0.02)
+                except asyncio.TimeoutError:
+                    continue
+
+                if output is None:
+                    break  # 主输出结束
+
+                if len(output) >= 2:
+                    msg, last = output[0], output[1]
+                    msg.metadata = dict(getattr(msg, "metadata", {}) or {},
+                                        source=agent_name)
+                    yield (msg, last)
+                    if last:
+                        nonlocal master_text
+                        if agent_name.startswith("[Master]"):
+                            master_text = _content_text(msg)
+
+            # 最后清理
+            try:
+                while not approval_queue_local.empty():
+                    approval_msg = approval_queue_local.get_nowait()
+                    approval_meta = getattr(approval_msg, "metadata", {}).get("tool_approval", {})
+                    approval_id = approval_meta.get("approval_id")
+                    if approval_id and approval_id not in yielded_approval_ids:
+                        logger.info(f"Final yield approval message: {approval_msg}")
+                        yield (approval_msg, False)
+            except Exception:
+                pass
+        finally:
+            for task in [main_task, poll_task]:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+    try:
+        async for output in stream_with_approvals(master, "[Master] Rogers", raw_msgs):
+            yield output
+    except Exception as e:
+        logger.exception(f"Error in Phase 1: {e}")
+        raise
 
     # ========================================================================
     # Phase 2: 判断是否需要 Fanout
@@ -315,20 +388,15 @@ async def run_rogers_pipeline(
                 content=f"用户问题：{user_question}\n\n请从饮食营养角度做专业分析，给出具体建议。",
                 role="user")
         ]
-        async for output in _merged_stream(
-            stream_printing_messages(
-                agents=[diet],
-                coroutine_task=diet(diet_input),
-            )
-        ):
-            if len(output) >= 2:
-                msg, last = output[0], output[1]
-                msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                                    source="[SubAgent] DietAnalyst")
+
+        try:
+            async for output in stream_with_approvals(diet, "[SubAgent] DietAnalyst", diet_input):
+                msg, last = output
                 yield msg, last
-                # 只在最后一条消息时保存完整内容
                 if last:
                     diet_output = _content_text(msg)
+        except Exception as e:
+            logger.exception(f"Error in DietAnalyst phase: {e}")
 
         logger.info("DietAnalyst output length: %d chars", len(diet_output))
 
@@ -338,20 +406,15 @@ async def run_rogers_pipeline(
                 content=f"用户问题：{user_question}\n\n请从运动训练角度做专业分析，给出具体建议。",
                 role="user")
         ]
-        async for output in _merged_stream(
-            stream_printing_messages(
-                agents=[training],
-                coroutine_task=training(training_input),
-            )
-        ):
-            if len(output) >= 2:
-                msg, last = output[0], output[1]
-                msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                                    source="[SubAgent] TrainingAnalyst")
+
+        try:
+            async for output in stream_with_approvals(training, "[SubAgent] TrainingAnalyst", training_input):
+                msg, last = output
                 yield msg, last
-                # 只在最后一条消息时保存完整内容
                 if last:
                     training_output = _content_text(msg)
+        except Exception as e:
+            logger.exception(f"Error in TrainingAnalyst phase: {e}")
 
         logger.info("TrainingAnalyst output length: %d chars", len(training_output))
 
@@ -382,17 +445,11 @@ async def run_rogers_pipeline(
             n4 = await counter4.count([agg_input.to_dict()])
             logger.info("Phase 4 input tokens: %d (session=%s)", n4, session_id)
 
-            async for output in _merged_stream(
-                stream_printing_messages(
-                    agents=[master],
-                    coroutine_task=master([agg_input]),
-                )
-            ):
-                if len(output) >= 2:
-                    msg, last = output[0], output[1]
-                    msg.metadata = dict(getattr(msg, "metadata", {}) or {},
-                                        source="[Master] Rogers")
-                    yield msg, last
+            try:
+                async for output in stream_with_approvals(master, "[Master] Rogers", [agg_input]):
+                    yield output
+            except Exception as e:
+                logger.exception(f"Error in aggregation phase: {e}")
 
     # ---- 清理审批上下文 ----
     clear_session_context()

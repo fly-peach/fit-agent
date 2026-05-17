@@ -63,11 +63,6 @@ class Settings(BaseSettings):
                 "(生成命令: python -c \"import secrets; print(secrets.token_hex(32))\")"
             )
 
-        if not self.CORS_ORIGINS:
-            raise ValueError(
-                "必须设置 CORS_ORIGINS！请在 .env 中配置允许的跨域域名（逗号分隔）"
-            )
-
         return self
 
 

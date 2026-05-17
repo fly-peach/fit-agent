@@ -45,8 +45,6 @@ def _set_user_busy_timeout(dbapi_conn, _rec):
 _USER_DB_PATH = settings.USER_DB_URL.replace("sqlite:///", "", 1)
 async_user_engine = create_async_engine(
     f"sqlite+aiosqlite:///{_USER_DB_PATH}",
-    pool_size=10,
-    max_overflow=20,
 )
 AsyncUserSessionLocal = async_sessionmaker(
     async_user_engine,

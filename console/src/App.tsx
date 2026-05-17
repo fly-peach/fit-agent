@@ -1,9 +1,32 @@
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, Spin } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { MainLayout } from './components'
-import { Login, Dashboard, Health, Training, Diet, User, LandingPage, AgentConfig } from './pages'
+
+// 懒加载页面组件
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Health = lazy(() => import('./pages/Health'))
+const Training = lazy(() => import('./pages/Training'))
+const TrainingResults = lazy(() => import('./pages/TrainingResults'))
+const Diet = lazy(() => import('./pages/Diet'))
+const User = lazy(() => import('./pages/User'))
+const LandingPage = lazy(() => import('./pages/LandingPage'))
+const AgentConfig = lazy(() => import('./pages/AgentConfig'))
+
+// 加载中骨架屏
+const PageSkeleton: React.FC = () => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    background: '#f5f5f5'
+  }}>
+    <Spin size="large" />
+  </div>
+)
 
 const theme = {
   token: {
@@ -94,26 +117,29 @@ const App: React.FC = () => {
   return (
     <ConfigProvider locale={zhCN} theme={theme as any}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/webpage" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <MainLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="health" element={<Health />} />
-            <Route path="training" element={<Training />} />
-            <Route path="diet" element={<Diet />} />
-            <Route path="user" element={<User />} />
-          <Route path="agent-config" element={<AgentConfig />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes>
+            <Route path="/webpage" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <PrivateRoute>
+                  <MainLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="health" element={<Health />} />
+              <Route path="training" element={<Training />} />
+              <Route path="training-results" element={<TrainingResults />} />
+              <Route path="diet" element={<Diet />} />
+              <Route path="user" element={<User />} />
+              <Route path="agent-config" element={<AgentConfig />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ConfigProvider>
   )

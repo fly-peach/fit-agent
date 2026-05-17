@@ -22,11 +22,13 @@ import {
   Utensils,
   User,
   Bot,
-  Wrench,
+  BarChart4,
 } from "lucide-react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import type { MenuProps } from "antd";
 import AIAssistant from "../AIAssistant";
+import BottomSheet from "../BottomSheet";
+import { useIsMobile } from "../../hooks";
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
@@ -60,19 +62,50 @@ const navItems = [
   { key: "/training", icon: Dumbbell, label: "训练计划", color: "#F59E0B" },
   { key: "/diet", icon: Utensils, label: "饮食管理", color: "#06B6D4" },
   { key: "/agent-config", icon: Bot, label: "Agent 配置", color: "#8B5CF6" },
-  { key: "/user", icon: User, label: "个人中心", color: "#8B5CF6" },
+  {
+    key: "personal",
+    icon: User,
+    label: "个人中心",
+    color: "#8B5CF6",
+    children: [
+      { key: "/user", icon: User, label: "个人设置", color: "#8B5CF6" },
+      { key: "/training-results", icon: BarChart4, label: "训练成果", color: "#F59E0B" },
+    ]
+  },
 ];
 
 const getMenuItems = (collapsed: boolean): MenuProps["items"] =>
-  navItems.map((item) => ({
-    key: item.key,
-    icon: (
-      <IconWrapper color={item.color} collapsed={collapsed}>
-        <item.icon size={16} />
-      </IconWrapper>
-    ),
-    label: item.label,
-  }));
+  navItems.map((item) => {
+    if ('children' in item) {
+      return {
+        key: item.key,
+        icon: (
+          <IconWrapper color={item.color} collapsed={collapsed}>
+            <item.icon size={16} />
+          </IconWrapper>
+        ),
+        label: item.label,
+        children: item.children.map((child: any) => ({
+          key: child.key,
+          icon: (
+            <IconWrapper color={child.color} collapsed={collapsed}>
+              <child.icon size={16} />
+            </IconWrapper>
+          ),
+          label: child.label,
+        })),
+      };
+    }
+    return {
+      key: item.key,
+      icon: (
+        <IconWrapper color={item.color} collapsed={collapsed}>
+          <item.icon size={16} />
+        </IconWrapper>
+      ),
+      label: item.label,
+    };
+  });
 
 // Mobile bottom nav icons (no wrapper for compactness)
 const mobileNavItems = [
@@ -102,16 +135,6 @@ const mobileNavItems = [
   },
   { key: "/user", icon: <User size={20} />, label: "我的", color: "#8B5CF6" },
 ];
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return isMobile;
-};
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -281,22 +304,17 @@ const MainLayout: React.FC = () => {
           >
             <Outlet />
           </Content>
-          <div
-            style={{
-              width: rightDrawerOpen ? "100%" : 0,
-              height: "calc(100vh - 56px)",
-              position: "fixed",
-              right: 0,
-              top: 56,
-              zIndex: 99,
-              background: "#fff",
-              overflow: "hidden",
-              transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          >
-            {rightDrawerOpen && <AIAssistant />}
-          </div>
         </Layout>
+
+        {/* Mobile AI Assistant Bottom Sheet */}
+        <BottomSheet
+          open={rightDrawerOpen}
+          onClose={() => setRightDrawerOpen(false)}
+          snapPoints={[280, '50%', '90%']}
+          initialSnapIndex={1}
+        >
+          <AIAssistant />
+        </BottomSheet>
         {/* Mobile bottom navigation */}
         <div
           style={{

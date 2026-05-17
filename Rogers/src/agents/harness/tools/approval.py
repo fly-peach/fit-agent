@@ -220,17 +220,26 @@ def create_approval_wrapper(tool_fn, tool_name: str):
             if not _is_write_fitme_command(command):
                 return await tool_fn(*args, **kwargs)
 
+        logger.info(f"=== Tool call intercepted: {tool_name}, auto_approve={auto_approve} ===")
         if auto_approve:
+            logger.info(f"Auto-approve enabled, skipping approval for {tool_name}")
             return await tool_fn(*args, **kwargs)
 
         tool_args_display = _format_args_for_display(tool_name, args, kwargs)
         approval_id = manager.create_approval(session_id, tool_name, tool_args_display)
+        logger.info(f"Created approval request: {approval_id} for {tool_name}")
 
         if queue is not None:
             approval_msg = _build_approval_msg(approval_id, tool_name, tool_args_display)
+            logger.info(f"Putting approval message to queue: {approval_msg}")
             await queue.put(approval_msg)
+            logger.info(f"Approval message enqueued successfully")
+            # 关键：给事件循环一个机会，让审批消息可以被 yield 出去
+            await asyncio.sleep(0.1)
 
+        logger.info(f"Waiting for user decision on approval: {approval_id}")
         approved, rejection_input = await manager.wait_for_decision(approval_id, timeout=120)
+        logger.info(f"Approval decision received: approved={approved}, id={approval_id}")
 
         if approved:
             key = (session_id, tool_name)
