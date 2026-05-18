@@ -235,7 +235,8 @@ def create_approval_wrapper(tool_fn, tool_name: str):
             await queue.put(approval_msg)
             logger.info(f"Approval message enqueued successfully")
             # 关键：给事件循环一个机会，让审批消息可以被 yield 出去
-            await asyncio.sleep(0.1)
+            # 延长时间确保消息发送完成
+            await asyncio.sleep(0.3)
 
         logger.info(f"Waiting for user decision on approval: {approval_id}")
         approved, rejection_input = await manager.wait_for_decision(approval_id, timeout=120)

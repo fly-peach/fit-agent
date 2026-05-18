@@ -13,6 +13,7 @@ from agentscope_runtime.engine.schemas.agent_schemas import AgentRequest, AgentR
 
 from src.agents.agents_pipeline import run_rogers_pipeline
 from src.agents.harness.tools.approval import get_approval_manager
+from src.agents.utils.api_key_cache import api_key_cache
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,35 @@ async def query_func(
     #         db_sync.close()
 
     logger.info(f"=== Agent query: user_id={user_id}, auto_approve={auto_approve} ===")
+
+    # 清理上一个残留的 RUNNING 状态，防止 "already in RUNNING state" 错误
+    # task_id = f"{user_id}:{session_id}"，请求体中的 user_id 可能为 None
+    try:
+        interrupt_backend = agent_app._interrupt_backend
+        if interrupt_backend:
+            for uid_key in [str(user_id) if user_id else "", "None"]:
+                task_key = f"{uid_key}:{session_id}"
+                await interrupt_backend.delete_task_state(task_key)
+            # 同时尝试 stop_chat 以取消可能还在跑的 worker
+            try:
+                await agent_app.stop_chat(user_id=str(user_id) if user_id else "", session_id=session_id)
+            except Exception:
+                pass
+    except Exception:
+        logger.debug("Failed to cleanup stale task state", exc_info=True)
+
+    # 检查 API Key 是否已设置
+    if not user_id or not api_key_cache.has_api_key(user_id):
+        logger.warning("API key not configured for user_id=%s", user_id)
+        from agentscope.message import Msg
+        no_key_msg = Msg(
+            name="Master",
+            content="没设置API Key，请先在设置中配置 DashScope API Key 后再试。",
+            role="assistant",
+        )
+        yield no_key_msg, True
+        return
+
     db_engine = async_user_engine
 
     try:

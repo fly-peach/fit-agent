@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { Bubble, Sender, WelcomePrompts, CustomCardsProvider, Markdown } from '@agentscope-ai/chat';
 import { ConfigProvider } from 'antd';
 import { V2SessionProvider, useSessionsState, useSessions } from './contexts/SessionContext';
@@ -43,7 +43,7 @@ const cardConfig = {
 };
 
 const AIAssistantInner: React.FC = () => {
-  const { currentSessionId } = useSessionsState();
+  const { currentSessionId, pendingApproval, setPendingApproval } = useSessionsState();
   const { createSession } = useSessions();
   const listRef = useRef<any>(null);
 
@@ -57,9 +57,17 @@ const AIAssistantInner: React.FC = () => {
 
   const connectionIdRef = useRef(0);
   const submittingRef = useRef(false);
+  const newSessionIdRef = useRef<string | undefined>(undefined);
+  const [inputValue, setInputValue] = useState('');
 
   useEffect(() => {
     if (!currentSessionId) return;
+
+    // 跳过新建 session 的加载，避免空数据覆盖刚提交的消息
+    if (newSessionIdRef.current === currentSessionId) {
+      newSessionIdRef.current = undefined;
+      return;
+    }
 
     const connectionId = ++connectionIdRef.current;
 
@@ -163,10 +171,12 @@ const AIAssistantInner: React.FC = () => {
     try {
       if (!currentSessionId) {
         const newSid = await createSession({ name: text.slice(0, 20) });
+        newSessionIdRef.current = newSid;
         submit(text, undefined, newSid);
       } else {
         submit(text);
       }
+      setInputValue('');
     } finally {
       submittingRef.current = false;
     }
@@ -178,10 +188,12 @@ const AIAssistantInner: React.FC = () => {
     try {
       if (!currentSessionId) {
         const newSid = await createSession({ name: query.slice(0, 20) });
+        newSessionIdRef.current = newSid;
         submit(query, undefined, newSid);
       } else {
         submit(query);
       }
+      setInputValue('');
     } finally {
       submittingRef.current = false;
     }
@@ -235,9 +247,12 @@ const AIAssistantInner: React.FC = () => {
 
           <div className="fitagent-chat-sender">
             <Sender
-              loading={loading}
+              value={inputValue}
+              onChange={setInputValue}
+              loading={loading || !!pendingApproval}
+              disabled={!!pendingApproval}
               maxLength={10000}
-              placeholder="输入消息..."
+              placeholder={pendingApproval ? '等待审批中...' : '输入消息...'}
               onSubmit={handleSubmit}
               onCancel={cancel}
               onPasteFile={handlePasteFile}

@@ -56,10 +56,23 @@
   padding: 8px 12px;
 }
 
+.fitagent-chat-sender .ant-sender-header {
+  margin-bottom: 8px;
+}
+
 .fitagent-message-renderer {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.subagent-body-content {
+  padding: 12px;
+}
+
+.subagent-loading-text {
+  padding: 12px;
+  color: #999;
 }
 
 /* Responsive improvements */
