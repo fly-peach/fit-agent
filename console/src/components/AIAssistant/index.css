@@ -1,198 +1,78 @@
-.agentscope-runtime-webui {
+.fitagent-chat {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   width: 100%;
   overflow: hidden;
-  position: relative;
-  --sidebar-width: 260px;
-  --scrollbar-width: 6px;
-  --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  background: #ffffff;
 }
 
-/* ========================================
-   侧边栏独立滚动
-   ======================================== */
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-layout-left {
-  width: var(--sidebar-width) !important;
-  flex-shrink: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow: hidden !important;
+.fitagent-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+  min-height: 48px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions {
-  height: 100% !important;
-  max-height: 100% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
+.fitagent-chat-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: #d9d9d9 transparent;
+  -webkit-overflow-scrolling: touch;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-header {
-  flex-shrink: 0 !important;
+.fitagent-chat-body::-webkit-scrollbar {
+  width: 5px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-content {
-  flex: 1 !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
+.fitagent-chat-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-adder {
-  flex-shrink: 0 !important;
+.fitagent-chat-body::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list {
-  flex: 1 !important;
-  height: auto !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--scrollbar-thumb) transparent !important;
-  -ms-overflow-style: auto !important;
+.fitagent-chat-welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar {
-  display: block !important;
-  width: var(--scrollbar-width) !important;
+.fitagent-chat-sender {
+  flex-shrink: 0;
+  border-top: 1px solid #f0f0f0;
+  padding: 8px 12px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-track {
-  background: var(--scrollbar-track) !important;
-  border-radius: 4px !important;
+.fitagent-message-renderer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb) !important;
-  border-radius: 4px !important;
-  transition: background 0.2s !important;
-}
+/* Responsive improvements */
+@media (max-width: 480px) {
+  .fitagent-chat-header {
+    padding: 8px 12px;
+  }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-sessions-list::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover) !important;
-}
+  .fitagent-chat-sender {
+    padding: 8px 12px;
+  }
 
-.agentscope-runtime-webui .agentscope-runtime-webui-conversations {
-  overflow-y: visible !important;
-  height: auto !important;
-}
-
-/* ========================================
-   对话区独立滚动
-   ======================================== */
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-layout-right {
-  height: 100% !important;
-  max-height: 100% !important;
-  flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-chat {
-  flex: 1 !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list {
-  flex: 1 !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll {
-  overflow-y: auto !important;
-  overscroll-behavior: contain !important;
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--scrollbar-thumb) transparent !important;
-  -ms-overflow-style: auto !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar {
-  display: block !important;
-  width: var(--scrollbar-width) !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-track {
-  background: var(--scrollbar-track) !important;
-  border-radius: 4px !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb) !important;
-  border-radius: 4px !important;
-  transition: background 0.2s !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-message-list .agentscope-runtime-webui-bubble-list-scroll::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover) !important;
-}
-
-.agentscope-runtime-webui .agentscope-runtime-webui-chat-anywhere-input {
-  flex-shrink: 0 !important;
-}
-
-/* ========================================
-   整体布局约束
-   ======================================== */
-
-.agentscope-runtime-webui-chat-anywhere-layout {
-  height: 100% !important;
-  max-height: 100% !important;
-  display: flex !important;
-  overflow: hidden !important;
-}
-
-.agentscope-runtime-webui-chat-anywhere-layout-main {
-  height: 100% !important;
-  max-height: 100% !important;
-  display: flex !important;
-  flex: 1 !important;
-  min-width: 0 !important;
-  overflow: hidden !important;
-}
-
-/* ========================================
-   Drawer 约束
-   ======================================== */
-
-.agentscope-runtime-webui-drawer {
-  position: absolute !important;
-  height: 100% !important;
-  width: auto !important;
-  max-width: 100% !important;
-}
-
-.agentscope-runtime-webui-drawer .ant-drawer-content {
-  height: 100% !important;
-  max-height: 100% !important;
-}
-
-.agentscope-runtime-webui-drawer .ant-drawer-wrapper-body {
-  height: 100% !important;
-  max-height: 100% !important;
-}
-
-.agentscope-runtime-webui-drawer .ant-drawer-mask {
-  position: absolute !important;
-}
-
-.agentscope-runtime-webui .ant-drawer {
-  max-width: 100% !important;
+  .fitagent-chat-welcome {
+    padding: 24px 12px;
+  }
 }

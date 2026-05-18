@@ -1,204 +1,259 @@
-import { AgentScopeRuntimeWebUI, IAgentScopeRuntimeWebUIOptions } from '@agentscope-ai/chat';
+import React, { useRef, useCallback, useEffect, useMemo } from 'react';
+import { Bubble, Sender, WelcomePrompts, CustomCardsProvider, Markdown } from '@agentscope-ai/chat';
 import { ConfigProvider } from 'antd';
-import { useMemo } from 'react';
-import sessionApi from './sessionApi';
+import { V2SessionProvider, useSessionsState, useSessions } from './contexts/SessionContext';
+import { useChatFlow } from './hooks/useChatFlow';
+import { v2SessionApi } from './sessionApi';
 import ChatActionGroup from './components/ChatActionGroup';
 import ChatHeaderTitle from './components/ChatHeaderTitle';
-import SubAgentAnalysis from './SubAgentAnalysis';
-import ToolApprovalCard from './ToolApprovalCard';
-import './ToolApprovalCard.css';
-import './components/ChatSessionDrawer/index.css';
-import './components/ChatSearchPanel/index.css';
-import './components/ChatSessionItem/index.css';
-import './components/ChatHeaderTitle/index.css';
+import MessageRenderer from './components/MessageRenderer';
+import type { ChatMessage } from './types';
 import './index.css';
 
-/**
- * 从 source 字符串提取子 Agent 名称，如 "[SubAgent] DietAnalyst" → "DietAnalyst"
- */
-const extractSubAgentName = (source: string): string | null => {
-  const match = source.match(/^\[SubAgent\]\s+(.+)$/);
-  return match?.[1] || null;
+// 提取文本内容的工具函数
+function extractTextFromContent(content: any): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    for (const c of content) {
+      if (!c) continue;
+      if (typeof c === 'string') return c;
+      if (c.type === 'text' && c.text) return c.text;
+      if (c.text) return c.text;
+    }
+  }
+  return '';
+}
+
+// 自定义卡片组件：用户消息
+const UserMessageCard = ({ data }: { data: { content: any } }) => {
+  const text = extractTextFromContent(data.content);
+  return <Markdown content={text} />;
 };
 
-/**
- * SubAgent 消息 ID 缓存 — 记录已经识别为 SubAgent 的消息 ID，
- * 用于后续 message 级别更新 chunk 的拦截。
- */
-const subAgentMsgIds = new Set<string>();
-
-/**
- * 将 output 数组中 SubAgent 消息转为 plugin_call 格式。
- * content[0]: { type: "data", data: { name, agentName } }
- * content[1]: { type: "data", data: { output: text } }
- */
-const convertSubAgentOutput = (output: Record<string, any>[]) => {
-  for (const msg of output) {
-    if (msg.type === 'message' && msg.metadata?.source?.startsWith('[SubAgent]')) {
-      const agentName = extractSubAgentName(msg.metadata.source) || '分析';
-      subAgentMsgIds.add(msg.id);
-      // 提取文本
-      let combinedText = '';
-      for (const c of msg.content || []) {
-        if (c.type === 'text' && c.text) combinedText += c.text;
-      }
-      msg.type = 'plugin_call';
-      msg.content = [
-        { type: 'data', data: { name: 'sub_agent_analysis', agentName } },
-        { type: 'data', data: { output: combinedText } },
-      ];
-    }
-  }
+// 自定义卡片组件：助手消息
+const AssistantMessageCard = ({ data }: { data: { output: any } }) => {
+  return <MessageRenderer output={data.output || []} />;
 };
 
-/**
- * 将 SubAgent 消息转为 plugin_call 格式（替换 reasoning 方案），
- * 通过 customToolRenderConfig 注册的 SubAgentAnalysis 组件，
- * 使用 Thinking 渲染，标题显示 Agent 名称。
- */
-const subAgentResponseParser = (chunkData: string) => {
-  console.log('[subAgentResponseParser] raw chunk:', chunkData);
-  const parsed = JSON.parse(chunkData);
-  console.log('[subAgentResponseParser] parsed:', parsed);
-
-  // 拦截审批消息 → 转为 plugin_call
-  if (parsed.metadata?.tool_approval) {
-    console.log('[subAgentResponseParser] Found tool_approval in metadata!');
-    const { approval_id, tool_name, tool_args_display } = parsed.metadata.tool_approval;
-    return {
-      ...parsed,
-      type: 'plugin_call',
-      content: [
-        { type: 'data', data: { name: 'tool_approval', approvalId: approval_id, toolName: tool_name, toolArgs: tool_args_display } },
-      ],
-    };
-  }
-
-  // 兼容：检查 content 里的 tool_use/tool_call
-  if (Array.isArray(parsed.content)) {
-    for (const block of parsed.content) {
-      if (block.type === 'tool_use' || block.type === 'tool_call') {
-        if (block.name === 'tool_approval') {
-          console.log('[subAgentResponseParser] Found tool_approval in content!');
-          return {
-            ...parsed,
-            type: 'plugin_call',
-            content: [
-              { type: 'data', data: { name: 'tool_approval', ...block.arguments } },
-            ],
-          };
-        }
-      }
-    }
-  }
-
-  // 拦截 response 级别 — 处理完整的 output 数组
-  if (parsed.object === 'response' && Array.isArray(parsed.output)) {
-    convertSubAgentOutput(parsed.output);
-    return parsed;
-  }
-
-  // 拦截 message 级别
-  if (parsed.object === 'message') {
-    if (
-      parsed.type === 'message' &&
-      parsed.metadata?.source?.startsWith('[SubAgent]')
-    ) {
-      const agentName = extractSubAgentName(parsed.metadata.source) || '分析';
-      subAgentMsgIds.add(parsed.id);
-
-      let combinedText = '';
-      for (const c of parsed.content || []) {
-        if (c.type === 'text' && c.text) combinedText += c.text;
-      }
-
-      return {
-        ...parsed,
-        type: 'plugin_call',
-        content: [
-          { type: 'data', data: { name: 'sub_agent_analysis', agentName } },
-          { type: 'data', data: { output: combinedText } },
-        ],
-      };
-    }
-
-    // 后续 message 级别更新 — 保持 plugin_call 类型
-    if (subAgentMsgIds.has(parsed.id)) {
-      return { ...parsed, type: 'plugin_call' };
-    }
-  }
-
-  return parsed;
+// 卡片配置
+const cardConfig = {
+  'UserMessage': UserMessageCard,
+  'AssistantMessage': AssistantMessageCard,
 };
 
-const AIAssistant: React.FC = () => {
-  const options = useMemo((): IAgentScopeRuntimeWebUIOptions => {
-    const token = localStorage.getItem('token');
-    // 把 token 放在查询参数里，确保 SSE 请求也能认证
-    const baseURL = token ? `/process?token=${encodeURIComponent(token)}` : '/process';
-    return {
-      api: {
-        baseURL: baseURL,
-        token: token || '',
-        responseParser: subAgentResponseParser,
-      },
-      session: {
-        multiple: true,
-        api: sessionApi,
-        hideBuiltInSessionList: true,
-      },
-      theme: {
-        colorPrimary: '#615CED',
-        darkMode: false,
-        prefix: 'agentscope-runtime-webui',
-        rightHeader: <ChatActionGroup />,
-        leftHeader: <ChatHeaderTitle />,
-      },
-      sender: {
-        attachments: {
-          customRequest: async ({ file, onSuccess, onError }: any) => {
-            const formData = new FormData();
-            formData.append('file', file);
-            const token = localStorage.getItem('token');
-            try {
-              const resp = await fetch('/api/agent/upload', {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
-                body: formData,
-              });
-              if (!resp.ok) throw new Error('Upload failed');
-              const data = await resp.json();
-              onSuccess({ url: data.url });
-            } catch (e: any) {
-              onError(e);
+const AIAssistantInner: React.FC = () => {
+  const { currentSessionId } = useSessionsState();
+  const { createSession } = useSessions();
+  const listRef = useRef<any>(null);
+
+  const {
+    messages,
+    loading,
+    submit,
+    cancel,
+    switchSession,
+  } = useChatFlow(currentSessionId);
+
+  const connectionIdRef = useRef(0);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    const connectionId = ++connectionIdRef.current;
+
+    v2SessionApi.getSessionList().then((sessions) => {
+      if (connectionId !== connectionIdRef.current) return;
+      const session = sessions.find((s: any) => s.id === currentSessionId);
+      if (session) {
+        const msgs = (session._messages || session.messages || []);
+        const converted = msgs.map((m: any) => {
+          if (m.role === 'user') {
+            let userContent = m.content;
+            if (!userContent || (Array.isArray(userContent) && userContent.length === 0)) {
+              userContent = m.cards?.[0]?.data?.input?.[0]?.content;
             }
-          },
-        },
-        maxLength: 10000,
-      },
-      welcome: {
-        greeting: '你好，我是你的健身助手！',
-        description: '我可以帮你制定训练计划、管理饮食、追踪健康数据。',
-        avatar: 'https://images.icon-icons.com/1429/PNG/96/icon-robots-3_98540.png',
-        prompts: [
-          { value: '帮我制定一个减脂训练计划' },
-          { value: '今天应该吃多少蛋白质？' },
-          { value: '如何提高跑步耐力？' },
-        ],
-      },
-      customToolRenderConfig: {
-        'sub_agent_analysis': SubAgentAnalysis,
-        'tool_approval': ToolApprovalCard,
-      },
-    } as unknown as IAgentScopeRuntimeWebUIOptions;
+            // Ensure content is always an array
+            if (!Array.isArray(userContent)) {
+              if (typeof userContent === 'string') {
+                userContent = [{ type: 'text', text: userContent }];
+              } else if (userContent) {
+                userContent = [{ type: 'text', text: String(userContent) }];
+              } else {
+                userContent = [];
+              }
+            }
+            return {
+              id: m.id,
+              role: 'user' as const,
+              content: userContent,
+              status: 'finished' as const,
+              createdAt: m.createdAt || Date.now(),
+            };
+          }
+          if (m.role === 'assistant') {
+            let assistantResponse = m.response;
+            if (!assistantResponse && m.cards?.[0]?.code === 'AgentScopeRuntimeResponseCard') {
+              assistantResponse = m.cards[0].data;
+            }
+            return {
+              id: m.id,
+              role: 'assistant' as const,
+              content: m.content || [],
+              response: assistantResponse,
+              status: (m.msgStatus || 'finished') as ChatMessage['status'],
+              createdAt: m.createdAt || Date.now(),
+            };
+          }
+          return null;
+        }).filter(Boolean) as ChatMessage[];
+        switchSession(currentSessionId, converted);
+      }
+    });
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    if (!currentSessionId) return;
+    const timer = setTimeout(() => {
+      v2SessionApi.saveSessionMessages(currentSessionId, messages);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [messages, currentSessionId]);
+
+  // 构建 Bubble.List 的 items
+  const bubbleItems = useMemo(() => {
+    return messages.map((msg) => {
+      if (msg.role === 'user') {
+        return {
+          key: msg.id,
+          id: msg.id,
+          role: msg.role,
+          cards: [
+            {
+              code: 'Text',
+              data: {
+                content: extractTextFromContent(msg.content)
+              }
+            }
+          ],
+          msgStatus: msg.status,
+        };
+      } else {
+        // 助手消息使用 AssistantMessageCard 激活 MessageRenderer
+        return {
+          key: msg.id,
+          id: msg.id,
+          role: msg.role,
+          cards: [
+            {
+              code: 'AssistantMessage',
+              data: { output: msg.response?.output || [] }
+            }
+          ],
+          msgStatus: msg.status,
+        };
+      }
+    });
+  }, [messages]);
+
+  const handleSubmit = useCallback(async (text: string) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      if (!currentSessionId) {
+        const newSid = await createSession({ name: text.slice(0, 20) });
+        submit(text, undefined, newSid);
+      } else {
+        submit(text);
+      }
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [currentSessionId, createSession, submit]);
+
+  const handleWelcomeClick = useCallback(async (query: string) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      if (!currentSessionId) {
+        const newSid = await createSession({ name: query.slice(0, 20) });
+        submit(query, undefined, newSid);
+      } else {
+        submit(query);
+      }
+    } finally {
+      submittingRef.current = false;
+    }
+  }, [currentSessionId, createSession, submit]);
+
+  const handlePasteFile = useCallback((file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('token');
+    fetch('/api/agent/upload', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).catch((e) => {
+      console.error('File upload failed:', e);
+    });
   }, []);
 
   return (
-    <ConfigProvider getPopupContainer={() => document.querySelector('.agentscope-runtime-webui') as HTMLElement}>
-      <div className="agentscope-runtime-webui">
-        <AgentScopeRuntimeWebUI options={options} />
-      </div>
+    <ConfigProvider getPopupContainer={() => document.querySelector('.fitagent-chat') as HTMLElement}>
+      <CustomCardsProvider cardConfig={cardConfig}>
+        <div className="fitagent-chat" style={{ touchAction: 'auto' }}>
+          <div className="fitagent-chat-header">
+            <ChatHeaderTitle />
+            <ChatActionGroup />
+          </div>
+
+          <div className="fitagent-chat-body">
+            {messages.length === 0 ? (
+              <div className="fitagent-chat-welcome">
+                <WelcomePrompts
+                  greeting="你好，我是你的健身助手！"
+                  description="我可以帮你制定训练计划、管理饮食、追踪健康数据。"
+                  avatar="https://images.icon-icons.com/1429/PNG/96/icon-robots-3_98540.png"
+                  prompts={[
+                    { value: '帮我制定一个减脂训练计划' },
+                    { value: '今天应该吃多少蛋白质？' },
+                    { value: '如何提高跑步耐力？' },
+                  ]}
+                  onClick={handleWelcomeClick}
+                />
+              </div>
+            ) : (
+              <Bubble.List
+                ref={listRef}
+                items={bubbleItems}
+                order="asc"
+              />
+            )}
+          </div>
+
+          <div className="fitagent-chat-sender">
+            <Sender
+              loading={loading}
+              maxLength={10000}
+              placeholder="输入消息..."
+              onSubmit={handleSubmit}
+              onCancel={cancel}
+              onPasteFile={handlePasteFile}
+            />
+          </div>
+        </div>
+      </CustomCardsProvider>
     </ConfigProvider>
+  );
+};
+
+const AIAssistant: React.FC = () => {
+  return (
+    <V2SessionProvider>
+      <AIAssistantInner />
+    </V2SessionProvider>
   );
 };
 

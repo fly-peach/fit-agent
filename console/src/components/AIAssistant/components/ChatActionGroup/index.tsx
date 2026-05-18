@@ -5,7 +5,7 @@ import {
   SearchOutlined,
   HistoryOutlined,
 } from "@ant-design/icons"
-import { useChatAnywhereSessions } from "@agentscope-ai/chat"
+import { useSessions } from "../../contexts/SessionContext"
 import { userApi } from "../../../../services/user"
 import ChatSessionDrawer from "../ChatSessionDrawer"
 import ChatSearchPanel from "../ChatSearchPanel"
@@ -15,7 +15,7 @@ const ChatActionGroup: React.FC = () => {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [autoApprove, setAutoApprove] = useState(false)
-  const { createSession } = useChatAnywhereSessions()
+  const { createSession } = useSessions()
 
   useEffect(() => {
     userApi.getSettings().then((settings) => {

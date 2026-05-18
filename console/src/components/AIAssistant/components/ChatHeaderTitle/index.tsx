@@ -1,8 +1,8 @@
 import React from "react"
-import { useChatAnywhereSessionsState } from "@agentscope-ai/chat"
+import { useSessionsState } from "../../contexts/SessionContext"
 
 const ChatHeaderTitle: React.FC = () => {
-  const { sessions, currentSessionId } = useChatAnywhereSessionsState()
+  const { sessions, currentSessionId } = useSessionsState()
   const currentSession = sessions.find((s) => s.id === currentSessionId)
   const chatName = currentSession?.name || "New Chat"
 

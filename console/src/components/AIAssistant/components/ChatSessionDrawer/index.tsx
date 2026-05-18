@@ -1,20 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Drawer, Button } from "antd"
 import { CloseOutlined, PlusOutlined } from "@ant-design/icons"
-import {
-  useChatAnywhereSessionsState,
-  useChatAnywhereSessions,
-  type IAgentScopeRuntimeWebUISession,
-} from "@agentscope-ai/chat"
-import sessionApi from "../../sessionApi"
+import { useSessionsState, useSessions, type ExtendedChatSession } from "../../contexts/SessionContext"
+import { v2SessionApi } from "../../sessionApi"
 import ChatSessionItem from "../ChatSessionItem"
 import "./index.css"
-
-interface ExtendedChatSession extends IAgentScopeRuntimeWebUISession {
-  createdAt?: string | null
-  pinned?: boolean
-  generating?: boolean
-}
 
 interface ChatSessionDrawerProps {
   open: boolean
@@ -35,9 +25,9 @@ const formatCreatedAt = (raw: string | null | undefined): string => {
 
 const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
   const { sessions, currentSessionId, setCurrentSessionId, setSessions } =
-    useChatAnywhereSessionsState()
+    useSessionsState()
 
-  const { createSession } = useChatAnywhereSessions()
+  const { createSession } = useSessions()
 
   const handleCreateSession = useCallback(async () => {
     await createSession()
@@ -65,7 +55,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
   }, [sessions])
 
   const refreshSessions = useCallback(async () => {
-    const list = await sessionApi.getSessionList()
+    const list = await v2SessionApi.getSessionList()
     setSessions(list)
   }, [setSessions])
 
@@ -75,7 +65,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
 
     const fetchSessions = async () => {
       try {
-        const list = await sessionApi.getSessionList()
+        const list = await v2SessionApi.getSessionList()
         if (!isCancelled) setSessions(list)
       } catch {
         /* ignore */
@@ -98,9 +88,9 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
 
   const handleDelete = useCallback(
     async (sessionId: string) => {
-      await sessionApi.removeSession({ id: sessionId })
+      await v2SessionApi.removeSession({ id: sessionId })
       if (currentSessionId === sessionId) {
-        const list = await sessionApi.getSessionList()
+        const list = await v2SessionApi.getSessionList()
         setCurrentSessionId(list[0]?.id)
       }
       await refreshSessions()
@@ -121,7 +111,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
     if (!editingSessionId) return
     const newName = editValue.trim()
     if (newName) {
-      await sessionApi.updateSession({ id: editingSessionId, name: newName })
+      await v2SessionApi.updateSession({ id: editingSessionId, name: newName })
     }
     setEditingSessionId(null)
     setEditValue("")
@@ -141,7 +131,7 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
       if (session) {
         try {
           const newPinnedState = !session.pinned
-          await sessionApi.updateSession({
+          await v2SessionApi.updateSession({
             id: sessionId,
             pinned: newPinnedState,
           } as any)
@@ -176,7 +166,6 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
       }}
       className="fitagent-chat-drawer"
     >
-      {/* Header — matches main layout Sider */}
       <div className="drawer-header">
         <div className="drawer-header-left">
           <span className="drawer-logo-text">FitAgent</span>
@@ -190,7 +179,6 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
         </div>
       </div>
 
-      {/* New Chat section — matches main layout menu style */}
       <div className="create-section">
         <Button
           type="primary"
@@ -202,7 +190,6 @@ const ChatSessionDrawer: React.FC<ChatSessionDrawerProps> = (props) => {
         </Button>
       </div>
 
-      {/* Session list */}
       <div className="list-wrapper">
         <div className="top-gradient" />
         <div className="list">

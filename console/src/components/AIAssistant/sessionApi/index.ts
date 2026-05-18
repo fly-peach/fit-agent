@@ -1,109 +1,138 @@
-import {
-  IAgentScopeRuntimeWebUISession,
-  IAgentScopeRuntimeWebUISessionAPI,
-} from '@agentscope-ai/chat';
+import { ChatMessage } from '../types';
 
-/**
- * 从 source 字符串提取子 Agent 名称，如 "[SubAgent] DietAnalyst" → "DietAnalyst"
- */
-const extractSubAgentName = (source: string): string | null => {
-  const match = source.match(/^\[SubAgent\]\s+(.+)$/);
-  return match?.[1] || null;
-};
+const LS_KEY = 'agent-scope-runtime-webui-sessions';
 
-/**
- * 将 output 数组中 SubAgent 消息的 type 从 "message" 改为 "plugin_call"，
- * 构造与 responseParser 一致的格式。
- * 用于回溯旧会话中保存到 localStorage 的数据。
- */
-const convertSubAgentOutput = (output: Record<string, any>[]) => {
-  for (const msg of output) {
-    const src = msg.metadata?.source;
-    if (msg.type === 'message' && typeof src === 'string' && src.startsWith('[SubAgent]')) {
-      const agentName = extractSubAgentName(src) || '分析';
-      let combinedText = '';
-      for (const c of msg.content || []) {
-        if (c.type === 'text' && c.text) combinedText += c.text;
-      }
-      msg.type = 'plugin_call';
-      msg.content = [
-        { type: 'data', data: { name: 'sub_agent_analysis', agentName } },
-        { type: 'data', data: { output: combinedText } },
-      ];
-    }
-  }
-};
+class V2SessionApi {
+  private lsKey: string = LS_KEY;
+  private sessionList: any[] = [];
 
-/**
- * 遍历会话消息的 cards，查找 AgentScopeRuntimeResponseCard.data.output
- * 并进行 SubAgent 转换。
- */
-const convertSessionMessages = (messages: any[]) => {
-  for (const msg of messages) {
-    for (const card of msg.cards || []) {
-      if (card.code === 'AgentScopeRuntimeResponseCard' && Array.isArray(card.data?.output)) {
-        convertSubAgentOutput(card.data.output);
-      }
-    }
-  }
-};
-
-class SessionApi implements IAgentScopeRuntimeWebUISessionAPI {
-  private lsKey: string;
-  private sessionList: IAgentScopeRuntimeWebUISession[];
-
-  constructor() {
-    this.lsKey = 'agent-scope-runtime-webui-sessions';
+  reset() {
     this.sessionList = [];
   }
 
-  async getSessionList() {
+  async getSessionList(): Promise<any[]> {
     const raw = localStorage.getItem(this.lsKey);
     this.sessionList = JSON.parse(raw || '[]');
-    // 回溯转换旧会话中的 SubAgent 消息
+
     for (const session of this.sessionList) {
       if (session.messages?.length) {
-        convertSessionMessages(session.messages);
+        for (const msg of session.messages) {
+          for (const card of msg.cards || []) {
+            if (card.code === 'AgentScopeRuntimeResponseCard' && Array.isArray(card.data?.output)) {
+              for (const outMsg of card.data.output) {
+                if (
+                  outMsg.type === 'message' &&
+                  outMsg.metadata?.source?.startsWith('[SubAgent]')
+                ) {
+                  const match = outMsg.metadata.source.match(/^\[SubAgent\]\s+(.+)$/);
+                  const agentName = match?.[1] || '分析';
+                  let combinedText = '';
+                  for (const c of outMsg.content || []) {
+                    if (c.type === 'text' && c.text) combinedText += c.text;
+                  }
+                  outMsg.type = 'plugin_call';
+                  outMsg.content = [
+                    { type: 'data', data: { name: 'sub_agent_analysis', agentName } },
+                    { type: 'data', data: { output: combinedText } },
+                  ];
+                }
+              }
+            }
+          }
+        }
       }
     }
+
     return [...this.sessionList];
   }
 
-  async getSession(sessionId: string) {
+  async getSession(sessionId: string): Promise<any> {
     const session = this.sessionList.find((s) => s.id === sessionId);
-    if (session?.messages?.length) {
-      convertSessionMessages(session.messages);
-    }
-    return session as IAgentScopeRuntimeWebUISession;
+    return session || null;
   }
 
-  async updateSession(session: Partial<IAgentScopeRuntimeWebUISession>) {
-    const index = this.sessionList.findIndex((item) => item.id === session.id);
+  async createSession(sessionData?: { name?: string }): Promise<any> {
+    const session: any = {
+      id: Date.now().toString(),
+      name: sessionData?.name || 'New Chat',
+      messages: [],
+      createdAt: new Date().toISOString(),
+      pinned: false,
+      generating: false,
+    };
+    this.sessionList.unshift(session);
+    localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
+    return session;
+  }
+
+  async updateSession(session: Partial<any>): Promise<any> {
+    this.sessionList = JSON.parse(localStorage.getItem(this.lsKey) || '[]');
+    const index = this.sessionList.findIndex((s) => s.id === session.id);
     if (index > -1) {
-      this.sessionList[index] = {
-        ...this.sessionList[index],
-        ...session,
-      };
+      this.sessionList[index] = { ...this.sessionList[index], ...session };
       localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
     }
-
     return [...this.sessionList];
   }
 
-  async createSession(session: Partial<IAgentScopeRuntimeWebUISession>) {
-    session.id = Date.now().toString();
-    this.sessionList.unshift(session as IAgentScopeRuntimeWebUISession);
+  async removeSession(session: Partial<any>): Promise<any> {
+    this.sessionList = JSON.parse(localStorage.getItem(this.lsKey) || '[]');
+    this.sessionList = this.sessionList.filter((s) => s.id !== session.id);
     localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
     return [...this.sessionList];
   }
 
-  async removeSession(session: Partial<IAgentScopeRuntimeWebUISession>) {
-    this.sessionList = this.sessionList.filter(
-      (item) => item.id !== session.id,
-    );
-    localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
-    return [...this.sessionList];
+  async saveSessionMessages(sessionId: string, messages: ChatMessage[]): Promise<void> {
+    const raw = localStorage.getItem(this.lsKey);
+    this.sessionList = JSON.parse(raw || '[]');
+    const index = this.sessionList.findIndex((s) => s.id === sessionId);
+    if (index > -1) {
+      const storedMessages = messages.map(convertV2MessageToStored);
+      this.sessionList[index].messages = storedMessages;
+      this.sessionList[index]._messages = messages.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        ...(m.response ? { response: m.response } : {}),
+        createdAt: m.createdAt,
+      }));
+      localStorage.setItem(this.lsKey, JSON.stringify(this.sessionList));
+    }
   }
 }
 
-export default new SessionApi();
+function convertV2MessageToStored(msg: ChatMessage): any {
+  if (msg.role === 'user') {
+    return {
+      id: msg.id,
+      role: 'user',
+      cards: [
+        {
+          code: 'AgentScopeRuntimeRequestCard',
+          data: {
+            input: [{
+              role: 'user',
+              type: 'message',
+              content: msg.content,
+            }],
+          },
+        },
+      ],
+      msgStatus: msg.status,
+    };
+  }
+
+  return {
+    id: msg.id,
+    role: 'assistant',
+    cards: msg.response ? [
+      {
+        code: 'AgentScopeRuntimeResponseCard',
+        data: msg.response,
+      },
+    ] : [],
+    msgStatus: msg.status,
+  };
+}
+
+export const v2SessionApi = new V2SessionApi();

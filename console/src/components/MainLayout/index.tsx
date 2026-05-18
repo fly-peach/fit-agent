@@ -155,8 +155,41 @@ const MainLayout: React.FC = () => {
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(0);
 
-  const MIN_AI_PANEL_WIDTH = 360;
-  const MAX_AI_PANEL_WIDTH = 800;
+  // Calculate dynamic min/max based on window width
+  const getDynamicConstraints = useCallback(() => {
+    const windowWidth = window.innerWidth;
+    const sidebarWidth = collapsed ? 72 : 240;
+    const availableWidth = windowWidth - sidebarWidth;
+    const MIN_AI_PANEL_WIDTH = Math.min(360, availableWidth - 100);
+    const MAX_AI_PANEL_WIDTH = Math.max(500, Math.min(800, availableWidth - 100));
+    return { MIN_AI_PANEL_WIDTH, MAX_AI_PANEL_WIDTH, availableWidth };
+  }, [collapsed]);
+
+  // Adjust width when window resizes or when opening
+  useEffect(() => {
+    if (rightDrawerOpen) {
+      const { MIN_AI_PANEL_WIDTH, MAX_AI_PANEL_WIDTH, availableWidth } = getDynamicConstraints();
+      setAiPanelWidth(prev => {
+        const clamped = Math.max(MIN_AI_PANEL_WIDTH, Math.min(MAX_AI_PANEL_WIDTH, prev, availableWidth - 50));
+        return clamped;
+      });
+    }
+  }, [rightDrawerOpen, getDynamicConstraints]);
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (rightDrawerOpen) {
+        const { MIN_AI_PANEL_WIDTH, MAX_AI_PANEL_WIDTH, availableWidth } = getDynamicConstraints();
+        setAiPanelWidth(prev => {
+          const clamped = Math.max(MIN_AI_PANEL_WIDTH, Math.min(MAX_AI_PANEL_WIDTH, prev, availableWidth - 50));
+          return clamped;
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [rightDrawerOpen, getDynamicConstraints]);
 
   // Save width to localStorage when it changes
   useEffect(() => {
@@ -183,13 +216,14 @@ const MainLayout: React.FC = () => {
       if (!isDragging) return;
       const deltaX = dragStartXRef.current - e.clientX;
       let newWidth = dragStartWidthRef.current + deltaX;
+      const { MIN_AI_PANEL_WIDTH, MAX_AI_PANEL_WIDTH } = getDynamicConstraints();
       newWidth = Math.max(
         MIN_AI_PANEL_WIDTH,
         Math.min(MAX_AI_PANEL_WIDTH, newWidth),
       );
       setAiPanelWidth(newWidth);
     },
-    [isDragging],
+    [isDragging, getDynamicConstraints],
   );
 
   // Handle drag end
@@ -539,6 +573,8 @@ const MainLayout: React.FC = () => {
                   borderLeft: "1px solid #F0EDE8",
                   overflow: "hidden",
                   transition: isDragging ? "none" : "width 0.2s ease",
+                  minWidth: 0,
+                  flexShrink: 0,
                 }}
               >
                 {/* Drag Handle */}

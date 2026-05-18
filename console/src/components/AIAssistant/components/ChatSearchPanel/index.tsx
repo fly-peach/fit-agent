@@ -2,8 +2,8 @@ import React, { useState, useCallback, useRef, useEffect } from "react"
 import { Drawer, Input, List, Typography, Empty, Spin, Button } from "antd"
 import type { InputRef } from "antd"
 import { SearchOutlined, CloseOutlined } from "@ant-design/icons"
-import { useChatAnywhereSessionsState } from "@agentscope-ai/chat"
-import sessionApi from "../../sessionApi"
+import { useSessionsState } from "../../contexts/SessionContext"
+import { v2SessionApi } from "../../sessionApi"
 import "./index.css"
 
 interface ChatSearchPanelProps {
@@ -41,7 +41,7 @@ const formatTimestamp = (raw: string | null | undefined): string => {
 }
 
 const ChatSearchPanel: React.FC<ChatSearchPanelProps> = ({ open, onClose }) => {
-  const { setCurrentSessionId } = useChatAnywhereSessionsState()
+  const { setCurrentSessionId } = useSessionsState()
   const [searchQuery, setSearchQuery] = useState("")
   const [loading, setLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -78,7 +78,7 @@ const ChatSearchPanel: React.FC<ChatSearchPanelProps> = ({ open, onClose }) => {
       try {
         const query = searchQuery.toLowerCase()
         const results: SearchResult[] = []
-        const allSessions = await sessionApi.getSessionList()
+        const allSessions = await v2SessionApi.getSessionList()
         if (seq !== searchSeqRef.current) return
 
         for (const session of allSessions) {

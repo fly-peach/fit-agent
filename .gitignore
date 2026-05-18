@@ -24,6 +24,7 @@ build/
 
 # IDE
 .kilo/
+.playwright-mcp/
 .idea/
 .vscode/
 *.swp
