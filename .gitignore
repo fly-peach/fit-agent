@@ -24,6 +24,7 @@ build/
 
 # IDE
 .kilo/
+.deepseek/
 .playwright-mcp/
 .idea/
 .vscode/
