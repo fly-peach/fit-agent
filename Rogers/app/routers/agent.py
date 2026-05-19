@@ -264,12 +264,16 @@ async def delete_session(
 @agent_app.post("/api/agent/approval/{approval_id}/approve")
 async def approve_tool_call(approval_id: str):
     """用户通过审批"""
-    token = _auth_token.get()
-    if not token:
-        return {"status": "unauthorized"}
-    manager = get_approval_manager()
-    ok = manager.approve(approval_id)
-    return {"status": "approved" if ok else "not_found"}
+    try:
+        token = _auth_token.get()
+        if not token:
+            return {"status": "unauthorized"}
+        manager = get_approval_manager()
+        ok = manager.approve(approval_id)
+        return {"status": "approved" if ok else "not_found"}
+    except Exception as e:
+        logger.exception(f"Approve failed: approval_id={approval_id}: {e}")
+        return {"status": "error", "detail": str(e)}
 
 
 @agent_app.post("/api/agent/approval/{approval_id}/reject")
@@ -280,9 +284,13 @@ async def reject_tool_call(approval_id: str, input: str = ""):
         approval_id: 审批请求 ID
         input: 可选，用户的拒绝说明文本
     """
-    token = _auth_token.get()
-    if not token:
-        return {"status": "unauthorized"}
-    manager = get_approval_manager()
-    ok = manager.reject(approval_id, input_text=input)
-    return {"status": "rejected" if ok else "not_found"}
+    try:
+        token = _auth_token.get()
+        if not token:
+            return {"status": "unauthorized"}
+        manager = get_approval_manager()
+        ok = manager.reject(approval_id, input_text=input)
+        return {"status": "rejected" if ok else "not_found"}
+    except Exception as e:
+        logger.exception(f"Reject failed: approval_id={approval_id}: {e}")
+        return {"status": "error", "detail": str(e)}

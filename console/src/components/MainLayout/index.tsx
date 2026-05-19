@@ -196,6 +196,12 @@ const MainLayout: React.FC = () => {
     localStorage.setItem("aiPanelWidth", aiPanelWidth.toString());
   }, [aiPanelWidth]);
 
+  // Handle double-click to maximize width
+  const handleMaxWidth = useCallback(() => {
+    const { MAX_AI_PANEL_WIDTH } = getDynamicConstraints();
+    setAiPanelWidth(MAX_AI_PANEL_WIDTH);
+  }, [getDynamicConstraints]);
+
   // Handle drag start
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
@@ -580,6 +586,7 @@ const MainLayout: React.FC = () => {
                 {/* Drag Handle */}
                 <div
                   onMouseDown={handleDragStart}
+                  onDoubleClick={handleMaxWidth}
                   style={{
                     position: "absolute",
                     left: 0,

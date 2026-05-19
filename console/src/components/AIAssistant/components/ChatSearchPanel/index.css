@@ -1,3 +1,4 @@
+/* 聊天抽屉样式 - 适用于聊天搜索面板 */
 .fitagent-chat-drawer :global(.ant-drawer-body) {
   display: flex;
   flex-direction: column;
@@ -6,6 +7,7 @@
   background-color: var(--colorBgBase, #fff);
 }
 
+/* 抽屉头部样式 - 包含标题和关闭按钮 */
 .drawer-header {
   display: flex;
   align-items: center;
@@ -15,6 +17,7 @@
   flex-shrink: 0;
 }
 
+/* 抽屉头部左侧样式 - 包含标题 */
 .drawer-header-left {
   display: flex;
   align-items: center;
@@ -22,6 +25,7 @@
   flex: 1;
 }
 
+/* 抽屉标题样式 */
 .drawer-title {
   font-size: 16px;
   font-weight: 500;
@@ -29,31 +33,37 @@
   color: var(--colorText, #1F2937);
 }
 
+/* 抽屉头部右侧样式 - 包含操作按钮 */
 .drawer-header-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
+/* 搜索区域样式 - 包含搜索输入框 */
 .search-section {
   flex-shrink: 0;
   padding: 12px 16px;
 }
 
+/* 搜索输入框样式 */
 .search-input {
   border-radius: 10px;
 }
 
+/* 搜索输入框内容样式 */
 .search-input :global(.ant-input) {
   background: transparent;
 }
 
+/* 搜索结果数量显示样式 */
 .results-count {
   flex-shrink: 0;
   padding: 8px 16px;
   border-bottom: 1px solid var(--colorBorderSecondary, #E5E7EB);
 }
 
+/* 列表包装器样式 - 包含滚动功能 */
 .list-wrapper {
   flex: 1;
   position: relative;
@@ -61,6 +71,7 @@
   min-height: 0;
 }
 
+/* 列表样式 */
 .list {
   padding: 0 12px;
   height: 100%;
@@ -69,10 +80,12 @@
   flex-direction: column;
 }
 
+/* 隐藏滚动条 */
 .list::-webkit-scrollbar {
   display: none;
 }
 
+/* 顶部渐变遮罩样式 */
 .top-gradient {
   position: absolute;
   top: 0;
@@ -84,6 +97,7 @@
   pointer-events: none;
 }
 
+/* 底部渐变遮罩样式 */
 .bottom-gradient {
   position: absolute;
   bottom: 0;
@@ -95,6 +109,7 @@
   pointer-events: none;
 }
 
+/* 搜索结果项目样式 */
 .search-result-item {
   padding: 12px;
   border-radius: 8px;
@@ -104,10 +119,12 @@
   transition: background-color 0.2s;
 }
 
+/* 搜索结果项目悬停样式 */
 .search-result-item:hover {
   background: rgba(14, 165, 233, 0.06);
 }
 
+/* 结果头部样式 - 包含聊天名称和角色 */
 .result-header {
   display: flex;
   align-items: center;
@@ -116,6 +133,7 @@
   gap: 8px;
 }
 
+/* 结果聊天名称样式 */
 .result-chat-name {
   font-size: 13px;
   font-weight: 500;
@@ -126,6 +144,7 @@
   flex: 1;
 }
 
+/* 结果角色样式 */
 .result-role {
   font-size: 12px;
   font-weight: 500;
@@ -136,12 +155,14 @@
   flex-shrink: 0;
 }
 
+/* 结果内容样式 */
 .result-content {
   font-size: 13px;
   color: var(--colorText, #1F2937);
   line-height: 1.5;
 }
 
+/* 结果时间样式 */
 .result-time {
   font-size: 12px;
   color: var(--colorTextSecondary, #6B7280);

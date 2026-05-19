@@ -12,6 +12,7 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 # 暂时禁用 agentscope_runtime，避免导入错误
@@ -159,6 +160,16 @@ async def log_requests(request: Request, call_next):
     duration = time.time() - start_time
     logger.info("<< %s %s -> %s (%.2fs)", method, path, response.status_code, duration)
     return response
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """全局异常处理器，记录 500 错误详情。"""
+    logger.exception(f"未处理异常 {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"code": 500, "detail": "服务器内部错误", "path": request.url.path},
+    )
 
 
 app.include_router(auth_router)

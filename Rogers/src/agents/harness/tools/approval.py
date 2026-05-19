@@ -186,7 +186,7 @@ def _build_rejection_msg(tool_name: str, rejection_input: str, reject_count: int
 def _build_approval_msg(approval_id: str, tool_name: str, tool_args_display: str) -> Msg:
     return Msg(
         name="System",
-        content=f"工具 {tool_name} 请求编辑数据库，等待您的审批...",
+        content=[TextBlock(type="text", text=f"工具 {tool_name} 请求编辑数据库，等待您的审批...")],
         role="system",
         metadata={
             "tool_approval": {

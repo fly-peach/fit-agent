@@ -78,10 +78,16 @@ def get_current_user(
     if not authorization:
         raise HTTPException(status_code=401, detail="未授权")
     token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
-    user = AuthService.get_user_from_token(db, token)
-    if not user:
-        raise HTTPException(status_code=401, detail="登录过期")
-    return user
+    try:
+        user = AuthService.get_user_from_token(db, token)
+        if not user:
+            raise HTTPException(status_code=401, detail="登录过期")
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"认证服务异常: {e}")
+        raise HTTPException(status_code=500, detail=f"认证服务异常: {str(e)}")
 
 
 @router.get("/metrics", response_model=HealthMetricsResponse)

@@ -1,106 +1,279 @@
-.fitagent-chat-drawer :global(.ant-drawer-body) {
+/* 聊天会话抽屉样式 - 用于展示历史聊天记录 */
+.fitagent-chat-session-drawer.fitagent-chat-drawer :global(.ant-drawer-body) {
   display: flex;
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8F6F3 100%);
-  border-left: 1px solid #F0EDE8;
+  background: #F9FAFB;
 }
 
-.drawer-header {
+/* 抽屉头部样式 - 包含标题和操作按钮 */
+.fitagent-chat-session-drawer .drawer-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  height: 64px;
+  padding: 0 12px 0 20px;
+  height: 60px;
   flex-shrink: 0;
-  background: transparent;
-  border-bottom: 1px solid #F0EDE8;
+  border-bottom: 1px solid #F0F0F0;
 }
 
-.drawer-header-left {
+/* 抽屉头部左侧样式 - 包含图标和标题 */
+.fitagent-chat-session-drawer .drawer-header-left {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1;
+  gap: 10px;
 }
 
-.drawer-logo-text {
+/* 抽屉标题图标样式 */
+.fitagent-chat-session-drawer .drawer-title-icon {
   font-size: 20px;
-  font-weight: 800;
   color: #0EA5E9;
-  font-family: "'Nunito', 'Noto Sans SC', sans-serif";
-  margin: 0;
-}
-
-.drawer-header-right {
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 
-.create-section {
-  flex-shrink: 0;
-  padding: 12px 12px 8px;
+/* 抽屉标题文本样式 */
+.fitagent-chat-session-drawer .drawer-title-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1F2937;
+  letter-spacing: 0.3px;
 }
 
-.create-button {
-  width: 100%;
-  height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%);
-  border: none;
-  color: #fff;
-  font-size: 14px;
+/* 抽屉徽章样式 - 显示会话数量 */
+.fitagent-chat-session-drawer .drawer-badge :global(.ant-badge-count) {
+  font-size: 11px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 5px;
+  background: #E5E7EB;
+  color: #6B7280;
+  box-shadow: none;
   font-weight: 500;
+}
+
+/* 抽屉头部右侧样式 - 包含按钮组 */
+.fitagent-chat-session-drawer .drawer-header-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* 抽屉新建按钮样式 */
+.fitagent-chat-session-drawer .drawer-new-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #0EA5E9;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: all 0.2s;
 }
 
-.create-button:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
+/* 抽屉新建按钮悬停样式 */
+.fitagent-chat-session-drawer .drawer-new-btn:hover {
+  background: rgba(14, 165, 233, 0.08);
+  color: #0284C7;
 }
 
-.list-wrapper {
+/* 抽屉关闭按钮样式 */
+.fitagent-chat-session-drawer .drawer-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #9CA3AF;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+/* 抽屉关闭按钮悬停样式 */
+.fitagent-chat-session-drawer .drawer-close-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #6B7280;
+}
+
+/* 搜索区域样式 */
+.fitagent-chat-session-drawer .search-section {
+  flex-shrink: 0;
+  padding: 10px 16px;
+}
+
+/* 搜索输入框样式 */
+.fitagent-chat-session-drawer .search-input {
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  height: 36px;
+  font-size: 13px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+/* 搜索输入框悬停样式 */
+.fitagent-chat-session-drawer .search-input:hover {
+  border-color: #0EA5E9;
+}
+
+/* 搜索输入框焦点样式 */
+.fitagent-chat-session-drawer .search-input:focus,
+.fitagent-chat-session-drawer .search-input-focused {
+  border-color: #0EA5E9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+/* 搜索图标样式 */
+.fitagent-chat-session-drawer .search-icon {
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+/* 列表包装器样式 */
+.fitagent-chat-session-drawer .list-wrapper {
   flex: 1;
   position: relative;
   overflow: hidden;
   min-height: 0;
 }
 
-.list {
-  padding: 0 12px;
+/* 列表样式 */
+.fitagent-chat-session-drawer .list {
+  padding: 4px 8px 16px;
   height: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
-.list::-webkit-scrollbar {
-  display: none;
+/* 列表滚动条样式 */
+.fitagent-chat-session-drawer .list::-webkit-scrollbar {
+  width: 4px;
 }
 
-.top-gradient {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 28px;
-  background: linear-gradient(180deg, #F8F6F3 0%, rgba(248, 246, 243, 0) 100%);
-  z-index: 1;
-  pointer-events: none;
+/* 列表滚动条轨道样式 */
+.fitagent-chat-session-drawer .list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.bottom-gradient {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 28px;
-  background: linear-gradient(0deg, #F8F6F3 0%, rgba(248, 246, 243, 0) 100%);
-  z-index: 1;
-  pointer-events: none;
+/* 列表滚动条滑块样式 */
+.fitagent-chat-session-drawer .list::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 4px;
 }
+
+/* 列表滚动条滑块悬停样式 */
+.fitagent-chat-session-drawer .list::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* 会话组样式 */
+.fitagent-chat-session-drawer .session-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* 会话组之间分隔线样式 */
+.fitagent-chat-session-drawer .session-group + .session-group {
+  margin-top: 12px;
+  border-top: 1px solid #F0F0F0;
+  padding-top: 8px;
+}
+
+/* 组头部样式 */
+.fitagent-chat-session-drawer .group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 4px;
+}
+
+/* 组标签样式 */
+.fitagent-chat-session-drawer .group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 组计数样式 */
+.fitagent-chat-session-drawer .group-count {
+  font-size: 11px;
+  color: #D1D5DB;
+  font-weight: 500;
+}
+
+/* 空状态样式 */
+.fitagent-chat-session-drawer .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 24px;
+  text-align: center;
+  flex: 1;
+}
+
+/* 空状态图标包装器样式 */
+.fitagent-chat-session-drawer .empty-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+/* 空状态图标样式 */
+.fitagent-chat-session-drawer .empty-icon {
+  font-size: 26px;
+  color: #D1D5DB;
+}
+
+/* 空状态标题样式 */
+.fitagent-chat-session-drawer .empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #6B7280;
+  margin: 0 0 6px;
+}
+
+/* 空状态描述样式 */
+.fitagent-chat-session-drawer .empty-desc {
+  font-size: 13px;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+/* 抽屉滑入动画 */
+@keyframes fitagentDrawerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 会话组动画 */
+.fitagent-chat-session-drawer .session-group {
+  animation: fitagentDrawerSlideIn 0.25s ease-out both;
+}
+
+/* 会话组动画延迟 */
+.fitagent-chat-session-drawer .session-group:nth-child(1) { animation-delay: 0s; }
+.fitagent-chat-session-drawer .session-group:nth-child(2) { animation-delay: 0.04s; }
+.fitagent-chat-session-drawer .session-group:nth-child(3) { animation-delay: 0.08s; }
+.fitagent-chat-session-drawer .session-group:nth-child(4) { animation-delay: 0.12s; }
+.fitagent-chat-session-drawer .session-group:nth-child(5) { animation-delay: 0.16s; }

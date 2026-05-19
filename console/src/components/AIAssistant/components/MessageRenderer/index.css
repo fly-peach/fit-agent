@@ -1,0 +1,10 @@
+/* 子代理内容容器样式 */
+.subagent-body-content {
+  padding: 12px;
+}
+
+/* 子代理加载文本样式 */
+.subagent-loading-text {
+  padding: 12px;
+  color: #999;
+}

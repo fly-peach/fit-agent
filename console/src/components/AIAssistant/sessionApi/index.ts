@@ -54,7 +54,7 @@ class V2SessionApi {
   async createSession(sessionData?: { name?: string }): Promise<any> {
     const session: any = {
       id: Date.now().toString(),
-      name: sessionData?.name || 'New Chat',
+      name: sessionData?.name || '新的聊天',
       messages: [],
       createdAt: new Date().toISOString(),
       pinned: false,

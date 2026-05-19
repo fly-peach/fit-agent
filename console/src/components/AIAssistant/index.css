@@ -60,21 +60,6 @@
   margin-bottom: 8px;
 }
 
-.fitagent-message-renderer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.subagent-body-content {
-  padding: 12px;
-}
-
-.subagent-loading-text {
-  padding: 12px;
-  color: #999;
-}
-
 /* Responsive improvements */
 @media (max-width: 480px) {
   .fitagent-chat-header {

@@ -1,8 +1,10 @@
+/* 聊天操作组容器样式 */
 .chat-action-group {
   display: flex;
   align-items: center;
 }
 
+/* 自动审批切换按钮样式 */
 .auto-approve-toggle {
   display: flex;
   align-items: center;
@@ -13,10 +15,12 @@
   transition: all 0.3s ease;
 }
 
+/* 悬停状态下的自动审批切换按钮样式 */
 .auto-approve-toggle:hover {
   background: #e8e8e8;
 }
 
+/* 切换标签样式 */
 .toggle-label {
   font-size: 13px;
   font-weight: 500;
@@ -25,6 +29,7 @@
   user-select: none;
 }
 
+/* 激活状态下的标签样式 */
 .toggle-label.active {
   color: #1890ff;
 }

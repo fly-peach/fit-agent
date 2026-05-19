@@ -58,12 +58,17 @@ const AIAssistantInner: React.FC = () => {
   const connectionIdRef = useRef(0);
   const submittingRef = useRef(false);
   const newSessionIdRef = useRef<string | undefined>(undefined);
+  const skipNextSessionLoadRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
 
   useEffect(() => {
     if (!currentSessionId) return;
 
     // 跳过新建 session 的加载，避免空数据覆盖刚提交的消息
+    if (skipNextSessionLoadRef.current) {
+      skipNextSessionLoadRef.current = false;
+      return;
+    }
     if (newSessionIdRef.current === currentSessionId) {
       newSessionIdRef.current = undefined;
       return;
@@ -170,6 +175,7 @@ const AIAssistantInner: React.FC = () => {
     submittingRef.current = true;
     try {
       if (!currentSessionId) {
+        skipNextSessionLoadRef.current = true;
         const newSid = await createSession({ name: text.slice(0, 20) });
         newSessionIdRef.current = newSid;
         submit(text, undefined, newSid);
@@ -187,6 +193,7 @@ const AIAssistantInner: React.FC = () => {
     submittingRef.current = true;
     try {
       if (!currentSessionId) {
+        skipNextSessionLoadRef.current = true;
         const newSid = await createSession({ name: query.slice(0, 20) });
         newSessionIdRef.current = newSid;
         submit(query, undefined, newSid);
