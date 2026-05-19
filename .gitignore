@@ -77,7 +77,6 @@ htmlcov/
 
 # Console build artifacts
 Rogers/console/
-console/
 
 # Git clone optimization - common large directories
 **/node_modules/

@@ -1,0 +1,149 @@
+.training-results-page {
+  min-height: 100vh;
+}
+
+.snapshot-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.snapshot-card:hover {
+  transform: translateY(-4px);
+}
+
+.snapshot-card .ant-card-cover {
+  padding: 24px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFF 100%);
+}
+
+.card-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+}
+
+.stats-preview {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #F59E0B;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.card-viewer-container {
+  padding: 20px 0;
+}
+
+.card-flip-container {
+  perspective: 1000px;
+  width: 100%;
+  min-height: 500px;
+  cursor: pointer;
+}
+
+.card-flip-container.flipped .card-inner {
+  transform: rotateY(180deg);
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  min-height: 500px;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.card-face {
+  position: absolute;
+  width: 100%;
+  min-height: 500px;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-front {
+  z-index: 2;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  z-index: 1;
+}
+
+.card-content {
+  padding: 32px;
+}
+
+.ai-evaluation {
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 500px;
+  background: linear-gradient(135deg, #F0FDF4 0%, #FFF 100%);
+}
+
+.flip-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #999;
+}
+
+/* 动画效果 */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式 */
+@media (max-width: 767px) {
+  .card-viewer-container {
+    padding: 0;
+  }
+
+  .card-flip-container {
+    min-height: 400px;
+  }
+
+  .card-face {
+    min-height: 400px;
+  }
+
+  .card-content {
+    padding: 20px;
+  }
+
+  .ai-evaluation {
+    padding: 32px 20px;
+    min-height: 400px;
+  }
+}

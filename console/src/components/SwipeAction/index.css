@@ -1,0 +1,43 @@
+.swipe-action-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.swipe-action-left,
+.swipe-action-right {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+.swipe-action-left {
+  left: 0;
+}
+
+.swipe-action-right {
+  right: 0;
+}
+
+.swipe-action-btn {
+  width: 80px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.swipe-action-content {
+  position: relative;
+  background: #fff;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+.swipe-action-content.swiping {
+  transition: none;
+}
