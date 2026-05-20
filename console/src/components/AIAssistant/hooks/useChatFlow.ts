@@ -1,6 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
 import type { ChatMessage } from '../types';
 
+interface UploadedAsset {
+  url?: string;
+  response?: {
+    url?: string;
+  };
+  type?: string;
+}
+
 interface StreamEvent {
   object?: string;
   id?: string;
@@ -93,14 +101,31 @@ export function useChatFlow(currentSessionId: string | undefined) {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const submit = useCallback(async (text: string, _files?: any, sessionId?: string) => {
+  const submit = useCallback(async (text: string, files?: UploadedAsset[], sessionId?: string) => {
     const sid = sessionId || currentSessionId;
     if (!sid) return;
+
+    const imageContents = (files || [])
+      .filter((file) => String(file.type || '').startsWith('image/'))
+      .map((file) => file.response?.url || file.url)
+      .filter(Boolean)
+      .map((url) => ({
+        type: 'image',
+        image_url: url,
+        status: 'created',
+      }));
+
+    const userContents = [
+      ...(text.trim() ? [{ type: 'text', text, status: 'created' }] : []),
+      ...imageContents,
+    ];
+
+    if (userContents.length === 0) return;
 
     const userMsg: ChatMessage = {
       id: `msg_${Date.now()}`,
       role: 'user',
-      content: [{ type: 'text', text }],
+      content: userContents,
       status: 'finished',
       createdAt: Date.now(),
     };
@@ -111,7 +136,7 @@ export function useChatFlow(currentSessionId: string | undefined) {
       role: 'assistant',
       content: [],
       response: { id: '', object: 'response', status: 'created', output: [], created_at: 0 },
-      status: 'loading',
+      status: 'generating',
       createdAt: Date.now(),
     };
 
@@ -134,7 +159,7 @@ export function useChatFlow(currentSessionId: string | undefined) {
           Accept: 'text/event-stream',
         },
         body: JSON.stringify({
-          input: [{ role: 'user', type: 'message', content: [{ type: 'text', text }] }],
+          input: [{ role: 'user', type: 'message', content: userContents }],
           session_id: sid,
           stream: true,
         }),
@@ -177,7 +202,7 @@ export function useChatFlow(currentSessionId: string | undefined) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId
-                ? { ...m, response: snapshot, status: 'loading' }
+                ? { ...m, response: snapshot, status: 'generating' }
                 : m
             )
           );
@@ -190,13 +215,14 @@ export function useChatFlow(currentSessionId: string | undefined) {
         )
       );
     } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId ? { ...m, status: 'error' } : m
-          )
-        );
-      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? { ...m, status: e.name === 'AbortError' ? 'interrupted' : 'error' }
+            : m
+        )
+      );
+      throw e;
     } finally {
       setLoading(false);
       abortRef.current = null;

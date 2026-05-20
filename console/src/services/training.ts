@@ -134,6 +134,7 @@ export interface TrainingResultSnapshot {
   id: number
   userId: number
   sessionId?: string
+  templateKey?: string
   title: string
   periodType?: 'week' | 'month' | 'custom'
   periodStart?: string
@@ -146,15 +147,15 @@ export interface TrainingResultSnapshot {
   updatedAt: string
 }
 
-export interface SaveTrainingResultRequest {
-  cardHtml: string
-  title: string
-  sessionId?: string
-  statsJson?: string
-  periodType?: 'week' | 'month' | 'custom'
-  periodStart?: string
-  periodEnd?: string
-  thumbnail?: string
+export interface TrainingResultTemplateSample {
+  templateKey: string
+  templateName: string
+  templateGroup: string
+  description: string
+  highlights: string[]
+  previewHtml: string
+  promptHint: string
+  sortOrder: number
 }
 
 export interface UpdateTrainingResultRequest {
@@ -163,19 +164,70 @@ export interface UpdateTrainingResultRequest {
   thumbnail?: string
 }
 
-export const trainingResultsApi = {
-  saveResult: (data: SaveTrainingResultRequest): Promise<{ snapshotId: number }> =>
-    api.post('/training/results/save', data),
+function mapTrainingResultSnapshot(raw: any): TrainingResultSnapshot {
+  return {
+    id: raw.id,
+    userId: raw.userId ?? raw.user_id,
+    sessionId: raw.sessionId ?? raw.session_id,
+    templateKey: raw.templateKey ?? raw.template_key,
+    title: raw.title,
+    periodType: raw.periodType ?? raw.period_type,
+    periodStart: raw.periodStart ?? raw.period_start,
+    periodEnd: raw.periodEnd ?? raw.period_end,
+    thumbnail: raw.thumbnail,
+    statsJson: raw.statsJson ?? raw.stats_json,
+    cardHtml: raw.cardHtml ?? raw.card_html,
+    isActive: raw.isActive ?? raw.is_active,
+    createdAt: raw.createdAt ?? raw.created_at,
+    updatedAt: raw.updatedAt ?? raw.updated_at,
+  }
+}
 
-  listResults: (params?: {
+function mapTrainingResultTemplateSample(raw: any): TrainingResultTemplateSample {
+  return {
+    templateKey: raw.templateKey ?? raw.template_key,
+    templateName: raw.templateName ?? raw.template_name,
+    templateGroup: raw.templateGroup ?? raw.template_group,
+    description: raw.description ?? '',
+    highlights: raw.highlights ?? [],
+    previewHtml: raw.previewHtml ?? raw.preview_html ?? '',
+    promptHint: raw.promptHint ?? raw.prompt_hint ?? '',
+    sortOrder: raw.sortOrder ?? raw.sort_order ?? 0,
+  }
+}
+
+export const trainingResultsApi = {
+  listTemplates: async (templateGroup = 'training-results'): Promise<TrainingResultTemplateSample[]> => {
+    const list = (await api.get('/training/result-templates', {
+      params: { template_group: templateGroup },
+    })) as any[]
+    return (Array.isArray(list) ? list : []).map(mapTrainingResultTemplateSample)
+  },
+
+  getTemplate: async (templateKey: string): Promise<TrainingResultTemplateSample> =>
+    mapTrainingResultTemplateSample(await api.get(`/training/result-templates/${templateKey}`)),
+
+  listResults: async (params?: {
     periodType?: string
+    sessionId?: string
     limit?: number
     offset?: number
-  }): Promise<TrainingResultSnapshot[]> =>
-    api.get('/training/results/list', { params }),
+  }): Promise<TrainingResultSnapshot[]> => {
+    const list = (await api.get('/training/results/list', {
+      params: params
+        ? {
+            period_type: params.periodType,
+            session_id: params.sessionId,
+            limit: params.limit,
+            offset: params.offset,
+          }
+        : undefined,
+    })) as any[]
+    return (Array.isArray(list) ? list : []).map(mapTrainingResultSnapshot)
+  },
 
-  getResult: (snapshotId: number): Promise<TrainingResultSnapshot> =>
-    api.get(`/training/results/${snapshotId}`),
+  getResult: async (snapshotId: number): Promise<TrainingResultSnapshot> =>
+    mapTrainingResultSnapshot(await api.get(`/training/results/${snapshotId}`)),
 
   updateResult: (snapshotId: number, data: UpdateTrainingResultRequest): Promise<void> =>
     api.put(`/training/results/${snapshotId}`, data),

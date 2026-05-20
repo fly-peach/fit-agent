@@ -3,7 +3,6 @@ import { Row, Col, Card, Typography, Tag, Space, Button, Popconfirm, Empty } fro
 import { EyeOutlined, DeleteOutlined, CalendarOutlined } from "@ant-design/icons";
 import { Trophy } from "lucide-react";
 import dayjs from "dayjs";
-import { useIsMobile } from "../../hooks";
 import type { TrainingResultSnapshot } from "../../services/training";
 
 interface CardListProps {
@@ -14,8 +13,6 @@ interface CardListProps {
 }
 
 const CardList: React.FC<CardListProps> = ({ snapshots, loading, onView, onDelete }) => {
-  const isMobile = useIsMobile();
-
   const parseStats = (snapshot: TrainingResultSnapshot) => {
     if (!snapshot.statsJson) return null;
     try {
@@ -83,7 +80,7 @@ const CardList: React.FC<CardListProps> = ({ snapshots, loading, onView, onDelet
               <Card.Meta
                 title={
                   <div style={{ marginBottom: 8 }}>
-                    <Typography.Text strong ellipsis={{ rows: 2 }}>
+                    <Typography.Text strong ellipsis>
                       {snapshot.title}
                     </Typography.Text>
                   </div>

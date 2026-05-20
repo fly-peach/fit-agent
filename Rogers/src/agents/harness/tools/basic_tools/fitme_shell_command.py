@@ -43,6 +43,10 @@ COMMAND_ROUTES: dict[str, ApiRoute] = {
     "get-training-weekly":         ApiRoute("GET", "/api/training/schedule/weekly"),
     "get-training-stats":          ApiRoute("GET", "/api/training/stats/weekly"),
     "get-training-recommendations": ApiRoute("GET", "/api/training/recommendations"),
+    "get-training-card-templates": ApiRoute("GET", "/api/training/result-templates"),
+    "get-training-card-template": ApiRoute("GET", "/api/training/result-templates/{template_key}"),
+    "save-training-result":       ApiRoute("POST", "/api/training/results/archive",
+        "title,session_id,stats_json,card_html,template_key,period_type,period_start,period_end,thumbnail"),
     "create-training-plan":        ApiRoute("POST", "/api/training/plans",
         "plan_name,plan_type,scheduled_date,estimated_duration,target_intensity,note"),
 
@@ -265,9 +269,22 @@ async def execute_fitme_command(
         raw_args = parts[1:] if subcommand else []
 
     if not subcommand:
+        guidance = ""
+        if "agent-card-results" in command or "training-card" in command:
+            guidance = (
+                "\n提示: `agent-card-results` / `training-card` 是技能名称，不是可直接调用的工具函数。"
+                "\n请改为先参考技能说明，再通过 execute_fitme_command 调用真实存在的子命令，"
+                "例如 `get-training-stats`、`get-training-weekly`、`save-training-result`。"
+            )
+        elif "generate-training-report" in command:
+            guidance = (
+                "\n提示: `generate-training-report` 不是可用命令。"
+                "\n请改用真实存在的子命令，如 `get-training-stats`、`get-training-weekly` 获取数据，"
+                "并在生成 HTML 后使用 `save-training-result` 归档。"
+            )
         return ToolResponse(content=[TextBlock(
             type="text",
-            text=f"错误: 无法识别命令\n可用命令: {', '.join(sorted(COMMAND_ROUTES.keys()))}\n你输入的: {command}"
+            text=f"错误: 无法识别命令\n可用命令: {', '.join(sorted(COMMAND_ROUTES.keys()))}\n你输入的: {command}{guidance}"
         )])
 
     # ── 查找路由 ──
@@ -321,6 +338,7 @@ def _build_query_params(subcommand: str, args: dict) -> dict:
         "get-health-history": {"limit": "limit"},
         "get-diet-today":    {"date": "targetDate"},
         "search-foods":      {"keyword": "keyword", "category": "category"},
+        "get-training-card-templates": {"template_group": "template_group"},
     }
     mapped = mapping.get(subcommand, {})
     params = {}
@@ -349,6 +367,17 @@ def _build_request_body(subcommand: str, args: dict) -> dict:
             "estimated_duration": "estimatedDuration",
             "target_intensity": "targetIntensity",
             "note": "note",
+        },
+        "save-training-result": {
+            "title": "title",
+            "session_id": "session_id",
+            "stats_json": "stats_json",
+            "card_html": "card_html",
+            "template_key": "template_key",
+            "period_type": "period_type",
+            "period_start": "period_start",
+            "period_end": "period_end",
+            "thumbnail": "thumbnail",
         },
         "create-diet-meal": {
             "meal_type": "mealType",

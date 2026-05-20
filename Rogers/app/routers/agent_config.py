@@ -4,7 +4,9 @@ API Key 不再从环境变量读取，通过此路由由用户自行设置，
 使用 fakeredis 缓存（有效期为 7 天）。
 """
 import logging
-from fastapi import APIRouter, HTTPException, Header
+from pathlib import Path
+from uuid import uuid4
+from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -14,6 +16,7 @@ from src.agents.utils.api_key_cache import api_key_cache
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/agent", tags=["Agent Config"])
+UPLOAD_ROOT = Path(__file__).resolve().parent.parent.parent / "uploads" / "agent"
 
 
 # ── Schemas ─────────────────────────────────────────────────────────────────
@@ -83,3 +86,41 @@ def delete_api_key(
     logger.info(f"Deleting API Key for user_id: {user_id}")
     api_key_cache.delete(user_id)
     return MessageResponse(message="API Key 已删除")
+
+
+@router.post("/upload")
+async def upload_file(
+    request: Request,
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None),
+):
+    """上传聊天图片附件并返回可访问 URL。"""
+    user_id = _get_user_id(authorization)
+
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="当前仅支持图片上传")
+
+    suffix = Path(file.filename or "").suffix or ".png"
+    user_dir = UPLOAD_ROOT / str(user_id)
+    user_dir.mkdir(parents=True, exist_ok=True)
+
+    saved_name = f"{uuid4().hex}{suffix}"
+    saved_path = user_dir / saved_name
+
+    try:
+        content = await file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="上传文件为空")
+        saved_path.write_bytes(content)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Failed to save uploaded image for user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=500, detail="保存上传图片失败") from exc
+    finally:
+        await file.close()
+
+    public_path = f"/api/agent/uploads/{user_id}/{saved_name}"
+    public_url = str(request.base_url).rstrip("/") + public_path
+    return {"url": public_url}

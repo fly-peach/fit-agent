@@ -43,6 +43,104 @@ function isErrorText(text: string): boolean {
   return t.startsWith('错误') || t.startsWith('error') || t.startsWith('失败') || t.startsWith('failed');
 }
 
+function parseTrainingCardPayload(text: string): {
+  plainText: string;
+  stats: Record<string, any> | null;
+  cardHtml: string | null;
+} {
+  if (!text) {
+    return { plainText: '', stats: null, cardHtml: null };
+  }
+
+  const statsMatch = text.match(/<!--STATS_JSON_START-->([\s\S]*?)<!--STATS_JSON_END-->/i);
+  const htmlMatch = text.match(/<!--CARD_HTML_START-->([\s\S]*?)<!--CARD_HTML_END-->/i);
+
+  let stats: Record<string, any> | null = null;
+  const statsRaw = statsMatch?.[1]?.trim();
+  if (statsRaw) {
+    try {
+      stats = JSON.parse(statsRaw);
+    } catch {
+      stats = null;
+    }
+  }
+
+  const cardHtml = htmlMatch?.[1]?.trim() || null;
+  const plainText = text
+    .replace(/<!--STATS_JSON_START-->[\s\S]*?<!--STATS_JSON_END-->/gi, '')
+    .replace(/<!--CARD_HTML_START-->[\s\S]*?<!--CARD_HTML_END-->/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return {
+    plainText,
+    stats,
+    cardHtml,
+  };
+}
+
+const TrainingCardMessage: React.FC<{
+  text: string;
+}> = ({ text }) => {
+  const { plainText, stats, cardHtml } = parseTrainingCardPayload(text);
+  const hasStats = !!stats && Object.keys(stats).length > 0;
+  const hasCardHtml = !!cardHtml;
+
+  if (!hasStats && !hasCardHtml) {
+    return <Markdown content={text} />;
+  }
+
+  return (
+    <div className="training-card-message">
+      {plainText ? <Markdown content={plainText} /> : null}
+
+      {hasStats ? (
+        <div className="training-card-message-section">
+          <div className="training-card-message-title">统计摘要</div>
+          <div className="training-card-message-stats">
+            {stats?.totalSessions !== undefined ? (
+              <div className="training-card-message-stat">
+                <span className="training-card-message-stat-value">{stats.totalSessions}</span>
+                <span className="training-card-message-stat-label">次训练</span>
+              </div>
+            ) : null}
+            {stats?.totalDuration !== undefined ? (
+              <div className="training-card-message-stat">
+                <span className="training-card-message-stat-value">{stats.totalDuration}</span>
+                <span className="training-card-message-stat-label">总分钟</span>
+              </div>
+            ) : null}
+            {stats?.totalCalories !== undefined ? (
+              <div className="training-card-message-stat">
+                <span className="training-card-message-stat-value">{stats.totalCalories}</span>
+                <span className="training-card-message-stat-label">kcal</span>
+              </div>
+            ) : null}
+            {stats?.improvement !== undefined ? (
+              <div className="training-card-message-stat">
+                <span className="training-card-message-stat-value">{stats.improvement}%</span>
+                <span className="training-card-message-stat-label">提升幅度</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {hasCardHtml ? (
+        <div className="training-card-message-section">
+          <div className="training-card-message-title">卡片预览</div>
+          <div className="training-card-message-preview">
+            <div
+              className="training-card-message-preview-html"
+              dangerouslySetInnerHTML={{ __html: cardHtml }}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 // 判断是否为子代理消息的辅助函数
 function isSubAgent(msg: OutputMessage): false | { agentName: string } {
   const source = msg.metadata?.source || '';
@@ -291,7 +389,7 @@ const SingleMessageRenderer: React.FC<{
   // 文本消息
   if (msg.type === 'message') {
     if (!textContent) return null;
-    return <Markdown key={msg.id || index} content={textContent} />;
+    return <TrainingCardMessage key={msg.id || index} text={textContent} />;
   }
 
   // 插件/工具调用
@@ -370,7 +468,7 @@ const SingleMessageRenderer: React.FC<{
         />
       );
     }
-    return <Markdown key={msg.id || index} content={textContent} />;
+    return <TrainingCardMessage key={msg.id || index} text={textContent} />;
   }
 
   return null;
@@ -457,7 +555,7 @@ const SubAgentGroupRenderer: React.FC<{
         title: `工具: ${toolName}`,
         defaultOpen: false,
         children: toolSteps.length > 0 ? (
-          <Accordion key={`${groupIndex}-${msgIndex}`} steps={toolSteps} defaultOpen={false} />
+          <Accordion key={`${groupIndex}-${msgIndex}`} title="调用详情" steps={toolSteps} defaultOpen={false} />
         ) : null,
       });
     }
@@ -489,7 +587,6 @@ const SubAgentGroupRenderer: React.FC<{
 
 // 消息渲染器组件 - 用于渲染不同类型的消息（普通消息、子代理消息、工具调用等）
 const MessageRenderer: React.FC<MessageRendererProps> = ({ output }) => {
-  const { setPendingApproval } = useSessionsState();
   const merged = useMemo(() => output ? mergeToolMessages(output) : [], [output]);
   const groups = useMemo(() => groupMessages(merged), [merged]);
 

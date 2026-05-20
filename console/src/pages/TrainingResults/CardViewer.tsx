@@ -59,7 +59,7 @@ const CardViewer: React.FC<CardViewerProps> = ({
           <div className="card-face card-front">
             <div
               className="card-content"
-              dangerouslySetInnerHTML={{ __html: snapshot.cardHtml }}
+              dangerouslySetInnerHTML={{ __html: snapshot.cardHtml || "" }}
             />
             <div className="flip-hint">点击查看 AI 评价</div>
           </div>

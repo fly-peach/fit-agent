@@ -29,6 +29,11 @@ import type { MenuProps } from "antd";
 import AIAssistant from "../AIAssistant";
 import BottomSheet from "../BottomSheet";
 import { useIsMobile } from "../../hooks";
+import {
+  OPEN_CARD_GENERATION_EVENT,
+  startCardGeneration,
+  type CardGenerationRequestDetail,
+} from "../AIAssistant/bridge";
 
 const { Header, Content, Sider } = Layout;
 const { Title } = Typography;
@@ -85,7 +90,7 @@ const getMenuItems = (collapsed: boolean): MenuProps["items"] =>
           </IconWrapper>
         ),
         label: item.label,
-        children: item.children.map((child: any) => ({
+        children: (item.children ?? []).map((child: any) => ({
           key: child.key,
           icon: (
             <IconWrapper color={child.color} collapsed={collapsed}>
@@ -151,6 +156,7 @@ const MainLayout: React.FC = () => {
     return saved ? parseInt(saved, 10) : 480;
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [pendingCardGeneration, setPendingCardGeneration] = useState<CardGenerationRequestDetail | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(0);
@@ -195,6 +201,31 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("aiPanelWidth", aiPanelWidth.toString());
   }, [aiPanelWidth]);
+
+  useEffect(() => {
+    const handleOpenCardGeneration = (event: Event) => {
+      const detail = (event as CustomEvent<CardGenerationRequestDetail>).detail;
+      if (!detail) return;
+      setPendingCardGeneration(detail);
+      setRightDrawerOpen(true);
+    };
+
+    window.addEventListener(OPEN_CARD_GENERATION_EVENT, handleOpenCardGeneration as EventListener);
+    return () => {
+      window.removeEventListener(OPEN_CARD_GENERATION_EVENT, handleOpenCardGeneration as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!rightDrawerOpen || !pendingCardGeneration) return;
+
+    const timer = window.setTimeout(() => {
+      startCardGeneration(pendingCardGeneration);
+      setPendingCardGeneration(null);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [rightDrawerOpen, pendingCardGeneration]);
 
   // Handle double-click to maximize width
   const handleMaxWidth = useCallback(() => {

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Form, Input, Button, Typography, message, Modal } from 'antd'
+import { Card, Form, Input, Button, Typography, App } from 'antd'
 import { KeyOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import { agentApi } from '../../services/agent'
 
 const { Title, Text } = Typography
 
 const AgentConfig: React.FC = () => {
+  const { message, modal } = App.useApp()
   const [hasApiKey, setHasApiKey] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -42,7 +43,7 @@ const AgentConfig: React.FC = () => {
   }
 
   const handleDelete = () => {
-    Modal.confirm({
+    modal.confirm({
       title: '确认删除',
       content: '删除后 Agent 将无法调用模型服务，确定要删除 API Key 吗？',
       okText: '确认删除',

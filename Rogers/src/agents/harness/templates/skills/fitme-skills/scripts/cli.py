@@ -164,6 +164,46 @@ def cmd_create_training_plan(args: argparse.Namespace) -> None:
     _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
 
 
+def cmd_save_training_result(args: argparse.Namespace) -> None:
+    """归档训练成果卡片"""
+    data = {
+        "card_html": args.card_html,
+        "title": args.title,
+    }
+    if args.session_id:
+        data["session_id"] = args.session_id
+    if args.stats_json:
+        data["stats_json"] = args.stats_json
+    if args.template_key:
+        data["template_key"] = args.template_key
+    if args.period_type:
+        data["period_type"] = args.period_type
+    if args.period_start:
+        data["period_start"] = args.period_start
+    if args.period_end:
+        data["period_end"] = args.period_end
+    if args.thumbnail:
+        data["thumbnail"] = args.thumbnail
+
+    result = _api_request("POST", "/api/training/results/archive", args.token, json_data=data)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+def cmd_get_training_card_templates(args: argparse.Namespace) -> None:
+    """获取训练结果卡片模板样例列表"""
+    params = {}
+    if getattr(args, "template_group", None):
+        params["template_group"] = args.template_group
+    result = _api_request("GET", "/api/training/result-templates", args.token, params=params)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
+def cmd_get_training_card_template(args: argparse.Namespace) -> None:
+    """获取单个训练结果卡片模板样例"""
+    result = _api_request("GET", f"/api/training/result-templates/{args.template_key}", args.token)
+    _output(result, exit_code=0 if result.get("success", result.get("code") == 200) else 1)
+
+
 # ============= 饮食相关 =============
 def cmd_get_diet_today(args: argparse.Namespace) -> None:
     """获取今日饮食（可指定日期）"""
@@ -391,6 +431,26 @@ def build_parser() -> argparse.ArgumentParser:
     sub_create_training_plan.add_argument("--target-intensity", dest="target_intensity", help="目标强度")
     sub_create_training_plan.add_argument("--note", help="备注")
     sub_create_training_plan.set_defaults(func=cmd_create_training_plan)
+
+    sub_save_training_result = subparsers.add_parser("save-training-result", help="归档训练成果卡片")
+    sub_save_training_result.add_argument("--title", required=True, help="快照标题")
+    sub_save_training_result.add_argument("--card-html", required=True, dest="card_html", help="完整 HTML 卡片")
+    sub_save_training_result.add_argument("--session-id", dest="session_id", help="Agent 会话 ID")
+    sub_save_training_result.add_argument("--stats-json", dest="stats_json", help="统计数据 JSON")
+    sub_save_training_result.add_argument("--template-key", dest="template_key", help="卡片模板标识")
+    sub_save_training_result.add_argument("--period-type", dest="period_type", help="周期类型")
+    sub_save_training_result.add_argument("--period-start", dest="period_start", help="周期开始日期 (YYYY-MM-DD)")
+    sub_save_training_result.add_argument("--period-end", dest="period_end", help="周期结束日期 (YYYY-MM-DD)")
+    sub_save_training_result.add_argument("--thumbnail", help="缩略图")
+    sub_save_training_result.set_defaults(func=cmd_save_training_result)
+
+    sub_get_training_card_templates = subparsers.add_parser("get-training-card-templates", help="获取训练结果卡片模板样例列表")
+    sub_get_training_card_templates.add_argument("--template-group", dest="template_group", default="training-results", help="模板分组，默认 training-results")
+    sub_get_training_card_templates.set_defaults(func=cmd_get_training_card_templates)
+
+    sub_get_training_card_template = subparsers.add_parser("get-training-card-template", help="获取单个训练结果卡片模板样例")
+    sub_get_training_card_template.add_argument("--template-key", required=True, dest="template_key", help="模板标识")
+    sub_get_training_card_template.set_defaults(func=cmd_get_training_card_template)
 
     # ========== 饮食相关 ==========
     sub_get_diet_today = subparsers.add_parser("get-diet-today", help="获取今日饮食记录")

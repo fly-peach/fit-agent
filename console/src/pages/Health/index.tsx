@@ -215,11 +215,11 @@ const Health: React.FC = () => {
         width={isMobile ? '100%' : undefined}
         style={isMobile ? { top: 0, margin: 0, maxWidth: '100%' } : undefined}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="weight" label="体重 (kg)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={70} /></Form.Item>
-          <Form.Item name="height" label="身高 (cm)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={175} /></Form.Item>
-          <Form.Item name="bodyFat" label="体脂率 (%)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} defaultValue={15} /></Form.Item>
-          <Form.Item name="measureDate" label="测量日期" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} defaultValue={dayjs()} /></Form.Item>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} initialValues={{ weight: 70, height: 175, bodyFat: 15, measureDate: dayjs() }}>
+          <Form.Item name="weight" label="体重 (kg)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="height" label="身高 (cm)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="bodyFat" label="体脂率 (%)" rules={[{ required: true }]}><InputNumber style={{ width: '100%' }} /></Form.Item>
+          <Form.Item name="measureDate" label="测量日期" rules={[{ required: true }]}><DatePicker style={{ width: '100%' }} /></Form.Item>
         </Form>
       </Modal>
     </div>

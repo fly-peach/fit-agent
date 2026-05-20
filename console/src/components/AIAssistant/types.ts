@@ -3,6 +3,6 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: any;
   response?: any;
-  status: 'loading' | 'finished' | 'error';
+  status: 'generating' | 'finished' | 'error' | 'interrupted';
   createdAt: number;
 }

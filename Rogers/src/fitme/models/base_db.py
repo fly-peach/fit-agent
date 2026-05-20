@@ -99,3 +99,25 @@ class RecommendedFood(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class TrainingCardTemplateSample(Base):
+    """训练结果卡片模板样例表 - Base DB"""
+    __tablename__ = "training_card_template_samples"
+    __table_args__ = (
+        Index("idx_training_card_template_key", "template_key", unique=True),
+        Index("idx_training_card_template_group_order", "template_group", "sort_order"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    template_key = Column(String(100), nullable=False)
+    template_name = Column(String(100), nullable=False)
+    template_group = Column(String(50), nullable=False, default="training-results")
+    description = Column(Text, nullable=False, default="")
+    highlights_json = Column(Text, nullable=False, default="[]")
+    preview_html = Column(Text, nullable=False)
+    prompt_hint = Column(Text, nullable=False, default="")
+    sort_order = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

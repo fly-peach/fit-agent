@@ -28,6 +28,7 @@ def save_training_result_snapshot(
     title: str,
     session_id: Optional[str] = None,
     stats_json: Optional[str] = None,
+    template_key: Optional[str] = None,
     period_type: Optional[str] = None,
     period_start: Optional[date] = None,
     period_end: Optional[date] = None,
@@ -41,6 +42,7 @@ def save_training_result_snapshot(
         title: 快照标题
         session_id: 关联的 Agent 会话 ID
         stats_json: 统计数据 JSON（列表预览用）
+        template_key: 卡片模板标识
         period_type: 周期类型："week" | "month" | "custom"
         period_start: 统计周期开始
         period_end: 统计周期结束
@@ -57,6 +59,7 @@ def save_training_result_snapshot(
             card_html=card_html,
             stats_json=stats_json,
             title=title,
+            template_key=template_key,
             period_type=period_type,
             period_start=period_start,
             period_end=period_end,
@@ -103,6 +106,7 @@ def get_training_result_snapshot(snapshot_id: int) -> Optional[dict]:
 def list_training_result_snapshots(
     user_id: int,
     period_type: Optional[str] = None,
+    session_id: Optional[str] = None,
     limit: int = 20,
     offset: int = 0,
     include_html: bool = False,
@@ -112,6 +116,7 @@ def list_training_result_snapshots(
     Args:
         user_id: 用户 ID（必选）
         period_type: 周期类型筛选（可选）
+        session_id: Agent 会话 ID 筛选（可选）
         limit: 返回条数上限
         offset: 分页偏移
         include_html: 是否包含完整的 card_html（列表页建议 False 减少数据传输）
@@ -127,6 +132,8 @@ def list_training_result_snapshots(
         )
         if period_type:
             q = q.filter(TrainingResultSnapshot.period_type == period_type)
+        if session_id:
+            q = q.filter(TrainingResultSnapshot.session_id == session_id)
         records = (
             q.order_by(TrainingResultSnapshot.created_at.desc())
             .offset(offset)
@@ -230,6 +237,7 @@ def _record_to_dict(record: TrainingResultSnapshot, include_html: bool = False) 
         "user_id": record.user_id,
         "session_id": record.session_id,
         "title": record.title,
+        "template_key": getattr(record, "template_key", None),
         "period_type": record.period_type,
         "period_start": p_start.isoformat() if isinstance(p_start, date) else None,
         "period_end": p_end.isoformat() if isinstance(p_end, date) else None,

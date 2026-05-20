@@ -64,6 +64,13 @@ async def lifespan(app: FastAPI):
             except Exception:
                 pass  # 列已存在
 
+        try:
+            conn.execute(sa.text("ALTER TABLE training_result_snapshots ADD COLUMN template_key TEXT"))
+            conn.commit()
+            logger.info("已为 training_result_snapshots 表添加 template_key 列")
+        except Exception:
+            pass  # 列已存在
+
         # 迁移：为 users 表添加 id 列（兼容 AsyncSQLAlchemyMemory）
         try:
             conn.execute(sa.text("ALTER TABLE users ADD COLUMN id INTEGER"))
@@ -81,13 +88,23 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-        # 迁移：为 user_settings 表添加 auto_approve_db_write 列
-        try:
-            conn.execute(sa.text("ALTER TABLE user_settings ADD COLUMN auto_approve_db_write BOOLEAN DEFAULT 0"))
-            conn.commit()
-            logger.info("已为 user_settings 添加 auto_approve_db_write 列")
-        except Exception:
-            pass
+        # 迁移：为 user_settings 表补齐新列
+        for col, col_type, default_expr in [
+            ("weekly_training_goal", "INTEGER", "5"),
+            ("notification_enabled", "BOOLEAN", "1"),
+            ("reminder_time", "TIME", "'07:00:00'"),
+            ("auto_approve_db_write", "BOOLEAN", "0"),
+        ]:
+            try:
+                conn.execute(
+                    sa.text(
+                        f"ALTER TABLE user_settings ADD COLUMN {col} {col_type} DEFAULT {default_expr}"
+                    )
+                )
+                conn.commit()
+                logger.info("已为 user_settings 添加 %s 列", col)
+            except Exception:
+                pass  # 列已存在
 
     # 创建测试账户
     from .seed import seed_test_accounts
@@ -115,6 +132,10 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="FitAgent 健身管理平台 API",
 )
+
+agent_upload_dir = Path(__file__).resolve().parent.parent / "uploads" / "agent"
+agent_upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/agent/uploads", StaticFiles(directory=str(agent_upload_dir)), name="agent_uploads")
 
 
 app.add_middleware(

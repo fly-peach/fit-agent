@@ -1,10 +1,135 @@
+.message-renderer {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.message-renderer > .ant-accordion-group,
+.message-renderer .ant-accordion-group {
+  max-width: 100%;
+}
+
+.message-renderer > .ant-accordion-group {
+  width: fit-content;
+  min-width: min(100%, 280px);
+  max-width: min(100%, 720px);
+}
+
+.message-renderer .ant-accordion-group-body,
+.message-renderer .ant-accordion-content-body,
+.message-renderer .x-markdown,
+.message-renderer .ant-codeHighlighter {
+  max-width: 100%;
+}
+
+.message-renderer .ant-codeHighlighter-code pre,
+.message-renderer pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.message-renderer .ant-accordion-group-header > div {
+  min-width: 0;
+}
+
+.training-card-message {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: min(100%, 720px);
+}
+
+.training-card-message-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.training-card-message-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.training-card-message-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.training-card-message-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+}
+
+.training-card-message-stat-value {
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.training-card-message-stat-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.training-card-message-preview {
+  max-width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+  overflow: auto;
+}
+
+.training-card-message-preview-html {
+  width: 100%;
+  min-width: 0;
+}
+
+.training-card-message-preview-html .training-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* 子代理内容容器样式 */
 .subagent-body-content {
   padding: 12px;
+  max-width: 100%;
 }
 
 /* 子代理加载文本样式 */
 .subagent-loading-text {
   padding: 12px;
   color: #999;
+}
+
+@media (max-width: 768px) {
+  .message-renderer > .ant-accordion-group {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .training-card-message {
+    max-width: 100%;
+  }
+
+  .training-card-message-preview {
+    padding: 8px;
+  }
 }

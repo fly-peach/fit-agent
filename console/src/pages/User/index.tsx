@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Typography, Row, Col, Avatar, Form, Input, InputNumber, Button, Divider, Descriptions, message } from 'antd'
+import { App, Card, Typography, Row, Col, Avatar, Form, Input, InputNumber, Button, Divider, Descriptions } from 'antd'
 import { LogoutOutlined } from '@ant-design/icons'
 import { User } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -7,6 +7,7 @@ import { userApi, type UserProfile } from '../../services/user'
 import { useIsMobile } from '../../hooks'
 
 const UserPage: React.FC = () => {
+  const { message } = App.useApp()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [profileForm] = Form.useForm()
@@ -20,21 +21,34 @@ const UserPage: React.FC = () => {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const profileData = await userApi.getProfile()
-      setProfile(profileData)
-      profileForm.setFieldsValue({ name: profileData.name, avatar: profileData.avatar || '' })
+      try {
+        const profileData = await userApi.getProfile()
+        setProfile(profileData)
+        profileForm.setFieldsValue({ name: profileData.name, avatar: profileData.avatar || '' })
+      } catch {
+        setProfile(null)
+        profileForm.resetFields()
+        message.error('加载个人资料失败')
+      }
 
-      const settingsData = await userApi.getSettings()
-      settingsForm.setFieldsValue({
-        calorieGoal: settingsData.calorieGoal,
-        proteinGoal: settingsData.proteinGoal,
-        carbsGoal: settingsData.carbsGoal,
-        fatGoal: settingsData.fatGoal,
-        waterGoal: settingsData.waterGoal,
-        weightGoal: settingsData.weightGoal,
-        weeklyTrainingGoal: settingsData.weeklyTrainingGoal,
-      })
-    } finally { setLoading(false) }
+      try {
+        const settingsData = await userApi.getSettings()
+        settingsForm.setFieldsValue({
+          calorieGoal: settingsData.calorieGoal,
+          proteinGoal: settingsData.proteinGoal,
+          carbsGoal: settingsData.carbsGoal,
+          fatGoal: settingsData.fatGoal,
+          waterGoal: settingsData.waterGoal,
+          weightGoal: settingsData.weightGoal,
+          weeklyTrainingGoal: settingsData.weeklyTrainingGoal,
+        })
+      } catch {
+        settingsForm.resetFields()
+        message.error('加载目标设置失败')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleUpdateProfile = async () => {
@@ -42,7 +56,7 @@ const UserPage: React.FC = () => {
       const values = await profileForm.validateFields()
       await userApi.updateProfile(values)
       message.success('更新成功')
-      fetchData()
+      await fetchData()
     } catch { message.error('更新失败') }
   }
 
@@ -51,7 +65,7 @@ const UserPage: React.FC = () => {
       const values = await settingsForm.validateFields()
       await userApi.updateSettings(values)
       message.success('设置已保存')
-      fetchData()
+      await fetchData()
     } catch { message.error('保存失败') }
   }
 

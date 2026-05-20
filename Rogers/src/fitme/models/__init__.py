@@ -1,6 +1,13 @@
 """FitMe Models Module - Split into base_db and user_db"""
 # New split models
-from .base_db import Base as BaseDBBase, Exercise, FoodItem, RecommendedTraining, RecommendedFood
+from .base_db import (
+    Base as BaseDBBase,
+    Exercise,
+    FoodItem,
+    RecommendedTraining,
+    RecommendedFood,
+    TrainingCardTemplateSample,
+)
 from .user_db import (
     Base as UserDBBase,
     User, UserSettings, HealthMetric, TrainingPlan, TrainingRecord, DietMeal, DailyDietSummary,
@@ -17,6 +24,7 @@ __all__ = [
     "FoodItem",
     "RecommendedTraining",
     "RecommendedFood",
+    "TrainingCardTemplateSample",
     "UserDBBase",
     "User",
     "UserSettings",

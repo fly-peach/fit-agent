@@ -10,7 +10,7 @@ from .basic_tools.fitme_shell_command import execute_fitme_command
 from .basic_tools.memory_tools import record_user_fact, get_user_memory, delete_user_fact_tool
 from .profile_tool import get_user_profile
 from .approval import create_approval_wrapper
-from .skill_manager import register_all_skills
+from .skill_manager import register_all_skills, register_card_skills
 
 
 async def my_search(query: str, api_key: str) -> ToolResponse:
@@ -86,6 +86,7 @@ def build_master_toolkit(api_key: str = "", auth_token: str | None = None) -> To
 
     # ── 技能注册（注册所有技能） ──
     register_all_skills(toolkit, include_skills=None)
+    register_card_skills(toolkit, include_cards=None)
 
     return toolkit
 

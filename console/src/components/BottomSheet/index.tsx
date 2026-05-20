@@ -125,6 +125,18 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     }
   }, [isDragging, findClosestSnapPoint, getSnapPointPx, snapPoints, onClose])
 
+  // Double click handle to expand to the largest snap point.
+  const handleExpandToMax = useCallback(() => {
+    const maxIndex = snapPoints.length - 1
+    currentSnapIndexRef.current = maxIndex
+    setIsDragging(false)
+    setCurrentHeight(
+      typeof snapPoints[maxIndex] === 'number'
+        ? `${snapPoints[maxIndex]}px`
+        : snapPoints[maxIndex] as string
+    )
+  }, [snapPoints])
+
   // Add/remove event listeners
   useEffect(() => {
     if (isDragging) {
@@ -159,7 +171,12 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
         style={{ height: currentHeight }}
       >
         {/* Drag Handle */}
-        <div className="bottom-sheet-handle" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+        <div
+          className="bottom-sheet-handle"
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          onDoubleClick={handleExpandToMax}
+        >
           <div className="bottom-sheet-handle-bar" />
         </div>
 

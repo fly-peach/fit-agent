@@ -20,10 +20,12 @@ import {
   Avatar,
   Popconfirm,
   Divider,
+  Card,
 } from "antd";
 import {
   PlusOutlined,
   CheckOutlined,
+  EditOutlined,
   SyncOutlined,
   LeftOutlined,
   RightOutlined,
@@ -66,6 +68,12 @@ const intensities = [
 ];
 
 const Training: React.FC = () => {
+  const sharedTrendLineMotion = {
+    isAnimationActive: true,
+    animationBegin: 0,
+    animationDuration: 420,
+    animationEasing: "ease-out" as const,
+  };
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
   const [monthSchedule, setMonthSchedule] = useState<
     {
@@ -84,9 +92,13 @@ const Training: React.FC = () => {
   const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
   const [createOpen, setCreateOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
   const [createForm] = Form.useForm();
   const [completeForm] = Form.useForm();
+  const [editForm] = Form.useForm();
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
 
   const [trendDays, setTrendDays] = useState(7);
   const [trendLoading, setTrendLoading] = useState(false);
@@ -206,6 +218,43 @@ const Training: React.FC = () => {
       fetchData();
     } catch {
       message.error("创建失败");
+    }
+  };
+
+  const handleOpenEditPlan = async (planId: number) => {
+    try {
+      const detail = await trainingApi.getPlanDetail(planId);
+      editForm.setFieldsValue({
+        planName: detail.planName,
+        planType: detail.planType,
+        targetIntensity: detail.targetIntensity,
+        estimatedDuration: detail.estimatedDuration,
+        scheduledDate: detail.scheduledDate ? dayjs(detail.scheduledDate) : null,
+        note: detail.note,
+      });
+      setEditingPlanId(planId);
+      setEditOpen(true);
+    } catch {
+      message.error("获取计划详情失败");
+    }
+  };
+
+  const handleEditPlan = async () => {
+    if (!editingPlanId) return;
+    try {
+      const values = await editForm.validateFields();
+      await trainingApi.updatePlan(editingPlanId, {
+        ...values,
+        scheduledDate: values.scheduledDate ? values.scheduledDate.format("YYYY-MM-DD") : undefined,
+      });
+      message.success("修改成功");
+      setEditOpen(false);
+      fetchData();
+      if (detailOpen && detailData?.planId === editingPlanId) {
+        handleViewDetail(editingPlanId);
+      }
+    } catch {
+      message.error("修改失败");
     }
   };
 
@@ -625,28 +674,25 @@ const Training: React.FC = () => {
       </Row>
 
       <div
+        className="fitagent-trend-panel"
         style={{
           marginTop: isMobile ? 16 : 24,
           padding: isMobile ? 12 : 16,
-          borderRadius: 6,
-          background: "#F5F5F5",
-          border: "1px solid #e8e8e8",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 12,
-            flexWrap: "wrap",
-            gap: 8,
-          }}
-        >
-          <Typography.Text strong style={{ fontSize: isMobile ? 14 : 16 }}>
-            训练趋势
-          </Typography.Text>
+        <div className="fitagent-trend-toolbar">
+          <div>
+            <Typography.Text strong className="fitagent-trend-title" style={{ fontSize: isMobile ? 14 : 16 }}>
+              训练趋势
+            </Typography.Text>
+            <div>
+              <Typography.Text className="fitagent-trend-subtitle">
+                聚焦训练时长与热量消耗，快速判断最近执行状态
+              </Typography.Text>
+            </div>
+          </div>
           <Radio.Group
+            className="fitagent-trend-radio"
             value={trendDays}
             onChange={(e) => setTrendDays(e.target.value)}
             size="small"
@@ -658,9 +704,9 @@ const Training: React.FC = () => {
         </div>
 
         <Checkbox.Group
+          className="fitagent-trend-metrics"
           value={activeMetrics}
           onChange={(vals: any[]) => setActiveMetrics(vals)}
-          style={{ marginBottom: 12 }}
         >
           <Space wrap size={8}>
             <Checkbox value="duration">时长</Checkbox>
@@ -668,17 +714,38 @@ const Training: React.FC = () => {
           </Space>
         </Checkbox.Group>
 
+        <div className="fitagent-chart-shell">
         <ResponsiveContainer width="100%" height={isMobile ? 200 : 260}>
           <LineChart data={trendLoading ? [] : trendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e8" />
-            <XAxis dataKey="date" tick={{ fontSize: isMobile ? 11 : 12 }} />
-            <YAxis yAxisId="left" tick={{ fontSize: isMobile ? 11 : 12 }} />
+            <CartesianGrid strokeDasharray="4 4" stroke="#dbeafe" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: isMobile ? 11 : 12, fill: "#64748b" }}
+              tickLine={false}
+              axisLine={{ stroke: "#cbd5e1" }}
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fontSize: isMobile ? 11 : 12, fill: "#64748b" }}
+              tickLine={false}
+              axisLine={false}
+            />
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: isMobile ? 11 : 12 }}
+              tick={{ fontSize: isMobile ? 11 : 12, fill: "#64748b" }}
+              tickLine={false}
+              axisLine={false}
             />
             <Tooltip
+              contentStyle={{
+                borderRadius: 16,
+                border: "1px solid #dbeafe",
+                boxShadow: "0 14px 32px rgba(14, 165, 233, 0.12)",
+                background: "rgba(255,255,255,0.96)",
+              }}
+              labelStyle={{ color: "#0f172a", fontWeight: 600, marginBottom: 6 }}
+              itemStyle={{ color: "#334155" }}
               formatter={(value: any, name: any) => {
                 const labels: Record<string, string> = {
                   duration: "时长",
@@ -699,8 +766,10 @@ const Training: React.FC = () => {
                 dataKey="duration"
                 name="duration"
                 stroke="#10B981"
-                strokeWidth={2}
-                dot={{ r: 3 }}
+                strokeWidth={3}
+                dot={{ r: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0, fill: "#10B981" }}
+                {...sharedTrendLineMotion}
               />
             )}
             {activeMetrics.includes("caloriesBurned") && (
@@ -710,12 +779,15 @@ const Training: React.FC = () => {
                 dataKey="caloriesBurned"
                 name="caloriesBurned"
                 stroke="#F59E0B"
-                strokeWidth={2}
-                dot={{ r: 3 }}
+                strokeWidth={3}
+                dot={{ r: 0 }}
+                activeDot={{ r: 5, strokeWidth: 0, fill: "#F59E0B" }}
+                {...sharedTrendLineMotion}
               />
             )}
           </LineChart>
         </ResponsiveContainer>
+        </div>
       </div>
 
       <div
@@ -767,6 +839,11 @@ const Training: React.FC = () => {
           fullscreen={!isMobile}
           mode="month"
           value={currentMonth}
+          onSelect={(date) => {
+            if (isMobile) {
+              setSelectedCalendarDate(date.format("YYYY-MM-DD"));
+            }
+          }}
           onPanelChange={(_, mode) => {
             if (mode === "month") setCurrentMonth(_);
           }}
@@ -777,6 +854,71 @@ const Training: React.FC = () => {
             const isCurrentMonth = date.month() === currentMonth.month();
             const hasCompleted = dayPlans.some((p) => p.status === "completed");
             const isFuture = date.isAfter(dayjs(), "day");
+            const isSelected = isMobile && selectedCalendarDate === dateStr;
+
+            if (isMobile) {
+              return (
+                <div
+                  style={{
+                    minHeight: 82,
+                    height: "100%",
+                    padding: "6px 8px",
+                    position: "relative",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    border: isSelected
+                      ? "1px solid #38bdf8"
+                      : dayPlans.length > 0
+                        ? "1px solid #dbeafe"
+                        : "1px solid transparent",
+                    background: isSelected
+                      ? "linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%)"
+                      : dayPlans.length > 0
+                        ? "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)"
+                        : isCurrentMonth
+                          ? "#fafcff"
+                          : "#f8fafc",
+                    boxShadow: isSelected ? "0 10px 24px rgba(14, 165, 233, 0.12)" : "none",
+                    opacity: isCurrentMonth ? 1 : 0.58,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: isToday || isSelected ? 700 : 500,
+                      color: isToday ? "#0284c7" : "#0f172a",
+                    }}
+                  >
+                    {date.date()}
+                  </div>
+                  {dayPlans.length > 0 ? (
+                    <>
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignSelf: "flex-start",
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: hasCompleted ? "#dcfce7" : "#e0f2fe",
+                          color: hasCompleted ? "#166534" : "#0369a1",
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {dayPlans.length} 项计划
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>
+                      暂无计划
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             if (dayPlans.length === 0) {
               return (
@@ -835,7 +977,7 @@ const Training: React.FC = () => {
                 >
                   {date.date()}
                 </div>
-                {dayPlans.slice(0, isMobile ? 2 : 3).map((item) => (
+                {dayPlans.slice(0, 3).map((item) => (
                   <div
                     key={item.planId}
                     style={{
@@ -927,8 +1069,33 @@ const Training: React.FC = () => {
                         display: "flex",
                         gap: 12,
                         justifyContent: "flex-start",
+                        flexWrap: "wrap",
                       }}
                     >
+                      <span
+                        style={{
+                          color: "#1677ff",
+                          cursor: "pointer",
+                          fontSize: isMobile ? 12 : 13,
+                          lineHeight: "18px",
+                          fontWeight: 500,
+                        }}
+                        onClick={() => item.planId && handleViewDetail(item.planId)}
+                      >
+                        详情
+                      </span>
+                      <span
+                        style={{
+                          color: "#1677ff",
+                          cursor: "pointer",
+                          fontSize: isMobile ? 12 : 13,
+                          lineHeight: "18px",
+                          fontWeight: 500,
+                        }}
+                        onClick={() => item.planId && handleOpenEditPlan(item.planId)}
+                      >
+                        编辑
+                      </span>
                       {item.status !== "completed" && (
                         <span
                           style={{
@@ -983,22 +1150,145 @@ const Training: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                {dayPlans.length > (isMobile ? 2 : 3) && (
+                {dayPlans.length > 3 && (
                   <div
                     style={{
-                      fontSize: isMobile ? 11 : 12,
+                      fontSize: 12,
                       color: "#999",
                       marginTop: 2,
                       fontWeight: 500,
                     }}
                   >
-                    +{dayPlans.length - (isMobile ? 2 : 3)} 更多
+                    +{dayPlans.length - 3} 更多
                   </div>
                 )}
               </div>
             );
           }}
         />
+
+        {isMobile && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <Typography.Text strong style={{ fontSize: 15 }}>
+                  {dayjs(selectedCalendarDate).format('YYYY-MM-DD')} 训练详情
+                </Typography.Text>
+                <div style={{ marginTop: 6 }}>
+                  <Typography.Text type="secondary">
+                    {monthSchedule.filter(s => s.date === selectedCalendarDate).length} 项计划
+                  </Typography.Text>
+                </div>
+              </div>
+            </div>
+
+            {(() => {
+              const selectedPlans = monthSchedule.filter(s => s.date === selectedCalendarDate);
+              if (selectedPlans.length === 0) {
+                return (
+                  <Card
+                    size="small"
+                    style={{
+                      borderRadius: 20,
+                      border: '1px dashed #cbd5e1',
+                      background: '#f8fafc',
+                    }}
+                    styles={{ body: { padding: 20, textAlign: 'center' } }}
+                  >
+                    <Typography.Text type="secondary">
+                      这一天还没有训练计划，可以直接点击该日期右上角的加号快速补充。
+                    </Typography.Text>
+                    <div style={{ marginTop: 12 }}>
+                      <Button type="primary" icon={<PlusOutlined />} onClick={() => {
+                        createForm.setFieldsValue({ scheduledDate: dayjs(selectedCalendarDate) });
+                        setCreateOpen(true);
+                      }}>
+                        为这一天添加计划
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              }
+
+              return (
+                <Row gutter={[12, 12]}>
+                  {selectedPlans.map((item) => {
+                    const isFuture = dayjs(selectedCalendarDate).isAfter(dayjs(), 'day');
+                    const hasCompleted = item.status === "completed";
+                    return (
+                      <Col xs={24} key={item.planId}>
+                        <Card
+                          className="fitagent-card-hover"
+                          size="small"
+                          style={{
+                            borderRadius: 20,
+                            border: hasCompleted ? '1px solid #86EFAC' : '1px solid #dbeafe',
+                            background: hasCompleted ? '#F0FDF4' : 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
+                          }}
+                          styles={{ body: { padding: 16 } }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <Space size={8} wrap>
+                                {getTypeTag(item.planType)}
+                                {getIntensityTag(item.intensity)}
+                                <Typography.Text type="secondary">{item.duration} 分钟</Typography.Text>
+                              </Space>
+                              <Typography.Title level={5} style={{ margin: '10px 0 0', fontSize: 18 }}>
+                                {item.planName}
+                              </Typography.Title>
+                            </div>
+                            <Avatar style={{ backgroundColor: hasCompleted ? '#10B981' : '#F59E0B', flexShrink: 0 }}>
+                              <Dumbbell size={16} />
+                            </Avatar>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                            <Button size="small" onClick={() => item.planId && handleViewDetail(item.planId)}>
+                              详情
+                            </Button>
+                            <Button size="small" icon={<EditOutlined />} onClick={() => item.planId && handleOpenEditPlan(item.planId)}>
+                              编辑
+                            </Button>
+                            {!hasCompleted && (
+                              <Button
+                                size="small"
+                                type="primary"
+                                disabled={isFuture}
+                                onClick={
+                                  isFuture
+                                    ? undefined
+                                    : () => {
+                                        setSelectedPlanId(item.planId!);
+                                        setCompleteOpen(true);
+                                      }
+                                }
+                              >
+                                {isFuture ? "未到" : "打卡"}
+                              </Button>
+                            )}
+                            {item.isRecurring && item.isLastInGroup && (
+                              <Button
+                                size="small"
+                                icon={<SyncOutlined />}
+                                onClick={() => item.planId && handleRenewPlan(item.planId)}
+                              >
+                                续期
+                              </Button>
+                            )}
+                            <Button size="small" danger icon={<DeleteOutlined />} onClick={() => item.planId && handleDeletePlan(item.planId)}>
+                              删除
+                            </Button>
+                          </div>
+                        </Card>
+                      </Col>
+                    );
+                  })}
+                </Row>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       <Modal
@@ -1014,7 +1304,7 @@ const Training: React.FC = () => {
         width={isMobile ? "100%" : undefined}
         style={isMobile ? { top: 0, margin: 0, maxWidth: "100%" } : undefined}
       >
-        <Form form={createForm} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={createForm} layout="vertical" style={{ marginTop: 16 }} initialValues={{ estimatedDuration: 60, scheduledDate: dayjs() }}>
           <Form.Item
             name="planName"
             label="计划名称"
@@ -1045,11 +1335,10 @@ const Training: React.FC = () => {
                 label="预计时长"
                 rules={[{ required: true }]}
               >
-                <InputNumber
-                  addonAfter="分钟"
-                  style={{ width: "100%" }}
-                  defaultValue={60}
-                />
+                <Space.Compact style={{ width: "100%" }}>
+                  <InputNumber style={{ flex: 1 }} />
+                  <Button disabled>分钟</Button>
+                </Space.Compact>
               </Form.Item>
             </Col>
           </Row>
@@ -1058,7 +1347,7 @@ const Training: React.FC = () => {
             label="计划日期"
             rules={[{ required: true }]}
           >
-            <DatePicker style={{ width: "100%" }} defaultValue={dayjs()} />
+            <DatePicker style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item
             name="isRecurring"
@@ -1118,6 +1407,71 @@ const Training: React.FC = () => {
       </Modal>
 
       <Modal
+        title="编辑训练计划"
+        open={editOpen}
+        onCancel={() => {
+          setEditOpen(false);
+          setEditingPlanId(null);
+          editForm.resetFields();
+        }}
+        onOk={handleEditPlan}
+        okText="保存"
+        cancelText="取消"
+        width={isMobile ? "100%" : undefined}
+        style={isMobile ? { top: 0, margin: 0, maxWidth: "100%" } : undefined}
+      >
+        <Form form={editForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="planName"
+            label="计划名称"
+            rules={[{ required: true }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="planType"
+            label="训练类型"
+            rules={[{ required: true }]}
+          >
+            <Select options={planTypes} />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col xs={12}>
+              <Form.Item
+                name="targetIntensity"
+                label="目标强度"
+                rules={[{ required: true }]}
+              >
+                <Select options={intensities} />
+              </Form.Item>
+            </Col>
+            <Col xs={12}>
+              <Form.Item
+                name="estimatedDuration"
+                label="预计时长"
+                rules={[{ required: true }]}
+              >
+                <Space.Compact style={{ width: "100%" }}>
+                  <InputNumber style={{ flex: 1 }} />
+                  <Button disabled>分钟</Button>
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item
+            name="scheduledDate"
+            label="计划日期"
+            rules={[{ required: true }]}
+          >
+            <DatePicker style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="note" label="备注">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
         title="完成训练"
         open={completeOpen}
         onCancel={() => {
@@ -1145,10 +1499,16 @@ const Training: React.FC = () => {
             label="实际时长"
             rules={[{ required: true }]}
           >
-            <InputNumber addonAfter="分钟" style={{ width: "100%" }} />
+            <Space.Compact style={{ width: "100%" }}>
+              <InputNumber style={{ flex: 1 }} />
+              <Button disabled>分钟</Button>
+            </Space.Compact>
           </Form.Item>
           <Form.Item name="caloriesBurned" label="消耗热量">
-            <InputNumber addonAfter="kcal" style={{ width: "100%" }} />
+            <Space.Compact style={{ width: "100%" }}>
+              <InputNumber style={{ flex: 1 }} />
+              <Button disabled>kcal</Button>
+            </Space.Compact>
           </Form.Item>
           <Form.Item name="completedDate" label="完成日期">
             <DatePicker style={{ width: "100%" }} />
@@ -1500,83 +1860,89 @@ const Training: React.FC = () => {
                         >
                           <Row gutter={16} style={{ marginBottom: 12 }}>
                             <Col xs={8}>
-                              <InputNumber
-                                size="middle"
-                                min={1}
-                                max={20}
-                                value={editingDraft?.sets ?? ex.sets}
-                                onChange={(v) =>
-                                  setEditingDraft((prev) =>
-                                    prev
-                                      ? { ...prev, sets: v ?? prev.sets }
-                                      : {
-                                          sets: v ?? ex.sets,
-                                          reps: ex.reps,
-                                          weight: ex.weight ?? null,
-                                        },
-                                  )
-                                }
-                                style={{
-                                  width: "100%",
-                                  fontSize: 16,
-                                  height: 40,
-                                }}
-                                addonBefore="组"
-                              />
+                              <Space.Compact style={{ width: "100%" }}>
+                                <Button disabled size="small">组</Button>
+                                <InputNumber
+                                  size="middle"
+                                  min={1}
+                                  max={20}
+                                  value={editingDraft?.sets ?? ex.sets}
+                                  onChange={(v) =>
+                                    setEditingDraft((prev) =>
+                                      prev
+                                        ? { ...prev, sets: v ?? prev.sets }
+                                        : {
+                                            sets: v ?? ex.sets,
+                                            reps: ex.reps,
+                                            weight: ex.weight ?? null,
+                                          },
+                                    )
+                                  }
+                                  style={{
+                                    flex: 1,
+                                    fontSize: 16,
+                                    height: 40,
+                                  }}
+                                />
+                              </Space.Compact>
                             </Col>
                             <Col xs={8}>
-                              <InputNumber
-                                size="middle"
-                                min={1}
-                                max={100}
-                                value={editingDraft?.reps ?? ex.reps}
-                                onChange={(v) =>
-                                  setEditingDraft((prev) =>
-                                    prev
-                                      ? { ...prev, reps: v ?? prev.reps }
-                                      : {
-                                          sets: ex.sets,
-                                          reps: v ?? ex.reps,
-                                          weight: ex.weight ?? null,
-                                        },
-                                  )
-                                }
-                                style={{
-                                  width: "100%",
-                                  fontSize: 16,
-                                  height: 40,
-                                }}
-                                addonBefore="次"
-                              />
+                              <Space.Compact style={{ width: "100%" }}>
+                                <Button disabled size="small">次</Button>
+                                <InputNumber
+                                  size="middle"
+                                  min={1}
+                                  max={100}
+                                  value={editingDraft?.reps ?? ex.reps}
+                                  onChange={(v) =>
+                                    setEditingDraft((prev) =>
+                                      prev
+                                        ? { ...prev, reps: v ?? prev.reps }
+                                        : {
+                                            sets: ex.sets,
+                                            reps: v ?? ex.reps,
+                                            weight: ex.weight ?? null,
+                                          },
+                                    )
+                                  }
+                                  style={{
+                                    flex: 1,
+                                    fontSize: 16,
+                                    height: 40,
+                                  }}
+                                />
+                              </Space.Compact>
                             </Col>
                             <Col xs={8}>
-                              <InputNumber
-                                size="middle"
-                                min={0}
-                                max={500}
-                                step={0.5}
-                                value={
-                                  editingDraft?.weight ?? ex.weight ?? undefined
-                                }
-                                onChange={(v) =>
-                                  setEditingDraft((prev) =>
-                                    prev
-                                      ? { ...prev, weight: v }
-                                      : {
-                                          sets: ex.sets,
-                                          reps: ex.reps,
-                                          weight: v,
-                                        },
-                                  )
-                                }
-                                style={{
-                                  width: "100%",
-                                  fontSize: 16,
-                                  height: 40,
-                                }}
-                                addonBefore="kg"
-                                placeholder="-"
-                              />
+                              <Space.Compact style={{ width: "100%" }}>
+                                <Button disabled size="small">kg</Button>
+                                <InputNumber
+                                  size="middle"
+                                  min={0}
+                                  max={500}
+                                  step={0.5}
+                                  value={
+                                    editingDraft?.weight ?? ex.weight ?? undefined
+                                  }
+                                  onChange={(v) =>
+                                    setEditingDraft((prev) =>
+                                      prev
+                                        ? { ...prev, weight: v }
+                                        : {
+                                            sets: ex.sets,
+                                            reps: ex.reps,
+                                            weight: v,
+                                          },
+                                    )
+                                  }
+                                  style={{
+                                    flex: 1,
+                                    fontSize: 16,
+                                    height: 40,
+                                  }}
+                                  placeholder="-"
+                                />
+                              </Space.Compact>
                             </Col>
                           </Row>
                           <Space>
@@ -1672,24 +2038,28 @@ const Training: React.FC = () => {
                       onChange={(e) => setDetailCustomName(e.target.value)}
                       style={{ width: 180 }}
                     />
-                    <InputNumber
-                      size="small"
-                      min={1}
-                      max={20}
-                      value={detailCustomSets}
-                      onChange={(v) => setDetailCustomSets(v ?? 3)}
-                      style={{ width: 70 }}
-                      addonBefore="组"
-                    />
-                    <InputNumber
-                      size="small"
-                      min={1}
-                      max={100}
-                      value={detailCustomReps}
-                      onChange={(v) => setDetailCustomReps(v ?? 10)}
-                      style={{ width: 70 }}
-                      addonBefore="次"
-                    />
+                    <Space.Compact style={{ width: 70 }}>
+                      <Button disabled size="small">组</Button>
+                      <InputNumber
+                        size="small"
+                        min={1}
+                        max={20}
+                        value={detailCustomSets}
+                        onChange={(v) => setDetailCustomSets(v ?? 3)}
+                        style={{ flex: 1 }}
+                      />
+                    </Space.Compact>
+                    <Space.Compact style={{ width: 70 }}>
+                      <Button disabled size="small">次</Button>
+                      <InputNumber
+                        size="small"
+                        min={1}
+                        max={100}
+                        value={detailCustomReps}
+                        onChange={(v) => setDetailCustomReps(v ?? 10)}
+                        style={{ flex: 1 }}
+                      />
+                    </Space.Compact>
                   </Space>
                 </Space>
               </div>

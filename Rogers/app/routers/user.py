@@ -1,4 +1,5 @@
 """User Router - Dual Database Support"""
+from datetime import time
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -17,6 +18,15 @@ from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/user", tags=["User"])
+
+
+def _format_reminder_time(value: object) -> str:
+    """将 reminder_time 安全转换为 HH:MM 字符串。"""
+    if isinstance(value, time):
+        return value.strftime("%H:%M")
+    if isinstance(value, str):
+        return value[:5] if len(value) >= 5 else value
+    return "07:00"
 
 
 def get_current_user(
@@ -78,15 +88,15 @@ def get_settings(
         raise HTTPException(status_code=404, detail="设置不存在")
     return UserSettingsResponse(
         data=UserSettings(
-            calorieGoal=settings.calorie_goal,  # type: ignore
-            proteinGoal=settings.protein_goal,  # type: ignore
-            carbsGoal=settings.carbs_goal,  # type: ignore
-            fatGoal=settings.fat_goal,  # type: ignore
-            waterGoal=settings.water_goal,  # type: ignore
+            calorieGoal=settings.calorie_goal or 2000,  # type: ignore
+            proteinGoal=settings.protein_goal or 150,  # type: ignore
+            carbsGoal=settings.carbs_goal or 250,  # type: ignore
+            fatGoal=settings.fat_goal or 65,  # type: ignore
+            waterGoal=settings.water_goal or 2000,  # type: ignore
             weightGoal=float(settings.weight_goal) if settings.weight_goal else None,  # type: ignore
-            weeklyTrainingGoal=settings.weekly_training_goal,  # type: ignore
-            notificationEnabled=settings.notification_enabled,  # type: ignore
-            reminderTime=str(settings.reminder_time),  # type: ignore
+            weeklyTrainingGoal=settings.weekly_training_goal or 5,  # type: ignore
+            notificationEnabled=bool(settings.notification_enabled),  # type: ignore
+            reminderTime=_format_reminder_time(settings.reminder_time),  # type: ignore
             autoApproveDbWrite=settings.auto_approve_db_write or False,  # type: ignore
         )
     )

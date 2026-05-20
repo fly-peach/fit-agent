@@ -1,4 +1,5 @@
 """Training Router - Dual Database Support"""
+import json
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Path, Body
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -24,6 +25,7 @@ from src.fitme.schemas.training import (
 )
 from src.fitme.schemas.common import BaseResponse
 from src.fitme.services.auth_service import AuthService
+from src.fitme.models.base_db import TrainingCardTemplateSample
 
 router = APIRouter(prefix="/api/training", tags=["Training"])
 
@@ -281,11 +283,12 @@ from src.agents.harness.memory.training_results_storage import (
 )
 
 
-class SaveTrainingResultRequest(BaseModel):
+class ArchiveTrainingResultRequest(BaseModel):
     card_html: str = Field(..., description="Agent 生成的完整 HTML 卡片")
     title: str = Field(..., description="快照标题")
     session_id: Optional[str] = Field(None, description="关联的 Agent 会话 ID")
     stats_json: Optional[str] = Field(None, description="统计数据 JSON")
+    template_key: Optional[str] = Field(None, description="卡片模板标识")
     period_type: Optional[str] = Field(None, description="周期类型：week/month/custom")
     period_start: Optional[date] = Field(None, description="统计周期开始")
     period_end: Optional[date] = Field(None, description="统计周期结束")
@@ -298,18 +301,79 @@ class UpdateTrainingResultRequest(BaseModel):
     thumbnail: Optional[str] = Field(None, description="新缩略图")
 
 
-@router.post("/results/save")
-def save_result(
-    data: SaveTrainingResultRequest,
+def _template_sample_to_dict(record: TrainingCardTemplateSample) -> dict:
+    try:
+        highlights = json.loads(record.highlights_json or "[]")
+    except Exception:
+        highlights = []
+    return {
+        "templateKey": record.template_key,
+        "templateName": record.template_name,
+        "templateGroup": record.template_group,
+        "description": record.description,
+        "highlights": highlights,
+        "previewHtml": record.preview_html,
+        "promptHint": record.prompt_hint,
+        "sortOrder": record.sort_order,
+    }
+
+
+@router.get("/result-templates")
+def list_result_templates(
+    template_group: str = Query("training-results", description="模板分组"),
+    base_db: Session = Depends(get_base_db),
+):
+    """获取训练结果卡片模板样例列表"""
+    records = (
+        base_db.query(TrainingCardTemplateSample)
+        .filter(
+            TrainingCardTemplateSample.template_group == template_group,
+            TrainingCardTemplateSample.is_active == True,
+        )
+        .order_by(TrainingCardTemplateSample.sort_order.asc(), TrainingCardTemplateSample.id.asc())
+        .all()
+    )
+    return {
+        "code": 200,
+        "data": [_template_sample_to_dict(record) for record in records],
+    }
+
+
+@router.get("/result-templates/{templateKey}")
+def get_result_template(
+    templateKey: str = Path(...),
+    base_db: Session = Depends(get_base_db),
+):
+    """获取单个训练结果卡片模板样例"""
+    record = (
+        base_db.query(TrainingCardTemplateSample)
+        .filter(
+            TrainingCardTemplateSample.template_key == templateKey,
+            TrainingCardTemplateSample.is_active == True,
+        )
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="模板不存在")
+    return {
+        "code": 200,
+        "data": _template_sample_to_dict(record),
+    }
+
+
+@router.post("/results/archive")
+def archive_result(
+    data: ArchiveTrainingResultRequest,
     current_user = Depends(get_current_user),
 ):
-    """保存训练成果快照"""
+    """归档训练成果快照（供 Agent/CLI 调用）"""
     snapshot_id = save_training_result_snapshot(
         user_id=current_user.user_id,
         card_html=data.card_html,
         title=data.title,
         session_id=data.session_id,
         stats_json=data.stats_json,
+        template_key=data.template_key,
         period_type=data.period_type,
         period_start=data.period_start,
         period_end=data.period_end,
@@ -317,7 +381,7 @@ def save_result(
     )
     return {
         "code": 200,
-        "message": "保存成功",
+        "message": "归档成功",
         "data": {"snapshotId": snapshot_id}
     }
 
@@ -325,6 +389,7 @@ def save_result(
 @router.get("/results/list")
 def list_results(
     period_type: Optional[str] = Query(None, description="周期类型筛选"),
+    session_id: Optional[str] = Query(None, description="Agent 会话 ID 筛选"),
     limit: int = Query(20, ge=1, le=100, description="返回条数"),
     offset: int = Query(0, ge=0, description="分页偏移"),
     current_user = Depends(get_current_user),
@@ -333,6 +398,7 @@ def list_results(
     snapshots = list_training_result_snapshots(
         user_id=current_user.user_id,
         period_type=period_type,
+        session_id=session_id,
         limit=limit,
         offset=offset,
         include_html=False,

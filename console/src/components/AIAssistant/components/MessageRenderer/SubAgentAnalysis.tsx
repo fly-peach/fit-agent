@@ -49,7 +49,7 @@ const SubAgentAnalysis: React.FC<SubAgentAnalysisProps> = ({ data }) => {
           ) : isLoading ? (
             // 如果正在加载但没有输出文本，则显示加载中提示
             <div className="subagent-loading-text">正在分析中...</div>
-          ) : null,  // 没有输出文本也不在加载中则不渲染
+          ) : undefined,  // 没有输出文本也不在加载中则不渲染
         },
       ]}
     />

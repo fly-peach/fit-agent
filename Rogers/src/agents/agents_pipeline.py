@@ -223,6 +223,31 @@ async def run_rogers_pipeline(
     # 将 msgs 转为列表，避免迭代器被消耗后 master() 收到空输入
     raw_msgs = list(msgs)
 
+    # 提取用户消息中的图片 URL，转为文本提示注入到消息末尾。
+    # qwen-turbo 是纯文本模型，DashScopeChatFormatter 虽然会把
+    # ImageBlock 格式化进请求体，但纯文本模型会忽略它，导致 LLM
+    # 看不到图片 URL 从而不调 analyze_image 工具。
+    _image_urls: list[str] = []
+    if raw_msgs:
+        last_msg = raw_msgs[-1]
+        for block in last_msg.get_content_blocks("image"):
+            src = block.get("source")
+            if src and isinstance(src, dict) and src.get("type") == "url":
+                _image_urls.append(src["url"])
+    if _image_urls:
+        _hint = (
+            "\n\n"
+            "[系统提示] 用户上传了以下图片，你可以使用 analyze_image 工具查看内容。"
+            "图片 URL：\n- " + "\n- ".join(_image_urls)
+        )
+        if isinstance(last_msg.content, str):
+            last_msg.content += _hint
+        elif isinstance(last_msg.content, list):
+            last_msg.content = list(last_msg.content) + [
+                {"type": "text", "text": _hint}
+            ]
+        raw_msgs[-1] = last_msg
+
     # 提前提取用户问题，用于后续保存
     user_question = _content_text(raw_msgs[-1]) if raw_msgs else ""
     logger.info("run_rogers_pipeline: user_id=%s session_id=%s, user_question[:50]=%s",

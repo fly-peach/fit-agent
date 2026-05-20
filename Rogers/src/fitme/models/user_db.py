@@ -350,6 +350,7 @@ class TrainingResultSnapshot(Base):
     card_html = Column(Text, nullable=False)  # Agent 生成的完整 HTML 卡片
     stats_json = Column(Text, nullable=True)  # 统计数据 JSON（列表预览用）
     title = Column(String(200), nullable=False)  # 快照标题（如"2024年5月第三周训练成果"）
+    template_key = Column(String(100), nullable=True)  # 卡片模板标识（如 training-card）
     period_type = Column(String(20), nullable=True)  # 周期类型："week" | "month" | "custom"
     period_start = Column(Date, nullable=True)  # 统计周期开始
     period_end = Column(Date, nullable=True)  # 统计周期结束
