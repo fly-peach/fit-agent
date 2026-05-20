@@ -1,135 +1,98 @@
-# FitAgent - AI 健身管理平台
+# FitAgent — AI 健身管理平台
 
-AI 驱动的健身管理平台，帮你制定训练计划、记录饮食、追踪健康数据，并提供智能对话助手。
+AI 驱动的全栈健身管理平台，帮你制定训练计划、记录饮食、追踪健康数据，并通过智能 Agent 对话获取个性化建议与训练成果卡片。
 
 ## 功能
 
-- **健康追踪** — 记录体重、体脂、BMI，查看趋势变化
-- **训练管理** — 创建训练计划，追踪完成进度，获取 AI 推荐
-- **饮食记录** — 记录每餐营养，自动计算热量与宏量营养素
-- **AI 助手** — 智能对话，回答健身问题，提供个性化建议
+### 📊 健康追踪
+记录体重、体脂、BMI 等身体指标，自动生成趋势变化图表，直观掌握身体变化。
 
-## 项目结构
+### 🏋️ 训练管理
+- 创建/编辑训练计划，设定训练类型、强度、时长
+- 日历视图查看每月训练安排，点击日期查看详情
+- 打卡完成记录，追踪训练进度
+- AI 智能推荐训练方案
 
-```
-fitagent/
-├── Rogers/              # 后端 (FastAPI + SQLAlchemy + AgentScope)
-│   ├── app/             #   FastAPI 应用、路由、启动逻辑
-│   │   ├── main.py      #   入口、中间件、路由注册、静态文件
-│   │   ├── routers/     #   API 路由
-│   │   └── seed.py      #   测试账户种子
-│   ├── src/
-│   │   ├── fitme/       #   核心业务层
-│   │   │   ├── core/    #     全局配置、数据库连接
-│   │   │   ├── models/  #     SQLAlchemy ORM 模型
-│   │   │   ├── schemas/ #     Pydantic 请求/响应
-│   │   │   ├── services/#     业务逻辑服务
-│   │   │   └── seed.py  #     种子数据导入
-│   │   └── agents/      #   AI Agent 管道
-│   ├── scripts/         #   数据库初始化脚本 & 种子数据
-│   ├── data/            #   SQLite 数据库（.gitignore）
-│   └── run.py           #   后端启动入口
-├── console/             # 前端 (React + TypeScript + Vite)
-│   └── src/
-│       ├── pages/       # 仪表盘、健康、训练、饮食等
-│       ├── services/    # API 客户端
-│       └── components/  # AI 助手、动作选择器等
-├── mobile/              # 移动端 (React Native + Expo)
-│   └── src/screens/     # 认证、聊天、饮食、健康、训练
-└── design/              # 设计稿（.pen 文件）
-```
+### 🥗 饮食记录
+- 日历式饮食日志，按日期查看每餐记录
+- 记录每餐热量及蛋白质/碳水/脂肪等宏量营养素
+- 内置 295 种常见食物库，支持自定义食物
+- 自动汇总每日营养摄入统计
+
+### 🤖 AI 智能助手
+多 Agent 对话系统，基于 AgentScope 架构：
+
+| Agent | 职责 |
+|-------|------|
+| **Master Agent** | 主对话 Agent，理解用户意图，调度专项 Agent |
+| **Diet Analyst** | 饮食分析 Agent，解读营养数据与饮食习惯 |
+| **Training Analyst** | 训练分析 Agent，评估训练效果与进展 |
+| **Card Generator** | 训练成果卡片生成，支持视觉化呈现 |
+
+**Agent 可用工具：**
+- `analyze_image` — 图片识别与分析（支持本地/网络图片输入）
+- `execute_fitme_command` — 执行健身相关 CLI 命令，直接查询/创建/更新用户数据
+- 技能树系统 — 动态加载的领域特定能力
+
+### 🃏 AI 训练卡片
+- 自动生成视觉化的训练成果卡片
+- 支持杂志风、简约、现代等多种模板
+- 一键归档至个人成果墙，随时回顾历史
+
+### 📱 多端支持
+- Web 端（React + Ant Design）
+- 移动端（React Native + Expo）
+
+## Skill 技能树系统
+
+FitAgent 内置灵活的技能树架构，Agent 可动态加载领域特定能力：
+
+| 技能 | 说明 |
+|------|------|
+| `fitme-training-results` | 训练成果卡片生成，包含多模板（杂志/简约/现代/经典） |
+| （更多技能开发中） | |
+
+技能树位于 `Rogers/src/agents/harness/templates/skills/`，每个技能独立目录，包含 `SKILL.md` 定义元数据与提示词，Agent 按需加载。
 
 ## 快速开始
 
-### 1. 后端
-
+### 后端
 ```bash
 cd Rogers
 pip install -r requirements.txt
-cp .env.example .env
-# 编辑 .env，填入必填项
-python run.py
+cp .env.example .env   # 编辑 .env，填入 JWT_SECRET_KEY 和 CORS_ORIGINS
+python run.py          # 首次启动自动初始化数据库
 ```
 
-首次启动自动初始化数据库（建表 + 导入 871 个健身动作和 295 条食物数据）。
-
-### 2. 前端
-
-**开发模式:**
-
+### 前端开发模式
 ```bash
 cd console
 npm install
-npm run dev      # → http://localhost:3000
+npm run dev            # → http://localhost:3000
 ```
 
-**生产构建（嵌入后端）:**
-
+### 前端生产构建（嵌入后端）
 ```bash
 cd Rogers
 python scripts/build_console.py
 # 访问 http://localhost:8000 即可使用
 ```
 
-### 3. 移动端
-
+### 移动端
 ```bash
 cd mobile
 npm install
 npx expo start
 ```
 
-## 配置
-
-`.env` 配置项：
-
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `JWT_SECRET_KEY` | JWT 签名密钥（`python -c "import secrets; print(secrets.token_hex(32))"`） | **是** |
-| `CORS_ORIGINS` | 允许的跨域域名，逗号分隔 | **是** |
-| `DASHSCOPE_MODEL` | 默认模型（turbo / plus / max） | 否 |
-| `OPENAI_BASE_URL` / `OPENAI_MODEL` | OpenAI 兼容接口 | 否 |
-
-**API Key 通过前端「Agent 配置」页面填入**，每个用户使用自己的 Key。
-
-### 模型参考
-
-| 模型 | 速度 | 精度 | 适用场景 |
-|------|------|------|----------|
-| qwen-turbo | 快 | 中 | 日常对话 |
-| qwen-plus | 中 | 高 | 复杂问题 |
-| qwen-max | 慢 | 高 | 专业分析 |
 
 ## 测试账户
 
 首次启动自动创建：
-
 ```
 邮箱: user@test.com
 密码: password123
 ```
-
-## 数据库架构
-
-采用**两库分离**架构，首次启动自动初始化：
-
-| 数据库 | 用途 | 位置 |
-|--------|------|------|
-| `fitbase.db` | 系统预置数据（动作库、食物库） | `Rogers/data/` |
-| `fituser.db` | 用户数据（账户、健康、训练、饮食） | `Rogers/data/` |
-
-### API 路由一览
-
-| 路由组 | 用途 | 主要端点 |
-|--------|------|----------|
-| `/api/auth` | JWT 认证 | 注册、登录、登出 |
-| `/api/user` | 用户信息 | 资料、设置 |
-| `/api/health` | 健康追踪 | 体重/体脂/BMI CRUD、报告 |
-| `/api/training` | 训练管理 | 计划 CRUD、进度、统计、AI 推荐 |
-| `/api/diet` | 饮食记录 | 餐食 CRUD、营养统计、食物库 |
-| `/api/exercise` | 动作库 | 检索、分类筛选（只读） |
-| `/api/agent/config` | Agent 配置 | API Key 管理 |
-| `/agent` | AI 对话 | SSE 流式聊天 |
 
 ## Tech Stack
 
